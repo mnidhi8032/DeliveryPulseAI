@@ -1,0 +1,10 @@
+"""Application-wide constants."""
+
+from enum import StrEnum
+
+
+class RoleCode(StrEnum):
+    PM = "PM"
+    CEO = "CEO"
+    BU_HEAD = "BU_HEAD"
+    PLATFORM_ADMIN = "PLATFORM_ADMIN"
