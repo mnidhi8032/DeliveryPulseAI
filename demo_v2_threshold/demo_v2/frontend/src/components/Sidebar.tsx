@@ -36,14 +36,18 @@ interface NavItem {
 
 interface SidebarProps {
   title: string;
-  role: "PM" | "CEO" | "BU_HEAD" | "PLATFORM_ADMIN";
+  role: "PM" | "CEO" | "BU_HEAD" | "PLATFORM_ADMIN" | "DELIVERY_EXCELLENCE";
   basePath: string;
 }
 
 const NAV_ITEMS: Record<string, NavItem[]> = {
   PM: [
-    { label: "Dashboard",   to: "/pm",          end: true,  iconKey: "dashboard" },
-    { label: "My Projects", to: "/pm/projects",  end: false, iconKey: "projects" },
+    { label: "Dashboard",    to: "/pm",               end: true,  iconKey: "dashboard" },
+    { label: "My Projects",  to: "/pm/projects",      end: false, iconKey: "projects" },
+    { label: "Summary",      to: "/pm/summary",       end: false, iconKey: "chart" },
+  ],
+  DELIVERY_EXCELLENCE: [
+    { label: "Metric Catalog", to: "/delivery-excellence", end: true, iconKey: "qpm" },
   ],
   CEO: [
     { label: "Dashboard",      to: "/ceo",                    end: true,  iconKey: "dashboard" },
@@ -79,10 +83,11 @@ export function Sidebar({ title, role }: SidebarProps) {
     : "?";
 
   const roleLabel: Record<string, string> = {
-    PM:             "Project Manager",
-    CEO:            "CEO",
-    BU_HEAD:        "BU Head",
-    PLATFORM_ADMIN: "Platform Admin",
+    PM:                   "Project Manager",
+    CEO:                  "CEO",
+    BU_HEAD:              "BU Head",
+    PLATFORM_ADMIN:       "Platform Admin",
+    DELIVERY_EXCELLENCE:  "Delivery Excellence",
   };
 
   return (

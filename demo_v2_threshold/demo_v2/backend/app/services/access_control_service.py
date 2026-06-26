@@ -43,6 +43,10 @@ class AccessControlService:
         return user.role.code == RoleCode.BU_HEAD
 
     @staticmethod
+    def is_delivery_excellence(user: User) -> bool:
+        return user.role.code == RoleCode.DELIVERY_EXCELLENCE
+
+    @staticmethod
     def is_pm(user: User) -> bool:
         return user.role.code == RoleCode.PM
 

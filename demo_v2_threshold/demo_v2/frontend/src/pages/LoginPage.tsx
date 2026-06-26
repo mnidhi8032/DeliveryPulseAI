@@ -17,7 +17,7 @@ export function LoginPage() {
   if (isAuthenticated && user) {
     const dest = from ?? homePathForRole(user.role_code);
     // Guard against stale tokens with removed roles (e.g. DELIVERY_HEAD, CUSTOMER_ADMIN)
-    const VALID_PATHS = ["/platform", "/ceo", "/bu-head", "/pm"];
+    const VALID_PATHS = ["/platform", "/ceo", "/bu-head", "/pm", "/delivery-excellence"];
     if (!dest || !VALID_PATHS.some(p => dest.startsWith(p))) {
       // Force logout and stay on login
       return null;
@@ -47,6 +47,7 @@ export function LoginPage() {
         <p className="mt-1 text-sm text-slate-600">Sign in to continue</p>
         <p className="mt-2 text-xs text-slate-500">
           Platform Admin: <span className="font-mono">admin@deliverypulse.ai</span> / <span className="font-mono">Admin@123</span><br />
+          Delivery Excellence: <span className="font-mono">de@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
           CEO: <span className="font-mono">ceo@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
           BU Head: <span className="font-mono">buhead1@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
           PM: <span className="font-mono">pm1@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span>

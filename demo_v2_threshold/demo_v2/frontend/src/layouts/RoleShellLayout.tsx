@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
 import { Header } from "../components/Header";
 
-type RoleCode = "PM" | "CEO" | "BU_HEAD" | "PLATFORM_ADMIN";
+type RoleCode = "PM" | "CEO" | "BU_HEAD" | "PLATFORM_ADMIN" | "DELIVERY_EXCELLENCE";
 
 interface RoleShellLayoutProps {
   title: string;

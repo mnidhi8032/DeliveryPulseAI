@@ -93,6 +93,70 @@ class ProjectService:
             current_rag=current_rag,
         )
 
+    def create_with_plan(self, user: User, body) -> dict:
+        """Create project + KPI plan + auto-add all mandatory metrics matching engagement model."""
+        self._access.require_can_create_project(user)
+        account = self._account_repo.get_by_id(body.account_id)
+        if account is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account not found")
+        if self._repo.get_by_account_and_code(body.account_id, body.project_code):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"Project code already exists: {body.project_code}")
+        project = self._repo.create(
+            account_id=body.account_id,
+            project_code=body.project_code.strip().upper(),
+            project_name=body.project_name.strip(),
+            project_manager_id=user.id,
+            delivery_head_user_id=None,
+            description=body.description,
+            start_date=body.start_date,
+            target_end_date=body.target_end_date,
+            status="ACTIVE",
+        )
+        self._session.flush()
+
+        from app.models.kpi_plan import KpiPlan, KpiPlanMetric
+        from app.models.qpm_catalog_metric import QPMCatalogMetric
+        from app.services.qpm_service import get_required_measures
+        from sqlalchemy import select
+        import json, uuid as _uuid
+
+        plan = KpiPlan(
+            id=_uuid.uuid4(), project_id=project.id,
+            project_type=body.project_type,
+            delivery_process_model=body.delivery_process_model,
+            project_category=body.project_category,
+            work_size_unit=body.work_size_unit,
+            is_finalized=False, qpm_status="DRAFT",
+        )
+        self._session.add(plan)
+        self._session.flush()
+
+        stmt = select(QPMCatalogMetric).where(QPMCatalogMetric.is_active == True, QPMCatalogMetric.compliance == "M")
+        if body.project_type:
+            stmt = stmt.where(QPMCatalogMetric.project_type.ilike(f"%{body.project_type}%"))
+        if body.delivery_process_model:
+            stmt = stmt.where(QPMCatalogMetric.delivery_model.ilike(f"%{body.delivery_process_model}%"))
+        mandatory = self._session.execute(stmt).scalars().all()
+
+        for m in mandatory:
+            required = get_required_measures(m.name)
+            self._session.add(KpiPlanMetric(
+                id=_uuid.uuid4(), kpi_plan_id=plan.id, catalog_metric_id=m.id,
+                metric_name=m.name, metric_category=m.category, formula=m.formula,
+                uom=m.uom, intent=m.intent, frequency=m.frequency, priority=m.compliance,
+                target=float(m.default_target) if m.default_target is not None else None,
+                lsl=float(m.default_lsl) if m.default_lsl is not None else None,
+                usl=float(m.default_usl) if m.default_usl is not None else None,
+                is_custom=False, reported_to_customer=False, is_active=True,
+                required_measures=json.dumps(required),
+            ))
+
+        self._session.commit()
+        return {"project_id": str(project.id), "project_code": project.project_code,
+                "project_name": project.project_name, "plan_id": str(plan.id),
+                "mandatory_metrics_added": len(mandatory)}
+
     def create(self, user: User, body: ProjectCreateRequest) -> ProjectResponse:
         self._access.require_can_create_project(user)
 

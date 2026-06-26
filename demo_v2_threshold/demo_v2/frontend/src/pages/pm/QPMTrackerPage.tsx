@@ -97,7 +97,7 @@ export function QPMTrackerPage() {
   return (
     <div className="space-y-6 text-slate-800">
       <div>
-        <Link to={`/pm/projects/${projectId}/qpm`} className="text-xs text-slate-500 hover:text-slate-800">← Back to KPI Plan</Link>
+        <Link to={`/pm/projects`} className="text-xs text-slate-500 hover:text-slate-800">Back to My Projects</Link>
         <h1 className="mt-1 text-xl font-bold text-slate-900">KPI Tracker — {project?.project_name}</h1>
         <p className="text-xs text-slate-500">All measurements with RAG status, comments and actions</p>
       </div>

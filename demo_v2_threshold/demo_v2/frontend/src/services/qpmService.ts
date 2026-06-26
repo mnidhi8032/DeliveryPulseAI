@@ -10,6 +10,33 @@ export async function getCatalog(params?: { category?: string; project_type?: st
   return data;
 }
 
+export async function getAllCatalog(): Promise<QPMCatalogMetric[]> {
+  const { data } = await apiClient.get<QPMCatalogMetric[]>("/qpm/catalog/all");
+  return data;
+}
+
+export async function createCatalogMetric(payload: {
+  category: string; name: string; formula?: string; uom?: string;
+  metrics_type?: string; intent?: string; project_type?: string;
+  delivery_model?: string; project_category?: string; frequency?: string;
+  compliance?: string; default_target?: number | null;
+  default_lsl?: number | null; default_usl?: number | null;
+}): Promise<QPMCatalogMetric> {
+  const { data } = await apiClient.post<QPMCatalogMetric>("/qpm/catalog", payload);
+  return data;
+}
+
+export async function updateCatalogMetric(metricId: string, payload: Partial<{
+  category: string; name: string; formula: string; uom: string;
+  metrics_type: string; intent: string; project_type: string;
+  delivery_model: string; project_category: string; frequency: string;
+  compliance: string; default_target: number | null;
+  default_lsl: number | null; default_usl: number | null; is_active: boolean;
+}>): Promise<QPMCatalogMetric> {
+  const { data } = await apiClient.patch<QPMCatalogMetric>(`/qpm/catalog/${metricId}`, payload);
+  return data;
+}
+
 export async function getMetricMeasures(metricName: string): Promise<string[]> {
   // Use query param to avoid URL-encoding issues with special chars like % in metric names
   const { data } = await apiClient.get<{ required_measures: string[] }>("/qpm/catalog/measures", {
@@ -165,11 +192,18 @@ export async function getMetricTrend(planMetricId: string): Promise<KpiMetricTre
 }
 
 export async function getLatestMeasurement(planMetricId: string): Promise<KpiMeasurement | null> {
-  // Use the trend endpoint — returns history oldest→newest, so last item is latest
+  // Use the trend endpoint — returns history ordered oldest→newest by date
   const trend = await getMetricTrend(planMetricId);
   if (!trend.history || trend.history.length === 0) return null;
-  // Return the latest point as a partial KpiMeasurement with threshold fields
-  const latest = trend.history[trend.history.length - 1];
+  // Take the most recently *submitted* point (latest submitted_date) — this has the latest thresholds PM used
+  const sorted = [...trend.history].sort((a, b) => {
+    const ta = a.submitted_date ? new Date(a.submitted_date).getTime() : 0;
+    const tb = b.submitted_date ? new Date(b.submitted_date).getTime() : 0;
+    return tb - ta; // newest first
+  });
+  // Find the first entry that has at least one non-null threshold
+  const withThreshold = sorted.find(h => h.target != null || h.lsl != null || h.usl != null);
+  const latest = withThreshold || sorted[0];
   return {
     id: "",
     plan_metric_id: planMetricId,

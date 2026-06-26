@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_roles
 from app.models.user import User
 from app.schemas.qpm import (
     KpiComputeRequest, KpiDocInfoRequest, KpiDocInfoResponse,
@@ -17,8 +17,10 @@ from app.schemas.qpm import (
     KpiPlanResponse, KpiPlanUpdateRequest, KpiSummaryResponse,
     KpiTrackerRowResponse, QPMCatalogMetricResponse,
     QPMSubmitRequest,
+    QPMCatalogMetricCreateRequest, QPMCatalogMetricUpdateRequest,
 )
 from app.services.qpm_service import QPMService, get_required_measures
+from app.core.constants import RoleCode
 
 router = APIRouter(prefix="/qpm", tags=["qpm"])
 
@@ -34,6 +36,36 @@ def list_catalog(
     delivery_model: str | None = Query(default=None),
 ):
     return QPMService(db).list_catalog(category, project_type, delivery_model)
+
+
+@router.get("/catalog/all", response_model=list[QPMCatalogMetricResponse])
+def list_catalog_all(
+    current_user: Annotated[User, Depends(require_roles(RoleCode.DELIVERY_EXCELLENCE, RoleCode.PLATFORM_ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Return all catalog metrics including inactive — for Delivery Excellence admin."""
+    return QPMService(db).list_catalog_all()
+
+
+@router.post("/catalog", response_model=QPMCatalogMetricResponse, status_code=201)
+def create_catalog_metric(
+    body: QPMCatalogMetricCreateRequest,
+    current_user: Annotated[User, Depends(require_roles(RoleCode.DELIVERY_EXCELLENCE, RoleCode.PLATFORM_ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Delivery Excellence creates a new metric in the catalog."""
+    return QPMService(db).create_catalog_metric(current_user, body)
+
+
+@router.patch("/catalog/{metric_id}", response_model=QPMCatalogMetricResponse)
+def update_catalog_metric(
+    metric_id: UUID,
+    body: QPMCatalogMetricUpdateRequest,
+    current_user: Annotated[User, Depends(require_roles(RoleCode.DELIVERY_EXCELLENCE, RoleCode.PLATFORM_ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Delivery Excellence updates a catalog metric."""
+    return QPMService(db).update_catalog_metric(current_user, metric_id, body)
 
 
 @router.get("/catalog/measures")

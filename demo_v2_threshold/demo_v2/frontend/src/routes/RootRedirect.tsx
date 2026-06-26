@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { homePathForRole } from "./roleConfig";
 import * as authService from "../services/authService";
 
-const VALID_ROLES = ["PLATFORM_ADMIN", "CEO", "BU_HEAD", "PM"];
+const VALID_ROLES = ["PLATFORM_ADMIN", "CEO", "BU_HEAD", "PM", "DELIVERY_EXCELLENCE"];
 
 export function RootRedirect() {
   const { isAuthenticated, isLoading, user, logout } = useAuth();

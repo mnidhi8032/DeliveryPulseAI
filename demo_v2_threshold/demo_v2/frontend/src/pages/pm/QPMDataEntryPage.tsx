@@ -294,7 +294,7 @@ export function QPMDataEntryPage() {
       {/* ── Page header ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Link to={`/pm/projects/${projectId}/qpm`} className="text-xs text-slate-500 hover:text-slate-800">Back to KPI Plan</Link>
+          <Link to={`/pm/projects`} className="text-xs text-slate-500 hover:text-slate-800">Back to My Projects</Link>
           <h1 className="mt-0.5 text-xl font-bold text-slate-900">KPI Data Entry</h1>
           <p className="text-xs text-slate-500">{project?.project_name} -- Select a dimension, then fill each metric</p>
         </div>
@@ -319,7 +319,7 @@ export function QPMDataEntryPage() {
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
             Tracker
           </Link>
-          <Link to={`/pm/projects/${projectId}/qpm/summary`}
+          <Link to={`/pm/summary`}
             className="rounded-lg bg-slate-900 text-white px-3 py-1.5 text-xs font-bold hover:bg-slate-800">
             Summary
           </Link>
@@ -328,9 +328,9 @@ export function QPMDataEntryPage() {
 
       {Object.keys(categoryGroups).length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center">
-          <p className="text-sm text-slate-400">No metrics in the KPI Plan yet.</p>
-          <Link to={`/pm/projects/${projectId}/qpm`} className="mt-3 inline-block text-xs text-indigo-600 hover:underline">
-            Go to KPI Plan to add metrics
+          <p className="text-sm text-slate-400">No metrics in the plan yet. Create a new project to auto-add mandatory metrics.</p>
+          <Link to="/pm/projects" className="mt-3 inline-block text-xs text-indigo-600 hover:underline">
+            Back to My Projects
           </Link>
         </div>
       ) : (

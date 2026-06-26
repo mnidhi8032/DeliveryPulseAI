@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, Fragment } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -18,14 +18,6 @@ export function Header() {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setSearchQuery(val);
-    window.dispatchEvent(new CustomEvent("search:filter", { detail: val }));
-  };
-
   const fetchNotificationsData = async () => {
     if (!user) return;
     try {
@@ -127,14 +119,8 @@ export function Header() {
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   };
 
-  const pathParts = window.location.pathname.split("/").filter(Boolean);
-  const formatPart = (part: string) => {
-    return part.split("-").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
-  };
-
   return (
-    <header className="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-6 border-b border-slate-150 gap-4">
-      {/* Self-contained styling for keyframe wiggling and glassmorphism */}
+    <header className="flex items-center justify-between pb-6 mb-6 border-b border-slate-150 gap-4">
       <style>{`
         @keyframes bell-wiggle {
           0%, 100% { transform: rotate(0deg); }
@@ -151,42 +137,11 @@ export function Header() {
         }
       `}</style>
 
-      {/* Dynamic Breadcrumbs & Title */}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider select-none">
-          <span>Home</span>
-          {pathParts.map((part, idx) => (
-            <Fragment key={idx}>
-              <span className="text-slate-300">/</span>
-              <span className={idx === pathParts.length - 1 ? "text-slate-600 font-bold" : ""}>
-                {formatPart(part)}
-              </span>
-            </Fragment>
-          ))}
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-          {pathParts.length > 0 ? formatPart(pathParts[pathParts.length - 1]) : "DeliveryPulse AI"}
-        </h1>
-      </div>
+      {/* Page title — rendered by each page's own h1, this is a spacer */}
+      <div className="flex-1" />
 
-      <div className="flex items-center gap-6">
-        {/* Global Search Input (only filters loaded page datasets) */}
-        <div className="relative w-64 select-none">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </span>
-          <input
-            type="text"
-            placeholder="Filter page data..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-4 py-2 text-xs text-slate-700 placeholder-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none transition-all shadow-inner"
-          />
-        </div>
-
-        <div className="flex items-center gap-4">
+      {/* Right side: notification bell + user info + logout */}
+      <div className="flex items-center gap-4">
         {/* Notification Bell with Badge & Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
@@ -331,7 +286,6 @@ export function Header() {
           </button>
         </div>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
 }

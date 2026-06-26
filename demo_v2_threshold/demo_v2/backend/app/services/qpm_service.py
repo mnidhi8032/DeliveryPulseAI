@@ -206,6 +206,54 @@ class QPMService:
         rows = self._s.execute(stmt.order_by(QPMCatalogMetric.category, QPMCatalogMetric.name)).scalars().all()
         return [QPMCatalogMetricResponse.model_validate(r) for r in rows]
 
+    def list_catalog_all(self):
+        """Return all catalog metrics including inactive ones — for DE admin view."""
+        rows = self._s.execute(
+            select(QPMCatalogMetric).order_by(QPMCatalogMetric.category, QPMCatalogMetric.name)
+        ).scalars().all()
+        return [QPMCatalogMetricResponse.model_validate(r) for r in rows]
+
+    def create_catalog_metric(self, user, body) -> QPMCatalogMetricResponse:
+        from app.schemas.qpm import QPMCatalogMetricCreateRequest
+        existing = self._s.execute(
+            select(QPMCatalogMetric).where(QPMCatalogMetric.name == body.name)
+        ).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"Metric '{body.name}' already exists in the catalog.")
+        metric = QPMCatalogMetric(
+            id=uuid.uuid4(),
+            category=body.category,
+            name=body.name,
+            formula=body.formula,
+            uom=body.uom,
+            metrics_type=body.metrics_type,
+            intent=body.intent,
+            project_type=body.project_type,
+            delivery_model=body.delivery_model,
+            project_category=body.project_category,
+            frequency=body.frequency,
+            compliance=body.compliance,
+            default_target=body.default_target,
+            default_lsl=body.default_lsl,
+            default_usl=body.default_usl,
+            is_active=True,
+        )
+        self._s.add(metric)
+        self._s.commit()
+        self._s.refresh(metric)
+        return QPMCatalogMetricResponse.model_validate(metric)
+
+    def update_catalog_metric(self, user, metric_id: uuid.UUID, body) -> QPMCatalogMetricResponse:
+        metric = self._s.get(QPMCatalogMetric, metric_id)
+        if metric is None:
+            raise HTTPException(status_code=404, detail="Catalog metric not found")
+        for field, val in body.model_dump(exclude_unset=True).items():
+            setattr(metric, field, val)
+        metric.updated_at = datetime.now(timezone.utc)
+        self._s.commit()
+        self._s.refresh(metric)
+        return QPMCatalogMetricResponse.model_validate(metric)
+
     # ── KPI Plan ──────────────────────────────────────────────────────────────
 
     def get_or_create_plan(self, user: User, project_id: uuid.UUID) -> KpiPlanResponse:
@@ -335,6 +383,8 @@ class QPMService:
         pm = self._s.get(KpiPlanMetric, metric_id)
         if pm is None:
             raise HTTPException(status_code=404, detail="Plan metric not found")
+        if pm.priority == "M":
+            raise HTTPException(status_code=400, detail="Mandatory metrics cannot be removed from the plan.")
         plan = self._get_plan_or_404(pm.kpi_plan_id)
         if plan.is_finalized:
             raise HTTPException(status_code=400, detail="Plan is finalized.")

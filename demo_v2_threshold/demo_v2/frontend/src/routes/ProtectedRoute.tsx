@@ -41,7 +41,7 @@ export function PublicOnlyRoute() {
     );
   }
 
-  const VALID_ROLES = ["PLATFORM_ADMIN", "CEO", "BU_HEAD", "PM"];
+  const VALID_ROLES = ["PLATFORM_ADMIN", "CEO", "BU_HEAD", "PM", "DELIVERY_EXCELLENCE"];
 
   if (isAuthenticated && user && VALID_ROLES.includes(user.role_code)) {
     return <Navigate to={homePathForRole(user.role_code)} replace />;

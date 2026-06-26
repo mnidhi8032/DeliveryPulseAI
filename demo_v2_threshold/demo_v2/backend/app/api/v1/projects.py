@@ -10,7 +10,7 @@ from app.api.deps import get_db
 from app.auth.dependencies import get_current_user, require_roles
 from app.core.constants import RoleCode
 from app.models.user import User
-from app.schemas.project import ProjectCreateRequest, ProjectResponse, ProjectUpdateRequest
+from app.schemas.project import ProjectCreateRequest, ProjectResponse, ProjectUpdateRequest, ProjectCreateWithPlanRequest
 from app.schemas.project_enriched import ProjectEnrichedResponse
 from app.schemas.timeline import HealthHistoryEvent, SubmissionTimelineEvent
 from app.services.project_service import ProjectService
@@ -33,6 +33,16 @@ def create_project(
     db: Annotated[Session, Depends(get_db)],
 ) -> ProjectResponse:
     return ProjectService(db).create(current_user, body)
+
+
+@router.post("/create-with-plan", status_code=201)
+def create_project_with_plan(
+    body: ProjectCreateWithPlanRequest,
+    current_user: Annotated[User, Depends(require_roles(RoleCode.PM))],
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """Create project + KPI plan + auto-add mandatory metrics in one shot."""
+    return ProjectService(db).create_with_plan(current_user, body)
 
 
 

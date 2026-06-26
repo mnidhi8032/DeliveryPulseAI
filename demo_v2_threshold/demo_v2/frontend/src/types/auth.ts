@@ -2,7 +2,8 @@ export type RoleCode =
   | "PM"
   | "CEO"
   | "BU_HEAD"
-  | "PLATFORM_ADMIN";
+  | "PLATFORM_ADMIN"
+  | "DELIVERY_EXCELLENCE";
 
 export interface User {
   id: string;

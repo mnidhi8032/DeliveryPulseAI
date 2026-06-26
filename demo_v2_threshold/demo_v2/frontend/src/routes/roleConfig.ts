@@ -1,10 +1,11 @@
 import type { RoleCode } from "../types/auth";
 
 export const ROLE_HOME_PATH: Record<RoleCode, string> = {
-  PLATFORM_ADMIN: "/platform",
-  CEO:            "/ceo",
-  BU_HEAD:        "/bu-head",
-  PM:             "/pm",
+  PLATFORM_ADMIN:       "/platform",
+  CEO:                  "/ceo",
+  BU_HEAD:              "/bu-head",
+  PM:                   "/pm",
+  DELIVERY_EXCELLENCE:  "/delivery-excellence",
 };
 
 export function homePathForRole(role: RoleCode | string): string {

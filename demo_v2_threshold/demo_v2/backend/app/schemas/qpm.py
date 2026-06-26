@@ -355,6 +355,41 @@ class KpiComputeRequest(BaseModel):
     analysis_comments: str | None = None
 
 
+# Catalog management (Delivery Excellence role)
+class QPMCatalogMetricCreateRequest(BaseModel):
+    category: str
+    name: str
+    formula: str | None = None
+    uom: str | None = None
+    metrics_type: str | None = None
+    intent: str | None = None
+    project_type: str | None = None
+    delivery_model: str | None = None
+    project_category: str | None = None
+    frequency: str | None = None
+    compliance: str | None = None
+    default_target: Decimal | None = None
+    default_lsl: Decimal | None = None
+    default_usl: Decimal | None = None
+
+class QPMCatalogMetricUpdateRequest(BaseModel):
+    category: str | None = None
+    name: str | None = None
+    formula: str | None = None
+    uom: str | None = None
+    metrics_type: str | None = None
+    intent: str | None = None
+    project_type: str | None = None
+    delivery_model: str | None = None
+    project_category: str | None = None
+    frequency: str | None = None
+    compliance: str | None = None
+    default_target: Decimal | None = None
+    default_lsl: Decimal | None = None
+    default_usl: Decimal | None = None
+    is_active: bool | None = None
+
+
 # Per-metric trend endpoint
 class KpiTrendPoint(BaseModel):
     frequency_name: str
