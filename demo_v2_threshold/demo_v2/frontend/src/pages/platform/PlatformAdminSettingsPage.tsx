@@ -21,8 +21,10 @@ import {
   getSetupBusinessUnits,
   createBusinessUnit,
   updateBusinessUnit,
+  getSetupAccounts,
+  updateAccount,
 } from "../../services/customerAdminSetupService";
-import type { SetupBusinessUnit } from "../../types/customerAdminSetup";
+import type { SetupBusinessUnit, SetupAccount } from "../../types/customerAdminSetup";
 import type { SystemSettings, MetricCatalogItem, SettingsAuditLog } from "../../types/platformSettings";
 import type { ManagedUser } from "../../types/platformUsers";
 import type { GovernancePeriod } from "../../types/governance";
@@ -69,6 +71,11 @@ export function PlatformAdminSettingsPage() {
   const [buModalOpen, setBuModalOpen] = useState(false);
   const [editBuId, setEditBuId] = useState<string | null>(null);
   const [buForm, setBuForm] = useState({ code: "", name: "", description: "", is_active: true, bu_head_user_id: "" });
+
+  // Accounts — DM assignment
+  const [accounts, setAccounts] = useState<SetupAccount[]>([]);
+  const [dmUsers, setDmUsers] = useState<{ id: string; full_name: string; email: string }[]>([]);
+  const [assigningDm, setAssigningDm] = useState<string | null>(null); // account id being saved
 
   const toast = useToast();
 
@@ -138,8 +145,13 @@ export function PlatformAdminSettingsPage() {
       getSetupBusinessUnits().then(setBus).catch(() => toast.error("Failed to load business units"));
       // Load BU Head users for the assignment dropdown
       getManagedUsers()
-        .then(all => setBuHeadUsers(all.filter(u => u.role_code === "BU_HEAD")))
+        .then(all => {
+          setBuHeadUsers(all.filter(u => u.role_code === "DELIVERY_HEAD"));
+          setDmUsers(all.filter(u => u.role_code === "DELIVERY_MANAGER"));
+        })
         .catch(() => {});
+      // Load accounts for DM assignment
+      getSetupAccounts().then(setAccounts).catch(() => {});
     }
   }, [activeTab, toast]);
 
@@ -169,7 +181,7 @@ export function PlatformAdminSettingsPage() {
           description: buForm.description || undefined,
           is_active: buForm.is_active,
         });
-        // Assign BU Head if selected
+        // Assign Delivery Head if selected
         if (buForm.bu_head_user_id) {
           await fetch(`/api/v1/business-units/${created.id}`, {
             method: "PATCH",
@@ -613,7 +625,7 @@ export function PlatformAdminSettingsPage() {
             <button
               type="button"
               onClick={() => {
-                setBuForm({ code: "", name: "", description: "", is_active: true });
+                setBuForm({ code: "", name: "", description: "", is_active: true, bu_head_user_id: "" });
                 setEditBuId(null);
                 setBuModalOpen(true);
               }}
@@ -651,7 +663,7 @@ export function PlatformAdminSettingsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setBuForm({ code: b.code, name: b.name, description: b.description || "", is_active: b.is_active });
+                          setBuForm({ code: b.code, name: b.name, description: b.description || "", is_active: b.is_active, bu_head_user_id: "" });
                           setEditBuId(b.id);
                           setBuModalOpen(true);
                         }}
@@ -664,6 +676,62 @@ export function PlatformAdminSettingsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Accounts — Delivery Manager Assignment */}
+          <div className="border-t border-slate-100 pt-6">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-slate-900">Account — Delivery Manager Assignment</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Assign a Delivery Manager to each account. The DM will see all projects under that account.
+                {dmUsers.length === 0 && (
+                  <span className="ml-1 text-amber-600 font-semibold">No Delivery Manager users found — provision one in User Directory first.</span>
+                )}
+              </p>
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="min-w-full divide-y divide-slate-100 text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-500 font-semibold uppercase">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Account</th>
+                    <th className="px-4 py-3 text-left">Business Unit</th>
+                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-left">Delivery Manager</th>
+                    <th className="px-4 py-3 text-right">Save</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {accounts.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No accounts found.</td></tr>
+                  ) : accounts.map(acc => {
+                    const bu = bus.find(b => b.id === acc.business_unit_id);
+                    return (
+                      <AccountDmRow
+                        key={acc.id}
+                        account={acc}
+                        buName={bu?.name || "—"}
+                        dmUsers={dmUsers}
+                        saving={assigningDm === acc.id}
+                        onSave={async (dmId) => {
+                          setAssigningDm(acc.id);
+                          try {
+                            const updated = await updateAccount(acc.id, {
+                              delivery_manager_user_id: dmId || null,
+                            });
+                            setAccounts(prev => prev.map(a => a.id === acc.id ? { ...a, delivery_manager_user_id: updated.delivery_manager_user_id } : a));
+                            toast.success(`DM assigned to ${acc.name}`);
+                          } catch {
+                            toast.error("Failed to assign Delivery Manager");
+                          } finally {
+                            setAssigningDm(null);
+                          }
+                        }}
+                      />
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -706,20 +774,20 @@ export function PlatformAdminSettingsPage() {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400" />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-700">Assign BU Head</label>
+                <label className="text-xs font-semibold text-slate-700">Assign Delivery Head</label>
                 <select
                   value={buForm.bu_head_user_id}
                   onChange={e => setBuForm(f => ({ ...f, bu_head_user_id: e.target.value }))}
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
                 >
-                  <option value="">-- No BU Head assigned --</option>
+                  <option value="">-- No Delivery Head assigned --</option>
                   {buHeadUsers.map(u => (
                     <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
                   ))}
                 </select>
                 {buHeadUsers.length === 0 && (
                   <p className="text-[10px] text-amber-600 mt-0.5">
-                    No BU Head users found. Create a user with role BU_HEAD in User Directory first.
+                    No Delivery Head users found. Create a user with role DELIVERY_HEAD in User Directory first.
                   </p>
                 )}
               </div>
@@ -973,7 +1041,7 @@ export function PlatformAdminSettingsPage() {
                               ? "bg-purple-50 text-purple-700 border-purple-200"
                               : u.role_code === "CEO"
                               ? "bg-blue-50 text-blue-700 border-blue-200"
-                              : u.role_code === "BU_HEAD"
+                              : u.role_code === "DELIVERY_HEAD"
                               ? "bg-amber-50 text-amber-700 border-amber-200"
                               : "bg-emerald-50 text-emerald-700 border-emerald-200"
                           }`}
@@ -1105,7 +1173,9 @@ export function PlatformAdminSettingsPage() {
                   className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
                 >
                   <option value="CEO">CEO (Organisation-wide read-only)</option>
-                  <option value="BU_HEAD">BU_HEAD (Business Unit Head)</option>
+                  <option value="DELIVERY_HEAD">DELIVERY_HEAD (Delivery Head)</option>
+                  <option value="DELIVERY_MANAGER">DELIVERY_MANAGER (Delivery Manager)</option>
+                  <option value="DELIVERY_EXCELLENCE">DELIVERY_EXCELLENCE (Delivery Excellence)</option>
                   <option value="PM">PM (Project Manager)</option>
                 </select>
               </div>
@@ -1252,5 +1322,65 @@ export function PlatformAdminSettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Helper component: one row in the Account DM assignment table ──────────────
+// Owns local dropdown state so each row is independent.
+function AccountDmRow({
+  account,
+  buName,
+  dmUsers,
+  saving,
+  onSave,
+}: {
+  account: SetupAccount;
+  buName: string;
+  dmUsers: { id: string; full_name: string; email: string }[];
+  saving: boolean;
+  onSave: (dmId: string) => void;
+}) {
+  const [selectedDm, setSelectedDm] = React.useState(account.delivery_manager_user_id || "");
+  const currentDm = dmUsers.find(u => u.id === account.delivery_manager_user_id);
+  const isDirty = selectedDm !== (account.delivery_manager_user_id || "");
+
+  return (
+    <tr className="hover:bg-slate-50">
+      <td className="px-4 py-3">
+        <p className="font-semibold text-slate-800">{account.name}</p>
+        <p className="text-xs text-slate-400 font-mono">{account.code}</p>
+      </td>
+      <td className="px-4 py-3 text-xs text-slate-600">{buName}</td>
+      <td className="px-4 py-3">
+        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${account.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
+          {account.is_active ? "Active" : "Inactive"}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <select
+          value={selectedDm}
+          onChange={e => setSelectedDm(e.target.value)}
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-400 min-w-[200px]"
+        >
+          <option value="">— No DM assigned —</option>
+          {dmUsers.map(u => (
+            <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
+          ))}
+        </select>
+        {currentDm && !isDirty && (
+          <p className="text-[10px] text-emerald-600 mt-0.5">✓ Currently: {currentDm.full_name}</p>
+        )}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <button
+          type="button"
+          disabled={saving || !isDirty}
+          onClick={() => onSave(selectedDm)}
+          className="rounded px-3 py-1.5 text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 cursor-pointer transition-colors"
+        >
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </td>
+    </tr>
   );
 }

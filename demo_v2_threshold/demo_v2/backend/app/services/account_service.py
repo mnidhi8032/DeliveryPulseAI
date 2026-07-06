@@ -67,11 +67,16 @@ class AccountService:
         account = self._repo.get_by_id(account_id)
         if account is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
-        
-        self._repo.update(
-            account,
-            name=body.name.strip() if body.name else account.name,
-            is_active=body.is_active if body.is_active is not None else account.is_active,
-        )
+
+        updates: dict = {}
+        if body.name is not None:
+            updates["name"] = body.name.strip()
+        if body.is_active is not None:
+            updates["is_active"] = body.is_active
+        if body.delivery_manager_user_id is not None or "delivery_manager_user_id" in body.model_fields_set:
+            updates["delivery_manager_user_id"] = body.delivery_manager_user_id
+
+        if updates:
+            self._repo.update(account, **updates)
         self._session.commit()
         return AccountResponse.model_validate(account)

@@ -85,7 +85,7 @@ def seed_portfolio_structure() -> int:
         role_by_code = {r.code: r for r in session.execute(select(Role)).scalars().all()}
         missing = [
             c
-            for c in [RoleCode.CEO, RoleCode.BU_HEAD, RoleCode.PM]
+            for c in [RoleCode.CEO, RoleCode.DELIVERY_HEAD, RoleCode.PM]
             if str(c) not in role_by_code
         ]
         if missing:
@@ -164,7 +164,7 @@ def seed_portfolio_structure() -> int:
                     email=dh_email,
                     password_hash=hash_password(DEFAULT_PASSWORD),
                     full_name=dh_full_name,
-                    role_id=role_by_code[str(RoleCode.BU_HEAD)].id,
+                    role_id=role_by_code[str(RoleCode.DELIVERY_HEAD)].id,
                 )
                 print(f"Created DH user: {dh_email}")
             elif not verify_password(DEFAULT_PASSWORD, dh.password_hash):

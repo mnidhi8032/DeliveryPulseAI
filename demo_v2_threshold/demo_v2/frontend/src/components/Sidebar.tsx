@@ -36,7 +36,7 @@ interface NavItem {
 
 interface SidebarProps {
   title: string;
-  role: "PM" | "CEO" | "BU_HEAD" | "PLATFORM_ADMIN" | "DELIVERY_EXCELLENCE";
+  role: "PM" | "CEO" | "DELIVERY_HEAD" | "DELIVERY_MANAGER" | "PLATFORM_ADMIN" | "DELIVERY_EXCELLENCE";
   basePath: string;
 }
 
@@ -47,7 +47,8 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: "Summary",      to: "/pm/summary",       end: false, iconKey: "chart" },
   ],
   DELIVERY_EXCELLENCE: [
-    { label: "Metric Catalog", to: "/delivery-excellence", end: true, iconKey: "qpm" },
+    { label: "Dashboard",      to: "/delivery-excellence",          end: true,  iconKey: "dashboard" },
+    { label: "Metric Catalog", to: "/delivery-excellence/catalog",  end: false, iconKey: "qpm" },
   ],
   CEO: [
     { label: "Dashboard",      to: "/ceo",                    end: true,  iconKey: "dashboard" },
@@ -55,10 +56,17 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: "Projects",       to: "/ceo/projects",           end: false, iconKey: "projects" },
     { label: "Reports",        to: "/ceo/reports",            end: false, iconKey: "reports" },
   ],
-  BU_HEAD: [
-    { label: "Dashboard",      to: "/bu-head",                end: true,  iconKey: "dashboard" },
-    { label: "My BU",          to: "/bu-head/business-unit",  end: false, iconKey: "businessUnits" },
-    { label: "Projects",       to: "/bu-head/projects",       end: false, iconKey: "projects" },
+  DELIVERY_HEAD: [
+    { label: "Dashboard",          to: "/delivery-head",                       end: true,  iconKey: "dashboard" },
+    { label: "My BU",              to: "/delivery-head/business-unit",         end: false, iconKey: "businessUnits" },
+    { label: "Projects",           to: "/delivery-head/projects",              end: false, iconKey: "projects" },
+    { label: "Submissions",        to: "/delivery-head/submissions",           end: false, iconKey: "submissions" },
+    { label: "Governance Reviews", to: "/delivery-head/governance-reviews",    end: false, iconKey: "governance" },
+    { label: "Compliance",         to: "/delivery-head/compliance",            end: false, iconKey: "compliance" },
+  ],
+  DELIVERY_MANAGER: [
+    { label: "Dashboard",    to: "/delivery-manager",               end: true,  iconKey: "dashboard" },
+    { label: "Action Items", to: "/delivery-manager/actions",       end: false, iconKey: "action" },
   ],
   PLATFORM_ADMIN: [
     { label: "Dashboard",      to: "/platform",                end: true,  iconKey: "dashboard" },
@@ -85,7 +93,8 @@ export function Sidebar({ title, role }: SidebarProps) {
   const roleLabel: Record<string, string> = {
     PM:                   "Project Manager",
     CEO:                  "CEO",
-    BU_HEAD:              "BU Head",
+    DELIVERY_HEAD:        "Delivery Head",
+    DELIVERY_MANAGER:     "Delivery Manager",
     PLATFORM_ADMIN:       "Platform Admin",
     DELIVERY_EXCELLENCE:  "Delivery Excellence",
   };

@@ -1,4 +1,4 @@
-"""Submission API routes (Phase 3 lifecycle skeleton)."""
+"""Submission API routes."""
 
 from typing import Annotated
 from uuid import UUID
@@ -14,8 +14,6 @@ from app.schemas.metric import SubmissionHealthResponse
 from app.schemas.submission import (
     SubmissionCreateRequest,
     SubmissionDraftUpdateRequest,
-    SubmissionRejectRequest,
-    SubmissionReopenRequest,
     SubmissionResponse,
     PMPerceptionRagRequest,
     ReviewerCommentRequest,
@@ -80,44 +78,6 @@ def submit_submission(
     return SubmissionService(db).submit(current_user, submission_id)
 
 
-@router.post("/{submission_id}/approve", response_model=SubmissionResponse)
-def approve_submission(
-    submission_id: UUID,
-    current_user: Annotated[User, Depends(require_roles(RoleCode.BU_HEAD))],
-    db: Annotated[Session, Depends(get_db)],
-) -> SubmissionResponse:
-    return SubmissionService(db).approve(current_user, submission_id)
-
-
-@router.post("/{submission_id}/reject", response_model=SubmissionResponse)
-def reject_submission(
-    submission_id: UUID,
-    body: SubmissionRejectRequest,
-    current_user: Annotated[User, Depends(require_roles(RoleCode.BU_HEAD))],
-    db: Annotated[Session, Depends(get_db)],
-) -> SubmissionResponse:
-    return SubmissionService(db).reject(current_user, submission_id, body)
-
-
-@router.post("/{submission_id}/reopen", response_model=SubmissionResponse)
-def reopen_submission(
-    submission_id: UUID,
-    body: SubmissionReopenRequest,
-    current_user: Annotated[User, Depends(require_roles(RoleCode.BU_HEAD))],
-    db: Annotated[Session, Depends(get_db)],
-) -> SubmissionResponse:
-    return SubmissionService(db).reopen(current_user, submission_id, body)
-
-
-@router.post("/{submission_id}/lock", response_model=SubmissionResponse)
-def lock_submission(
-    submission_id: UUID,
-    current_user: Annotated[User, Depends(require_roles(RoleCode.BU_HEAD))],
-    db: Annotated[Session, Depends(get_db)],
-) -> SubmissionResponse:
-    return SubmissionService(db).lock(current_user, submission_id)
-
-
 @router.delete("/{submission_id}", status_code=204)
 def delete_submission_draft(
     submission_id: UUID,
@@ -127,18 +87,16 @@ def delete_submission_draft(
     SubmissionService(db).delete_draft(current_user, submission_id)
 
 
-# ── BRD §11.3: PM resubmits a REJECTED submission ─────────────────────────────
 @router.post("/{submission_id}/resubmit", response_model=SubmissionResponse)
 def resubmit_rejected(
     submission_id: UUID,
     current_user: Annotated[User, Depends(require_roles(RoleCode.PM))],
     db: Annotated[Session, Depends(get_db)],
 ) -> SubmissionResponse:
-    """Move a REJECTED submission back to DRAFT so PM can revise and resubmit."""
+    """PM moves a REJECTED submission back to DRAFT to revise and resubmit."""
     return SubmissionService(db).resubmit_rejected(current_user, submission_id)
 
 
-# ── BRD §5.4.1.7: PM sets perception RAG ─────────────────────────────────────
 @router.patch("/{submission_id}/pm-rag", response_model=SubmissionResponse)
 def update_pm_rag(
     submission_id: UUID,
@@ -146,37 +104,20 @@ def update_pm_rag(
     current_user: Annotated[User, Depends(require_roles(RoleCode.PM))],
     db: Annotated[Session, Depends(get_db)],
 ) -> SubmissionResponse:
-    """PM sets their perceived overall RAG status (stored separately from computed RAG)."""
+    """PM sets their perceived overall RAG (stored separately from computed RAG)."""
     return SubmissionService(db).update_pm_perception_rag(
         current_user, submission_id, body.pm_perception_rag, body.pm_rag_comments
     )
 
 
-# ── BRD §5.5.1.2: DM adds review commentary ──────────────────────────────────
 @router.post("/{submission_id}/dm-review", response_model=SubmissionResponse)
 def add_dm_review(
     submission_id: UUID,
     body: ReviewerCommentRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_roles(RoleCode.DELIVERY_MANAGER))],
     db: Annotated[Session, Depends(get_db)],
 ) -> SubmissionResponse:
     """Delivery Manager adds review commentary on a submission."""
     return SubmissionService(db).add_dm_review(
         current_user, submission_id, body.comments, body.review_status
     )
-
-
-# ── BRD §5.5.1.2: DD adds review commentary ──────────────────────────────────
-@router.post("/{submission_id}/dd-review", response_model=SubmissionResponse)
-def add_dd_review(
-    submission_id: UUID,
-    body: ReviewerCommentRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
-) -> SubmissionResponse:
-    """Delivery Director adds review commentary on a submission."""
-    return SubmissionService(db).add_dd_review(
-        current_user, submission_id, body.comments, body.review_status
-    )
-
-

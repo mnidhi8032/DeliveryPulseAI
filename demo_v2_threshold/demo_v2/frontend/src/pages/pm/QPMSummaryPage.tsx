@@ -59,9 +59,8 @@ function TrendArrow({ trend }: { trend: string | null }) {
 }
 
 /** Inline SVG sparkline showing value over periods with RAG colour dots */
-function Sparkline({ history, intent }: {
+function Sparkline({ history }: {
   history: KpiSummaryMetric["history"];
-  intent: string | null;
 }) {
   if (!history || history.length < 2) {
     return (
@@ -126,7 +125,7 @@ function MetricTrendPanel({ m, onClose }: { m: KpiSummaryMetric; onClose: () => 
           {/* Full-width sparkline */}
           <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
             <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wide">Value over time</p>
-            <Sparkline history={history} intent={m.intent} />
+            <Sparkline history={history} />
             <div className="flex gap-4 mt-2 text-[10px] text-slate-500 justify-end">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />GREEN</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />AMBER</span>
@@ -245,7 +244,7 @@ function MetricCard({ m, onSelect, isSelected }: { m: KpiSummaryMetric; onSelect
 
       {/* Mini sparkline */}
       <div className="border-t border-slate-100 pt-2">
-        <Sparkline history={m.history ?? []} intent={m.intent} />
+        <Sparkline history={m.history ?? []} />
       </div>
 
       <div className="grid grid-cols-3 gap-1 text-[10px] text-slate-500">

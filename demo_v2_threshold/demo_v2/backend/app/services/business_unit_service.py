@@ -42,7 +42,7 @@ class BusinessUnitService:
     def list(self, user: User) -> list[BusinessUnitResponse]:
         if self._access.is_platform_admin(user) or self._access.is_ceo(user):
             units = self._repo.list_all()
-        elif self._access.is_bu_head(user):
+        elif self._access.is_delivery_head(user):
             units = self._access.list_business_units_for_user(user)
         elif self._access.is_pm(user):
             # PM needs to list BUs to pick accounts when creating projects
@@ -58,7 +58,7 @@ class BusinessUnitService:
         if not (
             self._access.is_platform_admin(user)
             or self._access.is_ceo(user)
-            or self._access.is_bu_head(user)
+            or self._access.is_delivery_head(user)
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -67,7 +67,7 @@ class BusinessUnitService:
         bu = self._repo.get_by_id(bu_id)
         if bu is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business unit not found")
-        if self._access.is_bu_head(user):
+        if self._access.is_delivery_head(user):
             allowed_ids = {b.id for b in self._access.list_business_units_for_user(user)}
             if bu.id not in allowed_ids:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this BU")

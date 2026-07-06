@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const me = await authService.getCurrentUser();
     // Guard: if the role is no longer valid (e.g. DELIVERY_HEAD, CUSTOMER_ADMIN removed),
     // clear the stale token so the login page renders correctly.
-    const VALID_ROLES = ["PLATFORM_ADMIN", "CEO", "BU_HEAD", "PM", "DELIVERY_EXCELLENCE"];
+    const VALID_ROLES = ["PLATFORM_ADMIN", "CEO", "DELIVERY_HEAD", "DELIVERY_MANAGER", "PM", "DELIVERY_EXCELLENCE"];
     if (!VALID_ROLES.includes(me.role_code)) {
       authService.clearToken();
       setUser(null);

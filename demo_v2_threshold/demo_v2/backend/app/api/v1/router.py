@@ -9,6 +9,7 @@ from app.api.v1 import (
     business_units,
     compliance,
     customer_admin,
+    dm_reviews,
     excel,
     governance_periods,
     governance_reviews,
@@ -44,3 +45,4 @@ api_router.include_router(audit.router)
 api_router.include_router(qpm.router)
 api_router.include_router(action_items.router)
 api_router.include_router(compliance.router)
+api_router.include_router(dm_reviews.router)

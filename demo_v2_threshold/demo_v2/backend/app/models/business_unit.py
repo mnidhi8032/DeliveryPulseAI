@@ -27,15 +27,24 @@ class BusinessUnit(Base, TimestampMixin, SoftDeleteMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    # Legacy field — kept for any old references; not actively used in V2
     delivery_head_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=True,
     )
-    # New: BU Head user (replaces delivery_head concept)
+    # The Delivery Head responsible for this BU.
+    # DB column is currently named bu_head_user_id (renamed via migration j4k5l6m7n8o9).
     bu_head_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+
+    # The Project Manager assigned to this BU.
+    pm_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
 
@@ -50,6 +59,10 @@ class BusinessUnit(Base, TimestampMixin, SoftDeleteMixin):
     bu_head: Mapped["User | None"] = relationship(
         "User",
         foreign_keys=[bu_head_user_id],
+    )
+    pm: Mapped["User | None"] = relationship(
+        "User",
+        foreign_keys=[pm_user_id],
     )
 
     def __repr__(self) -> str:

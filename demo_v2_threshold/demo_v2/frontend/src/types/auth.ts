@@ -1,7 +1,8 @@
 export type RoleCode =
   | "PM"
   | "CEO"
-  | "BU_HEAD"
+  | "DELIVERY_MANAGER"
+  | "DELIVERY_HEAD"
   | "PLATFORM_ADMIN"
   | "DELIVERY_EXCELLENCE";
 

@@ -17,6 +17,7 @@ from sqlalchemy import select, delete, update
 from sqlalchemy.orm import joinedload
 
 from app.models.project import Project
+from app.models.account import Account
 from app.models.submission import Submission
 from app.models.submission_status import SubmissionStatus
 from app.models.metric_definition import MetricDefinition
@@ -132,7 +133,7 @@ def seed_governance_activity():
         
         projects = session.execute(
             select(Project)
-            .options(joinedload(Project.account))
+            .options(joinedload(Project.account).joinedload(Account.business_unit))
             .where(Project.deleted_at.is_(None))
         ).scalars().all()
         
@@ -165,7 +166,7 @@ def seed_governance_activity():
             period = periods[offset_idx]
             
             pm_id = project.project_manager_id
-            dh_id = project.account.delivery_head_user_id
+            dh_id = project.account.business_unit.bu_head_user_id
             
             sub = Submission(
                 project_id=project.id,

@@ -21,8 +21,6 @@ const RAG_BG: Record<string, string> = {
   AMBER: "bg-amber-50 border-amber-200",
   RED:   "bg-rose-50 border-rose-200",
 };
-const LABELS = ["GREEN", "AMBER", "RED", "No Data"];
-const LABEL_COLORS = ["bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-slate-300"];
 
 // ── Interactive donut with hover tooltip ────────────────────────────────────
 function RagDonut({

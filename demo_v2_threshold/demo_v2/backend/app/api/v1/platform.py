@@ -24,7 +24,7 @@ router = APIRouter(prefix="/platform", tags=["platform"])
 
 @router.get("/overview", response_model=PlatformOverviewResponse)
 def platform_overview(
-    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN))],
+    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN, RoleCode.DELIVERY_EXCELLENCE))],
     db: Annotated[Session, Depends(get_db)],
 ) -> PlatformOverviewResponse:
     return PlatformGovernanceService(db).overview(current_user)
@@ -32,7 +32,7 @@ def platform_overview(
 
 @router.get("/risk-summary", response_model=list[PlatformRiskSummaryRow])
 def platform_risk_summary(
-    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN))],
+    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN, RoleCode.DELIVERY_EXCELLENCE))],
     db: Annotated[Session, Depends(get_db)],
 ) -> list[PlatformRiskSummaryRow]:
     return PlatformGovernanceService(db).risk_summary(current_user)
@@ -40,7 +40,7 @@ def platform_risk_summary(
 
 @router.get("/approval-latency", response_model=list[PlatformApprovalLatencyRow])
 def platform_approval_latency(
-    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN))],
+    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN, RoleCode.DELIVERY_EXCELLENCE))],
     db: Annotated[Session, Depends(get_db)],
 ) -> list[PlatformApprovalLatencyRow]:
     return PlatformGovernanceService(db).approval_latency(current_user)
@@ -48,7 +48,7 @@ def platform_approval_latency(
 
 @router.get("/template-adoption", response_model=list[PlatformTemplateAdoptionRow])
 def platform_template_adoption(
-    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN))],
+    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN, RoleCode.DELIVERY_EXCELLENCE))],
     db: Annotated[Session, Depends(get_db)],
 ) -> list[PlatformTemplateAdoptionRow]:
     return PlatformGovernanceService(db).template_adoption(current_user)
@@ -57,7 +57,7 @@ def platform_template_adoption(
 @router.get("/business-units/{bu_id}", response_model=PlatformBUAnalysisResponse)
 def platform_bu_analysis(
     bu_id: UUID,
-    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN))],
+    current_user: Annotated[User, Depends(require_roles(RoleCode.PLATFORM_ADMIN, RoleCode.DELIVERY_EXCELLENCE))],
     db: Annotated[Session, Depends(get_db)],
 ) -> PlatformBUAnalysisResponse:
     return PlatformGovernanceService(db).bu_analysis(current_user, bu_id)

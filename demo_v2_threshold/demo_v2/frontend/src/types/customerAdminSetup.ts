@@ -20,6 +20,7 @@ export interface SetupAccount {
   code: string;
   name: string;
   is_active: boolean;
+  delivery_manager_user_id: string | null;
   business_unit_name?: string;
 }
 

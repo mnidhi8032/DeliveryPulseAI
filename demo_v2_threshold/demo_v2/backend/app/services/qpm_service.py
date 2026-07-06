@@ -62,10 +62,12 @@ def get_required_measures(metric_name: str) -> list[str]:
     return [r["measure"] for r in all_measures]
 
 
-def compute_kpi_value(metric_name: str, measure_values: dict[str, float]) -> float | None:
+def compute_kpi_value(metric_name: str, measure_values: dict[str, float], uom: str | None = None) -> float | None:
     """
     Compute KPI value from component measure values.
     measure_values: {measure_name: value}
+    uom: unit of measure — only metrics with UOM=% get multiplied by 100.
+         Ratio metrics (Person-hours/Size Unit, Number, etc.) are plain division.
     Returns computed float or None if cannot compute.
     """
     rows = _MEASURE_MAP.get(metric_name, [])
@@ -80,34 +82,35 @@ def compute_kpi_value(metric_name: str, measure_values: dict[str, float]) -> flo
         measure = rows[0]["measure"]
         return measure_values.get(measure)
 
-    # Computed (C): numerator / denominator * 100
-    numerators = sorted([r for r in rows if r.get("n_seq")], key=lambda x: x["n_seq"])
-    # Denominators: rows that have d_seq set.
-    # NOTE: a measure can have BOTH n_seq and d_seq (e.g. Planned Effort in Effort Variance)
-    # meaning it appears in the numerator formula AND is the denominator divisor.
-    denominators = sorted([r for r in rows if r.get("d_seq")], key=lambda x: x["d_seq"])
+    # Computed (C): build numerator and denominator from measure inputs.
+    # Only multiply by 100 for percentage metrics (UOM == "%").
+    numerators  = sorted([r for r in rows if r.get("n_seq")],                              key=lambda x: x["n_seq"])
+    denominators = sorted([r for r in rows if r.get("d_seq")],                             key=lambda x: x["d_seq"])
 
     if not numerators:
         return None
 
-    # Build numerator: apply operators between measures
-    # For measures that appear in both numerator and denominator (dual-role),
-    # their n_op applies to them in the numerator sequence.
-    num_val = None
+    # Build numerator.
+    # CONVENTION: n_op on row N is the operator used to combine row N+1 into the total
+    # (look-ahead). So when processing row i, apply the n_op from row i-1.
+    num_val: float | None = None
+    prev_n_op: str = "+"
     for r in numerators:
         v = measure_values.get(r["measure"])
         if v is None:
             continue
         if num_val is None:
-            num_val = v
+            num_val = v              # first item — just set, no operator
         else:
-            op = r.get("n_op", "+")
+            op = (prev_n_op or "+").strip() or "+"
             if op == "+":
                 num_val += v
             elif op == "-":
                 num_val -= v
             elif op == "*":
                 num_val *= v
+        # save this row's n_op for the next iteration
+        prev_n_op = (r.get("n_op") or "+").strip() or "+"
 
     if num_val is None:
         return None
@@ -115,9 +118,10 @@ def compute_kpi_value(metric_name: str, measure_values: dict[str, float]) -> flo
     if not denominators:
         return num_val
 
-    # Build denominator
-    # For dual-role measures (both n_seq and d_seq), use their value for denominator
-    denom_val = None
+    # Build denominator.
+    # Same look-ahead convention: d_op on row N is the operator for row N+1.
+    denom_val: float | None = None
+    prev_d_op: str = "+"
     for r in denominators:
         v = measure_values.get(r["measure"])
         if v is None:
@@ -125,16 +129,25 @@ def compute_kpi_value(metric_name: str, measure_values: dict[str, float]) -> flo
         if denom_val is None:
             denom_val = v
         else:
-            op = r.get("d_op", "+")
+            op = (prev_d_op or "+").strip() or "+"
             if op == "+":
                 denom_val += v
             elif op == "-":
                 denom_val -= v
+        prev_d_op = (r.get("d_op") or "+").strip() or "+"
 
     if not denom_val:
         return None
 
-    return (num_val / denom_val) * 100
+    result = num_val / denom_val
+
+    # Only scale to percentage when UOM is explicitly "%"
+    # Ratio/delivery-rate metrics (Person-hours/Size Unit, Number, etc.) stay as plain ratio
+    is_percent = (uom or "").strip() == "%"
+    if is_percent:
+        result = result * 100
+
+    return result
 
 
 def _compute_rag(
@@ -278,7 +291,7 @@ class QPMService:
         return KpiPlanResponse.model_validate(plan)
 
     def submit_qpm_plan(self, user: User, plan_id: uuid.UUID, pm_perception_rag: str | None, pm_rag_comments: str | None) -> KpiPlanResponse:
-        """PM submits the KPI plan. It is auto-approved immediately — no DH review step."""
+        """PM submits the KPI plan for Delivery Head review (sets status to UNDER_REVIEW)."""
         plan = self._get_plan_or_404(plan_id)
 
         if plan.qpm_status not in ("DRAFT", "REJECTED"):
@@ -300,15 +313,42 @@ class QPMService:
             raise HTTPException(status_code=400, detail="No KPI data entered yet. Enter data in Sheet 2 before submitting.")
 
         now = datetime.now(timezone.utc)
-        # Auto-approve on submit — no DH review needed
-        plan.qpm_status = "APPROVED"
+        plan.qpm_status = "UNDER_REVIEW"
         plan.qpm_submitted_at = now
-        plan.qpm_approved_at = now
-        plan.qpm_reviewed_by_user_id = user.id  # self-approved
+        plan.qpm_approved_at = None
+        plan.qpm_reviewed_by_user_id = None
+        plan.qpm_review_comments = None
         if pm_perception_rag:
             plan.pm_perception_rag = pm_perception_rag
         if pm_rag_comments:
             plan.pm_rag_comments = pm_rag_comments
+
+        self._s.commit()
+        self._s.refresh(plan)
+        return KpiPlanResponse.model_validate(plan)
+
+    def review_qpm_plan(self, user: User, plan_id: uuid.UUID, action: str, review_comments: str | None) -> KpiPlanResponse:
+        """Delivery Head approves or rejects a submitted KPI Plan (UNDER_REVIEW → APPROVED | REJECTED)."""
+        plan = self._get_plan_or_404(plan_id)
+
+        if plan.qpm_status != "UNDER_REVIEW":
+            raise HTTPException(status_code=400, detail=f"Plan must be UNDER_REVIEW to review — current status: {plan.qpm_status}")
+        if action not in ("APPROVE", "REJECT"):
+            raise HTTPException(status_code=400, detail="action must be APPROVE or REJECT")
+        if action == "REJECT" and not review_comments:
+            raise HTTPException(status_code=400, detail="review_comments required when rejecting")
+
+        now = datetime.now(timezone.utc)
+        if action == "APPROVE":
+            plan.qpm_status = "APPROVED"
+            plan.qpm_approved_at = now
+        else:
+            plan.qpm_status = "REJECTED"
+            plan.qpm_approved_at = None
+
+        plan.qpm_reviewed_by_user_id = user.id
+        plan.qpm_review_comments = review_comments
+        plan.updated_at = now
 
         self._s.commit()
         self._s.refresh(plan)
@@ -473,8 +513,15 @@ class QPMService:
 
         measure_values = {e.measure_name: float(e.actual_value) for e in entries if e.actual_value is not None}
 
+        # Get UOM from catalog metric to decide whether to scale by 100
+        # Percentage metrics (UOM="%") → multiply by 100; ratio/rate metrics → plain division
+        catalog_metric = self._s.execute(
+            select(QPMCatalogMetric).where(QPMCatalogMetric.name == pm.metric_name)
+        ).scalar_one_or_none()
+        metric_uom = catalog_metric.uom if catalog_metric else None
+
         # Compute KPI value
-        computed = compute_kpi_value(pm.metric_name, measure_values)
+        computed = compute_kpi_value(pm.metric_name, measure_values, uom=metric_uom)
         actual_val = Decimal(str(round(computed, 4))) if computed is not None else None
 
         # Use period-level overrides if provided, otherwise fall back to plan metric defaults

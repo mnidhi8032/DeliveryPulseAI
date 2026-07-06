@@ -98,12 +98,12 @@ def run_surgical_clean():
             ("customer.admin@deliverypulse.ai", "Customer Admin", RoleCode.CEO),
             ("pm1@deliverypulse.ai", "Sarah (PM)", RoleCode.PM),
             ("pm2@deliverypulse.ai", "John (PM)", RoleCode.PM),
-            ("priya.dh@deliverypulse.ai", "Priya (Delivery Head)", RoleCode.BU_HEAD),
-            ("amit.dh@deliverypulse.ai", "Amit (Delivery Head)", RoleCode.BU_HEAD),
-            ("rajesh.dh@deliverypulse.ai", "Rajesh (Delivery Head)", RoleCode.BU_HEAD),
-            ("kiran.dh@deliverypulse.ai", "Kiran (Delivery Head)", RoleCode.BU_HEAD),
-            ("sanjay.dh@deliverypulse.ai", "Sanjay (Delivery Head)", RoleCode.BU_HEAD),
-            ("vikram.dh@deliverypulse.ai", "Vikram (Delivery Head)", RoleCode.BU_HEAD),
+            ("priya.dh@deliverypulse.ai", "Priya (Delivery Head)", RoleCode.DELIVERY_HEAD),
+            ("amit.dh@deliverypulse.ai", "Amit (Delivery Head)", RoleCode.DELIVERY_HEAD),
+            ("rajesh.dh@deliverypulse.ai", "Rajesh (Delivery Head)", RoleCode.DELIVERY_HEAD),
+            ("kiran.dh@deliverypulse.ai", "Kiran (Delivery Head)", RoleCode.DELIVERY_HEAD),
+            ("sanjay.dh@deliverypulse.ai", "Sanjay (Delivery Head)", RoleCode.DELIVERY_HEAD),
+            ("vikram.dh@deliverypulse.ai", "Vikram (Delivery Head)", RoleCode.DELIVERY_HEAD),
         ]:
             u = session.execute(select(User).where(User.email == email)).scalars().first()
             if u is None:

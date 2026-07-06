@@ -71,7 +71,7 @@ def dh_user(db_session: Session) -> uuid.UUID:
     user = repo.get_by_email(DH_EMAIL)
     if user is not None:
         return user.id
-    role = db_session.execute(select(Role).where(Role.code == RoleCode.BU_HEAD)).scalar_one()
+    role = db_session.execute(select(Role).where(Role.code == RoleCode.DELIVERY_HEAD)).scalar_one()
     user = repo.create_user(
         email=DH_EMAIL,
         password_hash=hash_password(TEST_PASSWORD),
@@ -93,7 +93,7 @@ def dh2_user(db_session: Session) -> uuid.UUID:
     user = repo.get_by_email(DH2_EMAIL)
     if user is not None:
         return user.id
-    role = db_session.execute(select(Role).where(Role.code == RoleCode.BU_HEAD)).scalar_one()
+    role = db_session.execute(select(Role).where(Role.code == RoleCode.DELIVERY_HEAD)).scalar_one()
     user = repo.create_user(
         email=DH2_EMAIL,
         password_hash=hash_password(TEST_PASSWORD),

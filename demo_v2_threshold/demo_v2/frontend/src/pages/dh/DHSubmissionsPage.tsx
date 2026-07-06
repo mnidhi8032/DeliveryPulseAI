@@ -112,10 +112,10 @@ export function DHSubmissionsPage() {
     <div>
       <h1 className="text-xl font-semibold text-slate-900">Submissions</h1>
       <p className="mt-1 text-sm text-slate-600">
-        Review PM submissions for projects in your business units.
+        View PM submissions for projects in your business unit.
         {pendingCount > 0 && (
           <span className="ml-1 font-medium text-slate-800">
-            {pendingCount} pending review.
+            {pendingCount} submitted.
           </span>
         )}
       </p>

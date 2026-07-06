@@ -16,7 +16,7 @@ from app.schemas.qpm import (
     KpiPlanMetricCreateRequest, KpiPlanMetricResponse, KpiPlanMetricUpdateRequest,
     KpiPlanResponse, KpiPlanUpdateRequest, KpiSummaryResponse,
     KpiTrackerRowResponse, QPMCatalogMetricResponse,
-    QPMSubmitRequest,
+    QPMSubmitRequest, QPMReviewRequest,
     QPMCatalogMetricCreateRequest, QPMCatalogMetricUpdateRequest,
 )
 from app.services.qpm_service import QPMService, get_required_measures
@@ -261,10 +261,21 @@ def submit_qpm_plan(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    """PM submits the KPI Plan. Auto-approved immediately — no DH review step."""
+    """PM submits the KPI Plan for Delivery Head review (sets status to UNDER_REVIEW)."""
     return QPMService(db).submit_qpm_plan(
         current_user, plan_id, body.pm_perception_rag, body.pm_rag_comments
     )
+
+
+@router.post("/plans/{plan_id}/review", response_model=KpiPlanResponse)
+def review_qpm_plan(
+    plan_id: UUID,
+    body: QPMReviewRequest,
+    current_user: Annotated[User, Depends(require_roles(RoleCode.DELIVERY_HEAD, RoleCode.PLATFORM_ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Delivery Head approves or rejects a submitted KPI Plan."""
+    return QPMService(db).review_qpm_plan(current_user, plan_id, body.action, body.review_comments)
 
 
 @router.post("/plans/{plan_id}/reopen", response_model=KpiPlanResponse)
