@@ -16,6 +16,7 @@ class AccountCreateRequest(BaseModel):
 class AccountUpdateRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     is_active: bool | None = None
+    delivery_manager_user_id: UUID | None = None
 
 
 class AccountResponse(BaseModel):
@@ -24,6 +25,7 @@ class AccountResponse(BaseModel):
     code: str
     name: str
     is_active: bool
+    delivery_manager_user_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 

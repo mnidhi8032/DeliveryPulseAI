@@ -65,7 +65,7 @@ def seeded_users(db_session: Session) -> dict[str, uuid.UUID]:
         for c in [
             RoleCode.PLATFORM_ADMIN,
             RoleCode.CEO,
-            RoleCode.BU_HEAD,
+            RoleCode.DELIVERY_HEAD,
             RoleCode.PM,
         ]
     }
@@ -74,7 +74,7 @@ def seeded_users(db_session: Session) -> dict[str, uuid.UUID]:
     for key, email, name, role in [
         ("admin", ADMIN_EMAIL, "Phase10 Admin", roles[RoleCode.PLATFORM_ADMIN]),
         ("ca", CA_EMAIL, "Phase10 CA", roles[RoleCode.CEO]),
-        ("dh", DH_EMAIL, "Phase10 DH", roles[RoleCode.BU_HEAD]),
+        ("dh", DH_EMAIL, "Phase10 DH", roles[RoleCode.DELIVERY_HEAD]),
         ("pm", PM_EMAIL, "Phase10 PM", roles[RoleCode.PM]),
     ]:
         u = repo.get_by_email(email)

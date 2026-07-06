@@ -53,7 +53,7 @@ class GovernanceReviewService:
         if review_level not in self.VALID_LEVELS:
             raise HTTPException(status_code=400, detail=f"review_level must be one of {self.VALID_LEVELS}")
         # Only DH and above can create governance reviews
-        if user.role.code not in (RoleCode.BU_HEAD, RoleCode.CEO, RoleCode.PLATFORM_ADMIN):
+        if user.role.code not in (RoleCode.DELIVERY_HEAD, RoleCode.CEO, RoleCode.PLATFORM_ADMIN):
             raise HTTPException(status_code=403, detail="Insufficient permissions to create governance reviews")
 
         review = GovernanceReview(
@@ -83,7 +83,7 @@ class GovernanceReviewService:
         review = self._session.get(GovernanceReview, review_id)
         if review is None:
             raise HTTPException(status_code=404, detail="Governance review not found")
-        if user.role.code not in (RoleCode.BU_HEAD, RoleCode.CEO, RoleCode.PLATFORM_ADMIN):
+        if user.role.code not in (RoleCode.DELIVERY_HEAD, RoleCode.CEO, RoleCode.PLATFORM_ADMIN):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         if review_status and review_status not in self.VALID_STATUSES:
             raise HTTPException(status_code=400, detail=f"status must be one of {self.VALID_STATUSES}")

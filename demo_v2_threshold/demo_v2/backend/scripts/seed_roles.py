@@ -25,21 +25,33 @@ SYSTEM_ROLES: list[dict] = [
         "is_system": True,
     },
     {
+        "code": "DELIVERY_MANAGER",
+        "name": "Delivery Manager",
+        "description": "Reviews PM submissions for assigned accounts. Adds commentary and creates action items.",
+        "is_system": True,
+    },
+    {
         "code": "CEO",
         "name": "CEO",
         "description": "Read-only view across all Business Units and projects.",
         "is_system": True,
     },
     {
-        "code": "BU_HEAD",
-        "name": "BU Head",
-        "description": "Read-only view for their assigned Business Unit only.",
+        "code": "DELIVERY_HEAD",
+        "name": "Delivery Head",
+        "description": "Responsible for one Business Unit. Reviews submissions, tracks delivery performance, and drives improvements across the BU.",
         "is_system": True,
     },
     {
         "code": "PLATFORM_ADMIN",
         "name": "Platform Admin",
         "description": "Creates BUs and Accounts, manages users and system configuration.",
+        "is_system": True,
+    },
+    {
+        "code": "DELIVERY_EXCELLENCE",
+        "name": "Delivery Excellence",
+        "description": "Manages metric library, catalog, and global configurations.",
         "is_system": True,
     },
 ]

@@ -17,7 +17,7 @@ export function LoginPage() {
   if (isAuthenticated && user) {
     const dest = from ?? homePathForRole(user.role_code);
     // Guard against stale tokens with removed roles (e.g. DELIVERY_HEAD, CUSTOMER_ADMIN)
-    const VALID_PATHS = ["/platform", "/ceo", "/bu-head", "/pm", "/delivery-excellence"];
+    const VALID_PATHS = ["/platform", "/ceo", "/delivery-head", "/delivery-manager", "/pm", "/delivery-excellence"];
     if (!dest || !VALID_PATHS.some(p => dest.startsWith(p))) {
       // Force logout and stay on login
       return null;
@@ -47,10 +47,16 @@ export function LoginPage() {
         <p className="mt-1 text-sm text-slate-600">Sign in to continue</p>
         <p className="mt-2 text-xs text-slate-500">
           Platform Admin: <span className="font-mono">admin@deliverypulse.ai</span> / <span className="font-mono">Admin@123</span><br />
-          Delivery Excellence: <span className="font-mono">de@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
           CEO: <span className="font-mono">ceo@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
-          BU Head: <span className="font-mono">buhead1@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
-          PM: <span className="font-mono">pm1@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span>
+          DH (Digital): <span className="font-mono">buhead1@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
+          DH (Cloud): <span className="font-mono">buhead2@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
+          DH (BFSI): <span className="font-mono">buhead3@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
+          DM1 (Acme): <span className="font-mono">dm1@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
+          DM2 (TechNova): <span className="font-mono">dm2@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
+          DM3 (Globex): <span className="font-mono">dm3@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
+          PM1 (Digital): <span className="font-mono">pm1@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
+          PM2 (Cloud): <span className="font-mono">pm2@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span><br />
+          PM3 (BFSI): <span className="font-mono">pm3@deliverypulse.ai</span> / <span className="font-mono">Demo@12345</span>
         </p>
         <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
           <div>

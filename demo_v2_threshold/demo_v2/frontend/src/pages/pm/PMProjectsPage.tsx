@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { listProjects, createProjectWithPlan } from "../../services/projectService";
 import { getSetupAccounts } from "../../services/customerAdminSetupService";
+import { listBusinessUnits } from "../../services/businessUnitService";
 import { useToast } from "../../contexts/ToastContext";
 import { RagBadge } from "../../components/RagBadge";
 import type { Project } from "../../types/project";
@@ -20,7 +21,8 @@ export function PMProjectsPage() {
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [accounts, setAccounts] = useState<{ id: string; name: string; is_active: boolean }[]>([]);
+  const [accounts, setAccounts] = useState<{ id: string; name: string; is_active: boolean; business_unit_id: string }[]>([]);
+  const [pmBusinessUnit, setPmBusinessUnit] = useState<{ id: string; name: string } | null>(null);
 
   // Metrics panel state
   const [metricsPanel, setMetricsPanel] = useState<{ projectId: string; projectName: string } | null>(null);
@@ -159,10 +161,23 @@ export function PMProjectsPage() {
 
   const handleOpenCreate = async () => {
     try {
-      const accts = await getSetupAccounts();
-      setAccounts(accts.filter((a: any) => a.is_active));
+      const [accts, bus] = await Promise.all([getSetupAccounts(), listBusinessUnits()]);
+      const activeAccounts = accts.filter((a: any) => a.is_active);
+      setAccounts(activeAccounts);
+      
+      // Derive PM's BU from their scoped accounts (all returned accounts belong to PM's BU)
+      if (activeAccounts.length > 0) {
+        const pmBuId = activeAccounts[0].business_unit_id;
+        const pmBu = bus.find((b: { id: string; name: string }) => b.id === pmBuId);
+        setPmBusinessUnit(pmBu || null);
+      } else {
+        // Fallback: no accounts yet, try to find BU that has PM assigned
+        setPmBusinessUnit(null);
+      }
+      
       setForm({
-        account_id: accts[0]?.id || "", project_code: "", project_name: "",
+        account_id: activeAccounts[0]?.id || "",
+        project_code: "", project_name: "",
         description: "", start_date: "", target_end_date: "",
         project_type: "", delivery_process_model: "", project_category: "", work_size_unit: "",
       });
@@ -305,13 +320,28 @@ export function PMProjectsPage() {
               <div>
                 <p className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">Project Details</p>
                 <div className="space-y-3">
+                  {/* Business Unit - Display Only (Read-only) */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-slate-700">Business Unit</label>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 font-medium">
+                      {pmBusinessUnit ? pmBusinessUnit.name : "No Business Unit assigned"}
+                    </div>
+                    {!pmBusinessUnit && (
+                      <p className="text-[10px] text-amber-600">You are not assigned to any Business Unit. Please contact an administrator.</p>
+                    )}
+                  </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">Account / Client *</label>
-                    <select required value={form.account_id} onChange={e => setForm(f => ({ ...f, account_id: e.target.value }))}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                    <select required value={form.account_id}
+                      onChange={e => setForm(f => ({ ...f, account_id: e.target.value }))}
+                      disabled={accounts.length === 0}
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50">
                       <option value="">Select Account...</option>
                       {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
+                    {accounts.length === 0 && (
+                      <p className="text-[10px] text-amber-600">No accounts found in your Business Unit.</p>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">

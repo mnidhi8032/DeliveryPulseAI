@@ -54,7 +54,6 @@ export function CEOBUDetailPage() {
   const greenCount = projects.filter(p => p.current_rag === "GREEN").length;
   const amberCount = projects.filter(p => p.current_rag === "AMBER").length;
   const redCount   = projects.filter(p => p.current_rag === "RED" || p.current_rag === "CRITICAL").length;
-  const noData     = projects.filter(p => !p.current_rag).length;
 
   return (
     <div className="space-y-6">

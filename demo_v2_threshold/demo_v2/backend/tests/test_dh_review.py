@@ -83,7 +83,7 @@ def _ensure_period(db: Session) -> GovernancePeriod:
 def seeded_users(db_session: Session) -> dict[str, uuid.UUID]:
     _ensure_statuses(db_session)
     role_pm = db_session.execute(select(Role).where(Role.code == RoleCode.PM)).scalar_one()
-    role_dh = db_session.execute(select(Role).where(Role.code == RoleCode.BU_HEAD)).scalar_one()
+    role_dh = db_session.execute(select(Role).where(Role.code == RoleCode.DELIVERY_HEAD)).scalar_one()
     role_ca = db_session.execute(select(Role).where(Role.code == RoleCode.CEO)).scalar_one()
     repo = UserRepository(db_session)
 

@@ -74,7 +74,7 @@ class ProjectRepository:
         )
         return list(self._session.execute(stmt).unique().scalars().all())
 
-    def list_by_bu_head(self, user_id: uuid.UUID) -> list[Project]:
+    def list_by_delivery_head(self, user_id: uuid.UUID) -> list[Project]:
         """Return all projects in BUs where this user is the BU Head."""
         from app.models.business_unit import BusinessUnit
         # Get BU ids for this BU Head

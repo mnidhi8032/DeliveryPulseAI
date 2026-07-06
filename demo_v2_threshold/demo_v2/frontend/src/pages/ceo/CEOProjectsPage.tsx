@@ -2,7 +2,6 @@
  * CEO -- All projects read-only.
  */
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { listProjects } from "../../services/projectService";
 import type { Project } from "../../types/project";
 import { RagBadge } from "../../components/RagBadge";

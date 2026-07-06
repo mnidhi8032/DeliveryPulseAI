@@ -129,7 +129,7 @@ class SubmissionService:
             submission.locked_at = now
 
         # reviewer tracking for DH actions
-        if actor.role.code == RoleCode.BU_HEAD:
+        if actor.role.code == RoleCode.DELIVERY_HEAD:
             submission.reviewed_by_user_id = actor.id
 
         self._session.flush()
@@ -339,7 +339,7 @@ class SubmissionService:
         submission = self._repo.get_by_id(submission_id)
         if submission is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-        if user.role.code != RoleCode.BU_HEAD:
+        if user.role.code != RoleCode.DELIVERY_HEAD:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Delivery Head role required")
         self._access.require_can_view_project(user, submission.project)
 
@@ -372,7 +372,7 @@ class SubmissionService:
         submission = self._repo.get_by_id(submission_id)
         if submission is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-        if user.role.code != RoleCode.BU_HEAD:
+        if user.role.code != RoleCode.DELIVERY_HEAD:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Delivery Head role required")
         self._access.require_can_view_project(user, submission.project)
 
@@ -405,7 +405,7 @@ class SubmissionService:
         submission = self._repo.get_by_id(submission_id)
         if submission is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-        if user.role.code != RoleCode.BU_HEAD:
+        if user.role.code != RoleCode.DELIVERY_HEAD:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Delivery Head role required")
         self._access.require_can_view_project(user, submission.project)
 
@@ -445,7 +445,7 @@ class SubmissionService:
         submission = self._repo.get_by_id(submission_id)
         if submission is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-        if user.role.code != RoleCode.BU_HEAD:
+        if user.role.code != RoleCode.DELIVERY_HEAD:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Delivery Head role required")
         self._access.require_can_view_project(user, submission.project)
 
@@ -531,7 +531,7 @@ class SubmissionService:
         if submission is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
         # DM is the DELIVERY_HEAD role in this system
-        if user.role.code not in (RoleCode.BU_HEAD, RoleCode.CEO, RoleCode.PLATFORM_ADMIN):
+        if user.role.code not in (RoleCode.DELIVERY_HEAD, RoleCode.CEO, RoleCode.PLATFORM_ADMIN):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Reviewer role required")
         self._access.require_can_view_project(user, submission.project)
 
@@ -566,7 +566,7 @@ class SubmissionService:
         submission = self._repo.get_by_id(submission_id)
         if submission is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-        if user.role.code not in (RoleCode.BU_HEAD, RoleCode.CEO, RoleCode.PLATFORM_ADMIN):
+        if user.role.code not in (RoleCode.DELIVERY_HEAD, RoleCode.CEO, RoleCode.PLATFORM_ADMIN):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Reviewer role required")
         self._access.require_can_view_project(user, submission.project)
 

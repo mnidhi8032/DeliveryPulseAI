@@ -50,7 +50,7 @@ export async function createAccount(payload: {
 
 export async function updateAccount(
   accountId: string,
-  updates: Partial<{ name: string; is_active: boolean }>
+  updates: Partial<{ name: string; is_active: boolean; delivery_manager_user_id: string | null }>
 ): Promise<SetupAccount> {
   const { data } = await apiClient.patch<SetupAccount>(`/accounts/${accountId}`, updates);
   return data;

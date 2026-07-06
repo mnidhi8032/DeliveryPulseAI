@@ -78,8 +78,8 @@ def seeded_users(db_session: Session) -> dict[str, uuid.UUID]:
         RoleCode.CEO: db_session.execute(
             select(Role).where(Role.code == RoleCode.CEO)
         ).scalar_one(),
-        RoleCode.BU_HEAD: db_session.execute(
-            select(Role).where(Role.code == RoleCode.BU_HEAD)
+        RoleCode.DELIVERY_HEAD: db_session.execute(
+            select(Role).where(Role.code == RoleCode.DELIVERY_HEAD)
         ).scalar_one(),
         RoleCode.PM: db_session.execute(select(Role).where(Role.code == RoleCode.PM)).scalar_one(),
     }
@@ -87,7 +87,7 @@ def seeded_users(db_session: Session) -> dict[str, uuid.UUID]:
     out: dict[str, uuid.UUID] = {}
     for key, email, name, role in [
         ("ca", CA_EMAIL, "Phase9 CA", roles[RoleCode.CEO]),
-        ("dh", DH_EMAIL, "Phase9 DH", roles[RoleCode.BU_HEAD]),
+        ("dh", DH_EMAIL, "Phase9 DH", roles[RoleCode.DELIVERY_HEAD]),
         ("pm", PM_EMAIL, "Phase9 PM", roles[RoleCode.PM]),
     ]:
         u = repo.get_by_email(email)
