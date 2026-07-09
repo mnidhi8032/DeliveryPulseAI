@@ -55,7 +55,6 @@ export function QPMDataEntryPage() {
 
   // PM comment
   const [pmComment, setPmComment]     = useState("");
-  const [savingComment, setSavingComment] = useState(false);
 
   // ── Load data ────────────────────────────────────────────────────────────
   const loadData = useCallback(async (period: string) => {
@@ -144,6 +143,13 @@ export function QPMDataEntryPage() {
       const complete  = res.computed_metrics.filter(m => m.complete).length;
       const total     = res.computed_metrics.length;
       toast.success(`Saved. ${complete}/${total} metrics computed.`);
+      // Also save PM comment if one has been entered
+      if (pmComment.trim() && plan) {
+        try {
+          const updated = await submitQpmPlan(plan.id, plan.pm_perception_rag ?? undefined, pmComment.trim());
+          setPlan(updated);
+        } catch { /* non-critical — metrics already saved */ }
+      }
       // Reload to get fresh history
       await loadData(periodLabel);
     } catch (e: any) {
@@ -425,7 +431,7 @@ export function QPMDataEntryPage() {
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900">Project Update / Comments</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Optional — visible to Delivery Manager.</p>
+              <p className="text-xs text-slate-500 mt-0.5">Optional — saved along with your metrics when you click Save below.</p>
             </div>
           </div>
           <textarea
@@ -435,25 +441,6 @@ export function QPMDataEntryPage() {
             placeholder="e.g. Productivity dipped this week due to sprint planning overhead..."
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white resize-none"
           />
-          <div className="mt-3 flex items-center justify-end">
-            <button
-              type="button"
-              disabled={savingComment || !pmComment.trim()}
-              onClick={async () => {
-                if (!plan || !pmComment.trim()) return;
-                setSavingComment(true);
-                try {
-                  const updated = await submitQpmPlan(plan.id, plan.pm_perception_rag ?? undefined, pmComment.trim());
-                  setPlan(updated);
-                  toast.success("Comment saved.");
-                } catch { toast.error("Failed to save comment."); }
-                finally { setSavingComment(false); }
-              }}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-40 cursor-pointer"
-            >
-              {savingComment ? "Saving..." : "Save Comment"}
-            </button>
-          </div>
         </div>
       )}
 

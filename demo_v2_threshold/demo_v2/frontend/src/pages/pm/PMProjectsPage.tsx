@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { listProjects, createProjectWithPlan } from "../../services/projectService";
 import { getSetupAccounts } from "../../services/customerAdminSetupService";
 import { listBusinessUnits } from "../../services/businessUnitService";
@@ -16,6 +16,7 @@ import type { MetricApprovalRequest } from "../../services/metricApprovalService
 export function PMProjectsPage() {
   const toast = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +158,14 @@ export function PMProjectsPage() {
     loadProjects()
       .catch(() => setError("Failed to load projects."))
       .finally(() => setLoading(false));
+  }, []);
+
+  // Auto-open create modal when navigated from dashboard with ?create=1
+  useEffect(() => {
+    if (searchParams.get("create") === "1") {
+      handleOpenCreate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpenCreate = async () => {

@@ -38,6 +38,16 @@ function DashboardHeader({ name }: { name: string }) {
         </h1>
         <p className="text-sm text-slate-400 mt-1">{today}</p>
       </div>
+      {/* Create project CTA */}
+      <Link
+        to="/pm/projects?create=1"
+        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 transition-colors shadow-sm"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Create Project
+      </Link>
     </div>
   );
 }
@@ -154,7 +164,7 @@ function ProjectCard({ project }: { project: Project }) {
 
   return (
     <div
-      onClick={() => navigate(`/pm/projects/${project.id}/qpm/entry`)}
+      onClick={() => navigate(`/pm/projects/${project.id}/qpm/summary`)}
       className={`group relative rounded-2xl border border-slate-200 border-l-4 ${borderAccent} bg-white p-5 shadow-sm hover:shadow-lg ${shadowAccent} transition-all duration-200 cursor-pointer hover:-translate-y-0.5`}
     >
       {/* Top row: name + status */}
@@ -203,18 +213,7 @@ function ProjectCard({ project }: { project: Project }) {
         )}
       </div>
 
-      {/* Action button */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={e => { e.stopPropagation(); navigate(`/pm/projects/${project.id}/qpm/entry`); }}
-          className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 transition-colors shadow-sm"
-        >
-          Open Project
-        </button>
-        <svg className="h-4 w-4 text-slate-300 group-hover:text-indigo-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </div>
+      {/* Action buttons — removed, card click leads to summary */}
     </div>
   );
 }

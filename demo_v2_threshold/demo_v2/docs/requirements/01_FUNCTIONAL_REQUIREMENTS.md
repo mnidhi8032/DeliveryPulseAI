@@ -245,7 +245,7 @@
 **Priority:** Medium  
 **Description:** PM shall be able to add project-specific custom metrics not in the standard catalog.  
 **Acceptance Criteria:**
-- Custom metrics do not require DE approval to add to plan
+- Custom metrics require DE approval to add to plan
 - PM fills: name, category, formula, UOM, intent, frequency, priority, target, LSL, USL, tailoring reason
 - Custom metrics are flagged with "Custom" badge
 - **Implemented:** ✅
@@ -259,14 +259,14 @@
 - Approved metrics are added to the project's KPI plan
 - **Implemented:** ✅
 
-### FR-028 — Engagement Model Update
+<!-- ### FR-028 — Engagement Model Update
 **Priority:** Medium  
 **Description:** PM shall be able to update the project's engagement model.  
 **Acceptance Criteria:**
 - Changing project type/delivery model filters catalog to relevant metrics
 - Optional auto-removal of catalog metrics no longer applicable to new model
 - Custom metrics are never auto-removed
-- **Implemented:** ✅
+- **Implemented:** ✅ -->
 
 ### FR-029 — Plan Finalization
 **Priority:** Low  
