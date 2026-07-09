@@ -1,5 +1,5 @@
 /**
- * Delivery Manager Dashboard — projects with review status badges.
+ * Delivery Manager Dashboard — dark enterprise theme
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -7,13 +7,112 @@ import { listProjects } from "../../services/projectService";
 import { getProjectReviewStatuses } from "../../services/dmReviewService";
 import type { Project } from "../../types/project";
 import type { ProjectReviewStatus } from "../../services/dmReviewService";
-import { RagBadge } from "../../components/RagBadge";
+
+// ── RAG dot + coloured text ──────────────────────────────────────────────────
+const RAG_TEXT: Record<string, string> = {
+  GREEN: "text-emerald-400", AMBER: "text-amber-400", RED: "text-red-400",
+};
+const RAG_DOT_BG: Record<string, string> = {
+  GREEN: "bg-emerald-500", AMBER: "bg-amber-400", RED: "bg-red-500",
+};
+const RAG_LABEL: Record<string, string> = {
+  GREEN: "Green", AMBER: "Amber", RED: "Red",
+};
+
+function RagDot({ rag }: { rag: string | null }) {
+  if (!rag || !RAG_TEXT[rag]) return <span className="text-slate-500 text-sm">—</span>;
+  return (
+    <span className={`inline-flex items-center gap-1.5 font-medium text-sm ${RAG_TEXT[rag]}`}>
+      <span className={`h-2 w-2 rounded-full shrink-0 ${RAG_DOT_BG[rag]}`} />
+      {RAG_LABEL[rag]}
+    </span>
+  );
+}
+
+// ── Mini SVG bar chart ───────────────────────────────────────────────────────
+function BarChart({ green, amber, red }: { green: number; amber: number; red: number }) {
+  const max = Math.max(green, amber, red, 1);
+  const H = 80;
+  const bars = [
+    { label: "Green", val: green, color: "#22c55e" },
+    { label: "Amber", val: amber, color: "#fbbf24" },
+    { label: "Red",   val: red,   color: "#f97316" },
+  ];
+  return (
+    <svg viewBox="0 0 180 110" className="w-full h-28">
+      {bars.map((b, i) => {
+        const bh = b.val === 0 ? 3 : (b.val / max) * H;
+        const x = 20 + i * 55;
+        const y = 90 - bh;
+        return (
+          <g key={b.label}>
+            <rect x={x} y={y} width={34} height={bh} rx={4} fill={b.color} fillOpacity={b.val === 0 ? 0.3 : 1} />
+            <text x={x + 17} y={107} textAnchor="middle" fontSize={10} fill="#94a3b8">{b.label}</text>
+            {b.val > 0 && (
+              <text x={x + 17} y={y - 4} textAnchor="middle" fontSize={10} fill="#cbd5e1" fontWeight="600">{b.val}</text>
+            )}
+          </g>
+        );
+      })}
+      <line x1="10" y1="90" x2="170" y2="90" stroke="#334155" strokeWidth="1" />
+    </svg>
+  );
+}
+
+// ── Donut chart for review status ────────────────────────────────────────────
+function DonutChart({ needsReview, upToDate }: { needsReview: number; upToDate: number }) {
+  const total = needsReview + upToDate || 1;
+  const pct = Math.round((needsReview / total) * 100);
+  const R = 44; const cx = 60; const cy = 60;
+  const circ = 2 * Math.PI * R;
+  const needsDash = (needsReview / total) * circ;
+  const upDash   = (upToDate / total) * circ;
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <svg viewBox="0 0 120 120" className="w-32 h-32">
+        {/* up to date arc — green */}
+        <circle cx={cx} cy={cy} r={R} fill="none" stroke="#22c55e" strokeWidth={14}
+          strokeDasharray={`${upDash} ${circ - upDash}`}
+          strokeDashoffset={circ / 4} />
+        {/* needs review arc — orange */}
+        <circle cx={cx} cy={cy} r={R} fill="none" stroke="#f97316" strokeWidth={14}
+          strokeDasharray={`${needsDash} ${circ - needsDash}`}
+          strokeDashoffset={circ / 4 - upDash} />
+        <text x={cx} y={cy - 4} textAnchor="middle" fontSize={16} fontWeight="700" fill="#f97316">{pct}%</text>
+        <text x={cx} y={cy + 12} textAnchor="middle" fontSize={8} fill="#94a3b8">needs review</text>
+      </svg>
+      <div className="flex gap-4 text-xs text-slate-400">
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" />Needs review</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Up to date</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Stat tile ────────────────────────────────────────────────────────────────
+function StatTile({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className={`${color} rounded-2xl p-5 flex flex-col gap-3`}>
+      <div className="flex items-center justify-between">
+        <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center">
+          <svg className="h-4 w-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h18M3 12h18M3 17h18" />
+          </svg>
+        </div>
+      </div>
+      <div>
+        <p className="text-3xl font-bold text-white">{value}</p>
+        <p className="text-sm text-white/70 mt-0.5">{label}</p>
+      </div>
+    </div>
+  );
+}
 
 export function DMDashboardPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects]       = useState<Project[]>([]);
   const [reviewStatuses, setReviewStatuses] = useState<Map<string, ProjectReviewStatus>>(new Map());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([listProjects(), getProjectReviewStatuses()])
@@ -26,22 +125,23 @@ export function DMDashboardPage() {
   }, []);
 
   if (loading) return (
-    <div className="space-y-4 animate-pulse">
-      <div className="h-8 w-1/3 rounded bg-slate-200" />
-      <div className="grid grid-cols-3 gap-4">
-        {[1, 2, 3].map(i => <div key={i} className="h-24 rounded-xl bg-slate-200" />)}
+    <div className="min-h-screen bg-[#1a1a2e] -mx-8 -my-6 p-8 space-y-5">
+      <div className="h-10 w-64 rounded-xl bg-slate-700 animate-pulse" />
+      <div className="grid grid-cols-4 gap-4">
+        {[1,2,3,4].map(i => <div key={i} className="h-32 rounded-2xl bg-slate-700 animate-pulse" />)}
       </div>
-      <div className="h-64 rounded-xl bg-slate-200" />
+      <div className="h-64 rounded-2xl bg-slate-700 animate-pulse" />
     </div>
   );
 
   if (error) return (
-    <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4">
-      <p className="text-sm font-medium text-red-800">{error}</p>
+    <div className="min-h-screen bg-[#1a1a2e] -mx-8 -my-6 p-8">
+      <div className="rounded-2xl bg-red-900/30 border border-red-700 px-5 py-4">
+        <p className="text-sm text-red-400">{error}</p>
+      </div>
     </div>
   );
 
-  // Group projects by account
   const byAccount: Record<string, { accountName: string; buName: string; projects: Project[] }> = {};
   for (const p of projects) {
     if (!byAccount[p.account_id]) {
@@ -51,151 +151,127 @@ export function DMDashboardPage() {
   }
 
   const needsReviewCount = [...reviewStatuses.values()].filter(s => s.needs_review).length;
+  const upToDateCount    = projects.length - needsReviewCount;
+  const greenCount  = projects.filter(p => p.current_rag === "GREEN").length;
+  const amberCount  = projects.filter(p => p.current_rag === "AMBER").length;
+  const redCount    = projects.filter(p => p.current_rag === "RED").length;
+  const atRiskCount = amberCount + redCount;
 
   return (
-    <div className="space-y-6">
-      {/* Page header */}
+    <div className="min-h-screen bg-[#1a1a2e] -mx-8 -my-6 px-8 py-8 space-y-8">
+
+      {/* Page title */}
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Delivery Manager Dashboard</h1>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Monitor KPI health across your assigned accounts. Review and comment on metric data.
-        </p>
+        <h1 className="text-3xl font-bold text-white">Delivery manager</h1>
+        <p className="text-sm text-slate-400 mt-1">Monitor KPI health across your assigned accounts.</p>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-center">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Projects</p>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">{projects.length}</p>
-        </div>
-        <div className={`rounded-xl border p-4 shadow-sm text-center ${needsReviewCount > 0 ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-white"}`}>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Needs Review</p>
-          <p className={`text-2xl font-extrabold mt-1 ${needsReviewCount > 0 ? "text-amber-700" : "text-slate-900"}`}>
-            {needsReviewCount}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-center">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Accounts</p>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">{Object.keys(byAccount).length}</p>
-        </div>
+      {/* Stat tiles */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatTile label="Total projects"  value={projects.length}   color="bg-violet-500" />
+        <StatTile label="Needs review"    value={needsReviewCount}  color="bg-sky-500" />
+        <StatTile label="Green health"    value={greenCount}        color="bg-green-500" />
+        <StatTile label="At risk"         value={atRiskCount}       color="bg-orange-500" />
       </div>
 
-      {/* Needs review alert */}
-      {needsReviewCount > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100">
-            <svg className="h-4 w-4 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+      {/* Charts row */}
+      {projects.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Bar chart — project health distribution */}
+          <div className="bg-[#252540] rounded-2xl p-6">
+            <p className="text-sm font-semibold text-slate-200 mb-1">Project health distribution</p>
+            <p className="text-xs text-slate-500 mb-4">across all accounts</p>
+            <BarChart green={greenCount} amber={amberCount} red={redCount} />
           </div>
-          <div>
-            <p className="text-sm font-bold text-amber-800">
-              {needsReviewCount} project{needsReviewCount !== 1 ? "s" : ""} have new metric data since your last review
-            </p>
-            <p className="text-xs text-amber-600 mt-0.5">
-              Click "Review KPIs" next to each project to add commentary and action items.
-            </p>
+
+          {/* Donut — review status */}
+          <div className="bg-[#252540] rounded-2xl p-6 flex flex-col items-center justify-center">
+            <p className="text-sm font-semibold text-slate-200 mb-1 self-start">Review status</p>
+            <p className="text-xs text-slate-500 mb-4 self-start">{projects.length} projects total</p>
+            <DonutChart needsReview={needsReviewCount} upToDate={upToDateCount} />
           </div>
         </div>
       )}
 
-      {/* Projects grouped by account */}
-      <div>
-        <p className="text-sm font-bold text-slate-900 mb-3">My Projects</p>
-
-        {projects.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-            <p className="text-sm text-slate-500 font-semibold">No projects assigned to your accounts yet</p>
-            <p className="text-xs text-slate-400 mt-1">Contact your Platform Admin to assign accounts to your profile.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {Object.entries(byAccount).map(([, group]) => (
-              <div key={group.accountName} className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                {/* Account header */}
-                <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">{group.accountName}</p>
-                    <p className="text-xs text-slate-500">{group.buName}</p>
-                  </div>
-                  <span className="ml-auto rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
-                    {group.projects.length} project{group.projects.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-
-                {/* Projects table */}
-                <table className="min-w-full text-sm divide-y divide-slate-100">
-                  <thead className="bg-slate-50 text-xs text-slate-500 font-semibold uppercase">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left">Project</th>
-                      <th className="px-4 py-2.5 text-left">PM</th>
-                      <th className="px-4 py-2.5 text-left">Health</th>
-                      <th className="px-4 py-2.5 text-left">Review Status</th>
-                      <th className="px-4 py-2.5 text-left">Last Reviewed</th>
-                      <th className="px-4 py-2.5 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {group.projects.map(p => {
-                      const rs = reviewStatuses.get(p.id);
-                      const needsReview = rs?.needs_review ?? false;
-                      return (
-                        <tr key={p.id} className={`hover:bg-slate-50 ${needsReview ? "bg-amber-50/40" : ""}`}>
-                          <td className="px-4 py-3">
-                            <p className="font-semibold text-slate-800">{p.project_name}</p>
-                            <p className="text-[10px] font-mono text-slate-400">{p.project_code}</p>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-slate-500">{p.project_manager_name || "—"}</td>
-                          <td className="px-4 py-3">
-                            {p.current_rag
-                              ? <RagBadge rag={p.current_rag} showDot />
-                              : <span className="text-slate-300 text-xs">No data</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            {needsReview ? (
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
-                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                Needs Review
-                              </span>
-                            ) : rs?.last_reviewed_at ? (
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                Up to date
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-400">Not reviewed yet</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-slate-500">
-                            {rs?.last_reviewed_at
-                              ? new Date(rs.last_reviewed_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
-                              : "—"}
-                            {rs?.last_review_period && (
-                              <p className="text-[10px] text-slate-400 mt-0.5">{rs.last_review_period}</p>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <Link
-                              to={`/delivery-manager/projects/${p.id}/review`}
-                              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                                needsReview
-                                  ? "bg-amber-500 text-white hover:bg-amber-600"
-                                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                              }`}
-                            >
-                              {needsReview ? "Review KPIs →" : "View KPIs"}
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+      {/* Projects by account */}
+      {projects.length === 0 ? (
+        <div className="bg-[#252540] rounded-2xl border border-dashed border-slate-600 p-14 text-center">
+          <p className="text-sm text-slate-400">No projects assigned to your accounts yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(byAccount).map(([, group]) => (
+            <div key={group.accountName} className="bg-[#252540] rounded-2xl overflow-hidden">
+              {/* Account section header */}
+              <div className="px-6 py-4 border-b border-slate-700/50">
+                <p className="text-base font-bold text-slate-100">{group.accountName} projects</p>
+                <p className="text-xs text-slate-500 mt-0.5">{group.buName}</p>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              {/* Table */}
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-slate-500 border-b border-slate-700/50">
+                    <th className="px-6 py-3 text-left font-medium">Project</th>
+                    <th className="px-4 py-3 text-left font-medium">PM</th>
+                    <th className="px-4 py-3 text-left font-medium">Health</th>
+                    <th className="px-4 py-3 text-left font-medium">Status</th>
+                    <th className="px-4 py-3 text-left font-medium">Last reviewed</th>
+                    <th className="px-4 py-3 text-right font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/30">
+                  {group.projects.map(p => {
+                    const rs = reviewStatuses.get(p.id);
+                    const needsReview = rs?.needs_review ?? false;
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-700/20 transition-colors">
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-slate-100">{p.project_name}</p>
+                          <p className="text-xs text-slate-500 font-mono mt-0.5">{p.project_code}</p>
+                        </td>
+                        <td className="px-4 py-4 text-slate-300">{p.project_manager_name || "—"}</td>
+                        <td className="px-4 py-4"><RagDot rag={p.current_rag} /></td>
+                        <td className="px-4 py-4">
+                          {needsReview ? (
+                            <span className="inline-block rounded-xl bg-orange-500 text-white text-xs font-semibold px-3 py-1.5">
+                              Needs review
+                            </span>
+                          ) : rs?.last_reviewed_at ? (
+                            <span className="inline-block rounded-xl bg-violet-600 text-white text-xs font-semibold px-3 py-1.5">
+                              Up to date
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 text-sm">Not reviewed</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-slate-400">
+                          {rs?.last_reviewed_at
+                            ? new Date(rs.last_reviewed_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
+                            : "—"}
+                          {rs?.last_review_period && (
+                            <p className="text-xs text-slate-500 mt-0.5">{rs.last_review_period}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <Link
+                            to={`/delivery-manager/projects/${p.id}/review`}
+                            className="text-xs text-slate-400 hover:text-white transition-colors"
+                          >
+                            <svg className="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
