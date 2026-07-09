@@ -16,6 +16,7 @@ from app.api.v1 import (
     metric_definitions,
     metrics,
     metric_approvals,
+    period_measures,
     platform,
     project_phases,
     projects,
@@ -46,3 +47,4 @@ api_router.include_router(qpm.router)
 api_router.include_router(action_items.router)
 api_router.include_router(compliance.router)
 api_router.include_router(dm_reviews.router)
+api_router.include_router(period_measures.router)
