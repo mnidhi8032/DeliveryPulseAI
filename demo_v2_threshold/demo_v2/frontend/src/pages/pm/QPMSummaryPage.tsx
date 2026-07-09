@@ -10,9 +10,6 @@ import { getKpiPlan, getKpiSummary } from "../../services/qpmService";
 import type { Project } from "../../types/project";
 import type { KpiSummary, KpiSummaryMetric } from "../../types/qpm";
 
-const RAG_COLOR: Record<string, string> = {
-  GREEN: "#10b981", AMBER: "#f59e0b", RED: "#f43f5e",
-};
 const RAG_BADGE: Record<string, string> = {
   GREEN: "bg-emerald-100 text-emerald-800 border-emerald-300",
   AMBER: "bg-amber-100 text-amber-800 border-amber-300",
@@ -58,20 +55,174 @@ function TrendArrow({ trend }: { trend: string | null }) {
   return <span className="text-slate-200">--</span>;
 }
 
-/** Inline SVG sparkline showing value over periods with RAG colour dots */
-function Sparkline({ history }: {
+/** Full chart: Actual line + USL / Target / LSL as stepped reference lines.
+ *  All four lines track per-period values — threshold changes create visible steps.
+ */
+function ThresholdChart({ history }: {
   history: KpiSummaryMetric["history"];
 }) {
+  if (!history || history.length === 0) {
+    return <div className="flex items-center justify-center h-36 text-xs text-slate-300">No data yet</div>;
+  }
+
+  const W = 500; const H = 200;
+  const padL = 52; const padR = 56; const padT = 24; const padB = 36;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  // Collect all numeric values to determine Y scale
+  const allNums: number[] = [];
+  for (const h of history) {
+    if (h.actual_value != null) allNums.push(Number(h.actual_value));
+    if (h.target != null) allNums.push(Number(h.target));
+    if (h.lsl != null) allNums.push(Number(h.lsl));
+    if (h.usl != null) allNums.push(Number(h.usl));
+  }
+  if (allNums.length === 0) return <div className="flex items-center justify-center h-36 text-xs text-slate-300">No numeric data</div>;
+
+  const rawMin = Math.min(...allNums);
+  const rawMax = Math.max(...allNums);
+  const rPad = (rawMax - rawMin) * 0.18 || Math.abs(rawMax) * 0.2 || 2;
+  const yMin = rawMin - rPad;
+  const yMax = rawMax + rPad;
+  const yRange = yMax - yMin || 1;
+
+  const n = history.length;
+  // When single data point, centre it
+  const toX = (i: number) => n === 1 ? padL + chartW / 2 : padL + (i / (n - 1)) * chartW;
+  const toY = (v: number) => padT + chartH - ((v - yMin) / yRange) * chartH;
+  const fmtY = (v: number) => {
+    if (Math.abs(v) >= 10000) return (v / 1000).toFixed(0) + "k";
+    if (Math.abs(v) >= 1000) return (v / 1000).toFixed(1) + "k";
+    return v % 1 === 0 ? String(v) : v.toFixed(1);
+  };
+
+  // Y-axis ticks
+  const tickCount = 5;
+  const ticks = Array.from({ length: tickCount }, (_, i) => yMin + (yRange / (tickCount - 1)) * i);
+
+  // RAG colours for actual dots
+  const ragDot: Record<string, string> = { GREEN: "#10b981", AMBER: "#f59e0b", RED: "#f43f5e" };
+
+  // Build a proper stepped polyline: value is constant from period i to i+1, then steps
+  function buildStepPath(vals: (number | null)[]): string {
+    const pts: string[] = [];
+    for (let i = 0; i < vals.length; i++) {
+      const v = vals[i];
+      if (v == null) continue;
+      const x = toX(i);
+      const y = toY(v);
+      pts.push(`${x},${y}`);
+      // Extend flat to the next period x, then next iteration draws the vertical step
+      if (i < vals.length - 1) {
+        const xNext = toX(i + 1);
+        pts.push(`${xNext},${y}`);
+      }
+    }
+    return pts.join(" ");
+  }
+
+  const uslPath    = buildStepPath(history.map(h => h.usl    != null ? Number(h.usl)    : null));
+  const targetPath = buildStepPath(history.map(h => h.target != null ? Number(h.target) : null));
+  const lslPath    = buildStepPath(history.map(h => h.lsl    != null ? Number(h.lsl)    : null));
+
+  const hasUsl    = history.some(h => h.usl    != null);
+  const hasTarget = history.some(h => h.target != null);
+  const hasLsl    = history.some(h => h.lsl    != null);
+
+  // Last known value for label Y position
+  const lastUsl    = [...history].reverse().find(h => h.usl    != null);
+  const lastTarget = [...history].reverse().find(h => h.target != null);
+  const lastLsl    = [...history].reverse().find(h => h.lsl    != null);
+  const labelX     = padL + chartW + 3;
+
+  // Actual line points (simple line, not stepped)
+  const actualPts = history
+    .filter(h => h.actual_value != null)
+    .map((h) => {
+      const idx = history.indexOf(h);
+      return `${toX(idx)},${toY(Number(h.actual_value))}`;
+    })
+    .join(" ");
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 200 }}>
+      {/* Chart background */}
+      <rect x={padL} y={padT} width={chartW} height={chartH} fill="#f8fafc" rx="3" />
+
+      {/* Grid + Y ticks */}
+      {ticks.map((t, i) => (
+        <g key={i}>
+          <line x1={padL} y1={toY(t)} x2={padL + chartW} y2={toY(t)} stroke="#e2e8f0" strokeWidth="1" />
+          <text x={padL - 4} y={toY(t) + 3.5} fontSize="8.5" fill="#94a3b8" textAnchor="end">{fmtY(t)}</text>
+        </g>
+      ))}
+
+      {/* USL — orange dashed step */}
+      {hasUsl && uslPath && (
+        <g>
+          <polyline points={uslPath} fill="none" stroke="#f97316" strokeWidth="1.5" strokeDasharray="5,3" />
+          {lastUsl && <text x={labelX} y={toY(Number(lastUsl.usl!)) + 3.5} fontSize="8.5" fill="#f97316" fontWeight="bold">USL</text>}
+        </g>
+      )}
+
+      {/* Target — blue dashed step */}
+      {hasTarget && targetPath && (
+        <g>
+          <polyline points={targetPath} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="7,2" />
+          {lastTarget && <text x={labelX} y={toY(Number(lastTarget.target!)) + 3.5} fontSize="8.5" fill="#3b82f6" fontWeight="bold">Target</text>}
+        </g>
+      )}
+
+      {/* LSL — purple dashed step */}
+      {hasLsl && lslPath && (
+        <g>
+          <polyline points={lslPath} fill="none" stroke="#a855f7" strokeWidth="1.5" strokeDasharray="5,3" />
+          {lastLsl && <text x={labelX} y={toY(Number(lastLsl.lsl!)) + 3.5} fontSize="8.5" fill="#a855f7" fontWeight="bold">LSL</text>}
+        </g>
+      )}
+
+      {/* Actual line — solid dark line */}
+      {actualPts && <polyline points={actualPts} fill="none" stroke="#1e293b" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />}
+
+      {/* Actual dots with RAG colour + value label */}
+      {history.map((h, i) => {
+        if (h.actual_value == null) return null;
+        const cx = toX(i);
+        const cy = toY(Number(h.actual_value));
+        return (
+          <g key={i}>
+            <circle cx={cx} cy={cy} r="5" fill={h.rag_status ? (ragDot[h.rag_status] || "#94a3b8") : "#94a3b8"} stroke="white" strokeWidth="2" />
+            <text x={cx} y={cy - 9} fontSize="8" fill="#1e293b" textAnchor="middle" fontWeight="600">
+              {Number(h.actual_value).toFixed(1)}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* X-axis period labels */}
+      {history.map((h, i) => (
+        <text key={i} x={toX(i)} y={H - 8} fontSize="8" fill="#94a3b8" textAnchor="middle">
+          {(h.frequency_name || "").substring(0, 10)}
+        </text>
+      ))}
+
+      {/* Axes */}
+      <line x1={padL} y1={padT} x2={padL} y2={padT + chartH} stroke="#cbd5e1" strokeWidth="1" />
+      <line x1={padL} y1={padT + chartH} x2={padL + chartW} y2={padT + chartH} stroke="#cbd5e1" strokeWidth="1" />
+    </svg>
+  );
+}
+
+/** Mini sparkline for metric cards (no threshold lines, just actual) */
+function Sparkline({ history }: { history: KpiSummaryMetric["history"] }) {
   if (!history || history.length < 2) {
-    return (
-      <div className="flex items-center justify-center h-10 text-[10px] text-slate-300">
-        {history?.length === 1 ? "1 period -- need 2+ for trend" : "No data"}
-      </div>
-    );
+    return <div className="flex items-center justify-center h-10 text-[10px] text-slate-300">
+      {history?.length === 1 ? "1 period" : "No data"}
+    </div>;
   }
   const values = history.map(h => h.actual_value ?? 0);
-  const minV = Math.min(...values);
-  const maxV = Math.max(...values);
+  const minV = Math.min(...values); const maxV = Math.max(...values);
   const range = maxV - minV || 1;
   const W = 120; const H = 36; const pad = 4;
   const pts = values.map((v, i) => {
@@ -79,18 +230,13 @@ function Sparkline({ history }: {
     const y = pad + ((maxV - v) / range) * (H - pad * 2);
     return { x, y, rag: history[i].rag_status };
   });
-  const polyline = pts.map(p => `${p.x},${p.y}`).join(" ");
-
+  const ragColor: Record<string, string> = { GREEN: "#10b981", AMBER: "#f59e0b", RED: "#f43f5e" };
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10">
-      {history[0].target != null && (() => {
-        const ty = pad + ((maxV - (history[0].target ?? 0)) / range) * (H - pad * 2);
-        return <line x1={pad} y1={ty} x2={W - pad} y2={ty} stroke="#94a3b8" strokeWidth="0.5" strokeDasharray="2,2" />;
-      })()}
-      <polyline points={polyline} fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinejoin="round" />
+      <polyline points={pts.map(p => `${p.x},${p.y}`).join(" ")} fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinejoin="round" />
       {pts.map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r="3"
-          fill={p.rag ? RAG_COLOR[p.rag] || "#94a3b8" : "#94a3b8"}
+          fill={p.rag ? (ragColor[p.rag] || "#94a3b8") : "#94a3b8"}
           stroke="white" strokeWidth="1" />
       ))}
     </svg>
@@ -112,25 +258,44 @@ function MetricTrendPanel({ m, onClose }: { m: KpiSummaryMetric; onClose: () => 
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{m.metric_category}</p>
           <h3 className="text-sm font-bold text-slate-900">{m.metric_name}</h3>
           <p className="text-[10px] text-slate-500 mt-0.5">
-            {m.intent} | {m.uom} | {history.length} period{history.length !== 1 ? "s" : ""}
+            {m.intent} · {m.uom} · {history.length} period{history.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-700 cursor-pointer text-xs font-bold">[x] Close</button>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-700 cursor-pointer text-xs font-bold border border-slate-200 rounded px-2 py-1">✕ Close</button>
+      </div>
+
+      {/* Latest values */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: "Latest Value", val: m.latest_value != null ? Number(m.latest_value).toFixed(2) + (m.uom ? ` ${m.uom}` : "") : "—", color: "text-slate-900" },
+          { label: "Target",       val: m.target != null ? String(m.target) : "—", color: "text-blue-700" },
+          { label: "LSL",          val: m.lsl    != null ? String(m.lsl)    : "—", color: "text-purple-700" },
+          { label: "USL",          val: m.usl    != null ? String(m.usl)    : "—", color: "text-orange-600" },
+        ].map(item => (
+          <div key={item.label} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-center">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.label}</p>
+            <p className={`text-sm font-extrabold mt-0.5 ${item.color}`}>{item.val}</p>
+          </div>
+        ))}
       </div>
 
       {history.length === 0 ? (
-        <p className="text-xs text-slate-400 text-center py-4">No measurements yet for this metric.</p>
+        <p className="text-xs text-slate-400 text-center py-4">No measurements yet.</p>
       ) : (
         <>
-          {/* Full-width sparkline */}
-          <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
-            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wide">Value over time</p>
-            <Sparkline history={history} />
-            <div className="flex gap-4 mt-2 text-[10px] text-slate-500 justify-end">
+          {/* Full threshold chart */}
+          <div className="rounded-lg border border-slate-100 bg-white px-2 py-3">
+            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wide px-2">Performance vs Thresholds</p>
+            <ThresholdChart history={history} />
+            {/* Legend */}
+            <div className="flex flex-wrap gap-4 mt-2 px-2 text-[10px] text-slate-500">
+              <span className="flex items-center gap-1"><span className="inline-block w-6 border-b-2 border-slate-800" />Actual</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-6 border-b border-dashed border-orange-500" />USL</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-6 border-b border-dashed border-blue-500" />Target</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-6 border-b border-dashed border-purple-500" />LSL</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />GREEN</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />AMBER</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />RED</span>
-              <span className="flex items-center gap-1"><span className="border-b border-dashed border-slate-400 w-4 inline-block" />Target</span>
             </div>
           </div>
 
@@ -141,59 +306,41 @@ function MetricTrendPanel({ m, onClose }: { m: KpiSummaryMetric; onClose: () => 
                 <tr>
                   <th className="px-3 py-2 text-left">Period</th>
                   <th className="px-3 py-2 text-right">Value</th>
-                  <th className="px-3 py-2 text-right">Target</th>
-                  <th className="px-3 py-2 text-right">LSL</th>
-                  <th className="px-3 py-2 text-right">USL</th>
+                  <th className="px-3 py-2 text-right text-blue-600">Target</th>
+                  <th className="px-3 py-2 text-right text-purple-600">LSL</th>
+                  <th className="px-3 py-2 text-right text-orange-600">USL</th>
                   <th className="px-3 py-2 text-center">RAG</th>
                   <th className="px-3 py-2 text-left">Submitted</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {[...history].reverse().map((h, i) => (
-                  <tr key={i} className={`${i === 0 ? "font-semibold" : ""} hover:bg-slate-50`}>
+                  <tr key={i} className={`${i === 0 ? "font-semibold bg-indigo-50/30" : ""} hover:bg-slate-50`}>
                     <td className="px-3 py-2 font-medium text-slate-700">
-                      {h.frequency_name || "--"}
+                      {h.frequency_name || "—"}
                       {i === 0 && <span className="ml-1 text-[9px] bg-indigo-100 text-indigo-700 border border-indigo-200 rounded px-1 font-bold">Latest</span>}
                     </td>
                     <td className="px-3 py-2 text-right font-bold text-slate-900">
-                      {h.actual_value != null ? Number(h.actual_value).toFixed(2) : "--"}
+                      {h.actual_value != null ? Number(h.actual_value).toFixed(2) : "—"}
                     </td>
-                    <td className="px-3 py-2 text-right text-slate-500">{h.target ?? "--"}</td>
-                    <td className="px-3 py-2 text-right text-slate-500">{h.lsl ?? "--"}</td>
-                    <td className="px-3 py-2 text-right text-slate-500">{h.usl ?? "--"}</td>
+                    <td className="px-3 py-2 text-right text-blue-700 font-mono">{h.target != null ? Number(h.target).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-right text-purple-700 font-mono">{h.lsl != null ? Number(h.lsl).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-right text-orange-600 font-mono">{h.usl != null ? Number(h.usl).toFixed(2) : "—"}</td>
                     <td className="px-3 py-2 text-center">
                       {h.rag_status ? (
                         <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${RAG_BG[h.rag_status] || "bg-slate-100 text-slate-600"}`}>
                           {h.rag_status}
                         </span>
-                      ) : <span className="text-slate-300">--</span>}
+                      ) : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-3 py-2 text-slate-400">
-                      {h.submitted_date ? new Date(h.submitted_date).toLocaleDateString() : "--"}
+                      {h.submitted_date ? new Date(h.submitted_date).toLocaleString() : "—"}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-
-          {/* Threshold change note */}
-          {(() => {
-            const targets = history.map(h => h.target).filter(v => v != null);
-            const uniqueTargets = [...new Set(targets.map(String))];
-            const lsls = history.map(h => h.lsl).filter(v => v != null);
-            const uniqueLsls = [...new Set(lsls.map(String))];
-            const usls = history.map(h => h.usl).filter(v => v != null);
-            const uniqueUsls = [...new Set(usls.map(String))];
-            const hasThresholdChange = uniqueTargets.length > 1 || uniqueLsls.length > 1 || uniqueUsls.length > 1;
-            if (!hasThresholdChange) return null;
-            return (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
-                <span className="font-bold">Threshold changes detected</span> -- this metric had different Target/LSL/USL values across periods.
-                Each period used its own thresholds for RAG computation.
-              </div>
-            );
-          })()}
         </>
       )}
     </div>
@@ -312,15 +459,13 @@ export function QPMSummaryPage() {
     <div className="space-y-6 text-slate-800">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link to={`/pm/projects/${projectId}/qpm`} className="text-xs text-slate-500 hover:text-slate-800">Back to KPI Plan</Link>
+          <Link to={`/pm/projects/${projectId}/qpm/entry`} className="text-xs text-slate-500 hover:text-slate-800">← Back to Data Entry</Link>
           <h1 className="mt-1 text-xl font-bold text-slate-900">KPI Summary -- {project?.project_name}</h1>
           <p className="text-xs text-slate-500">{summary?.project_type} | {summary?.delivery_process_model}</p>
         </div>
         <div className="flex gap-2">
           <Link to={`/pm/projects/${projectId}/qpm/entry`}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">Enter Data</Link>
-          <Link to={`/pm/projects/${projectId}/qpm/tracker`}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 cursor-pointer">Open Tracker</Link>
+            className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">← Back to Data Entry</Link>
         </div>
       </div>
 
@@ -344,10 +489,6 @@ export function QPMSummaryPage() {
               summary.overall_rag === "RED" ? "text-rose-700" :
               summary.overall_rag === "AMBER" ? "text-amber-700" : "text-emerald-700"
             }`}>{summary.overall_rag}</p>
-          </div>
-          <div className="ml-4 text-xs text-slate-500">
-            <p>Any category RED = project RED</p>
-            <p>else any AMBER = AMBER, else GREEN</p>
           </div>
         </div>
       )}

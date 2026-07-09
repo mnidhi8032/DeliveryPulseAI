@@ -679,15 +679,22 @@ class QPMService:
         for pm in plan.metrics:
             if not pm.is_active:
                 continue
+            # Fetch ALL measurement rows ordered oldest→newest by submitted date
+            # Each row = one data point in the chart (one save by PM)
             measurements = self._s.execute(
                 select(KpiMeasurement).where(KpiMeasurement.plan_metric_id == pm.id)
-                .order_by(KpiMeasurement.from_date.desc().nullslast(), KpiMeasurement.created_at.desc())
+                .order_by(
+                    KpiMeasurement.submitted_date.asc().nullslast(),
+                    KpiMeasurement.created_at.asc()
+                )
             ).scalars().all()
-            latest = measurements[0] if measurements else None
+
+            # Latest is the most recently submitted row
+            latest = measurements[-1] if measurements else None
             count = len(measurements)
             trend = "none"
-            if count >= 2 and measurements[0].actual_value and measurements[1].actual_value:
-                diff = float(measurements[0].actual_value) - float(measurements[1].actual_value)
+            if count >= 2 and measurements[-1].actual_value and measurements[-2].actual_value:
+                diff = float(measurements[-1].actual_value) - float(measurements[-2].actual_value)
                 i = (pm.intent or "").lower()
                 if "lower" in i or "less" in i:
                     trend = "improving" if diff < 0 else ("declining" if diff > 0 else "stable")
@@ -725,8 +732,7 @@ class QPMService:
                         "rag_status": m.rag_status,
                         "submitted_date": m.submitted_date.isoformat() if m.submitted_date else None,
                     }
-                    # Reverse: oldest first for chart left→right
-                    for m in reversed(measurements)
+                    for m in measurements   # already oldest→newest
                     if m.actual_value is not None
                 ],
             ))
