@@ -8,7 +8,6 @@ import { listSubmissions } from "../../services/submissionService";
 import { listProjects } from "../../services/projectService";
 import { listGovernancePeriods } from "../../services/governanceService";
 import { getSubmissionHealth } from "../../services/metricService";
-import { RagBadge } from "../../components/RagBadge";
 import { getStatusBadgeClass, formatStatus } from "../../utils/formatters";
 import { formatPeriodLabel } from "../../utils/dhSubmissionRows";
 import type { Submission } from "../../types/submission";
@@ -63,79 +62,83 @@ export function DMSubmissionsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Submissions</h1>
+        <h1 className="text-xl font-semibold text-slate-900">Submissions</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           Review PM submissions. Add commentary and create action items.
-          {pendingCount > 0 && <span className="ml-2 rounded-full bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 text-[10px] font-bold">{pendingCount} need commentary</span>}
+          {pendingCount > 0 && <span className="ml-2 text-amber-700">{pendingCount} need commentary</span>}
         </p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400">
+          className="rounded border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400">
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s === "ALL" ? "All statuses" : s.replace(/_/g, " ")}</option>)}
         </select>
         <input type="text" placeholder="Search project…" value={search} onChange={e => setSearch(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs w-48 focus:outline-none focus:ring-1 focus:ring-slate-400"/>
+          className="rounded border border-slate-300 px-3 py-1.5 text-sm w-48 focus:outline-none focus:ring-1 focus:ring-slate-400"/>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="border border-slate-200 rounded overflow-hidden">
         <table className="min-w-full text-sm divide-y divide-slate-100">
-          <thead className="bg-slate-50 text-xs text-slate-500 font-semibold uppercase">
+          <thead className="text-xs text-slate-400 border-b border-slate-100">
             <tr>
-              <th className="px-4 py-3 text-left">Project</th>
-              <th className="px-4 py-3 text-left">PM</th>
-              <th className="px-4 py-3 text-left">Period</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-left">Score</th>
-              <th className="px-4 py-3 text-left">RAG</th>
-              <th className="px-4 py-3 text-left">DM Commentary</th>
-              <th className="px-4 py-3 text-left"></th>
+              <th className="px-4 py-3 text-left font-normal">Project</th>
+              <th className="px-4 py-3 text-left font-normal">PM</th>
+              <th className="px-4 py-3 text-left font-normal">Period</th>
+              <th className="px-4 py-3 text-left font-normal">Status</th>
+              <th className="px-4 py-3 text-left font-normal">Score</th>
+              <th className="px-4 py-3 text-left font-normal">RAG</th>
+              <th className="px-4 py-3 text-left font-normal">Commentary</th>
+              <th className="px-4 py-3 text-left font-normal"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-50">
             {filtered.length === 0 ? (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No submissions found.</td></tr>
             ) : filtered.map(s => {
               const proj = projectById.get(s.project_id);
               const period = periodById.get(s.governance_period_id);
               const health = healthMap[s.id];
+              const rag = health?.health_available ? health.rag_status : null;
+              const dot: Record<string, string> = { GREEN: "bg-emerald-500", AMBER: "bg-amber-500", RED: "bg-rose-500" };
+              const ragText: Record<string, string> = { GREEN: "text-emerald-700", AMBER: "text-amber-700", RED: "text-rose-700" };
               return (
-                <tr key={s.id} className={`hover:bg-slate-50 ${s.status_code === "SUBMITTED" ? "bg-amber-50/30" : ""}`}>
+                <tr key={s.id} className="hover:bg-slate-50/60">
                   <td className="px-4 py-3">
-                    <p className="font-semibold text-slate-800">{proj?.project_name ?? "—"}</p>
-                    <p className="text-[10px] text-slate-400 font-mono">{proj?.project_code}</p>
+                    <p className="font-semibold text-slate-900">{proj?.project_name ?? "—"}</p>
+                    <p className="text-xs text-slate-400 font-mono">{proj?.project_code}</p>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{proj?.project_manager_name ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{period ? formatPeriodLabel(period) : "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{proj?.project_manager_name ?? "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{period ? formatPeriodLabel(period) : "—"}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${getStatusBadgeClass(s.status_code)}`}>
+                    <span className={`rounded px-2 py-0.5 text-xs border ${getStatusBadgeClass(s.status_code)}`}>
                       {formatStatus(s.status_code)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs font-bold text-slate-700">
+                  <td className="px-4 py-3 text-slate-700">
                     {health?.health_available && health.overall_score != null ? Number(health.overall_score).toFixed(1) : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {health?.health_available && health.rag_status ? <RagBadge rag={health.rag_status} /> : <span className="text-slate-300 text-xs">—</span>}
+                    {rag ? (
+                      <span className={`inline-flex items-center gap-1.5 ${ragText[rag] ?? "text-slate-500"}`}>
+                        <span className={`h-2 w-2 rounded-full shrink-0 ${dot[rag] ?? "bg-slate-300"}`} />
+                        {rag.charAt(0) + rag.slice(1).toLowerCase()}
+                      </span>
+                    ) : <span className="text-slate-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500 max-w-[160px]">
-                    {s.dm_comments ? (
-                      <span className="text-emerald-600 font-semibold">✓ Added</span>
-                    ) : (
-                      <span className="text-amber-500">Not yet</span>
-                    )}
+                  <td className="px-4 py-3 text-slate-500">
+                    {s.dm_comments ? <span className="text-emerald-600">✓ Added</span> : <span className="text-slate-400">Not yet</span>}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link to={`/delivery-manager/submissions/${s.id}`}
-                      className={`rounded px-3 py-1.5 text-xs font-bold transition ${
+                      className={`rounded px-3 py-1.5 text-xs transition ${
                         s.status_code === "SUBMITTED"
                           ? "bg-slate-900 text-white hover:bg-slate-700"
-                          : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                          : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                       }`}>
-                      {s.status_code === "SUBMITTED" ? "Add Commentary" : "View"}
+                      {s.status_code === "SUBMITTED" ? "Add commentary" : "View"}
                     </Link>
                   </td>
                 </tr>
