@@ -125,20 +125,18 @@ export function DMDashboardPage() {
   }, []);
 
   if (loading) return (
-    <div className="min-h-screen bg-[#1a1a2e] -mx-8 -my-6 p-8 space-y-5">
-      <div className="h-10 w-64 rounded-xl bg-slate-700 animate-pulse" />
+    <div className="space-y-5 animate-pulse">
+      <div className="h-10 w-64 rounded-xl bg-slate-700" />
       <div className="grid grid-cols-4 gap-4">
-        {[1,2,3,4].map(i => <div key={i} className="h-32 rounded-2xl bg-slate-700 animate-pulse" />)}
+        {[1,2,3,4].map(i => <div key={i} className="h-32 rounded-2xl bg-slate-700" />)}
       </div>
-      <div className="h-64 rounded-2xl bg-slate-700 animate-pulse" />
+      <div className="h-64 rounded-2xl bg-slate-700" />
     </div>
   );
 
   if (error) return (
-    <div className="min-h-screen bg-[#1a1a2e] -mx-8 -my-6 p-8">
-      <div className="rounded-2xl bg-red-900/30 border border-red-700 px-5 py-4">
-        <p className="text-sm text-red-400">{error}</p>
-      </div>
+    <div className="rounded-2xl bg-red-900/30 border border-red-700 px-5 py-4">
+      <p className="text-sm text-red-400">{error}</p>
     </div>
   );
 
@@ -158,7 +156,7 @@ export function DMDashboardPage() {
   const atRiskCount = amberCount + redCount;
 
   return (
-    <div className="min-h-screen bg-[#1a1a2e] -mx-8 -my-6 px-8 py-8 space-y-8">
+    <div className="space-y-8">
 
       {/* Page title */}
       <div>
