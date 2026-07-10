@@ -49,7 +49,6 @@ function HealthBarChart({
   green: number; amber: number; red: number; title: string;
 }) {
   const max = Math.max(green, amber, red, 1);
-  const CHART_HEIGHT = 110; // px inside the svg viewbox
 
   const bars = [
     { label: "Green",  value: green, color: "#10b981" },
