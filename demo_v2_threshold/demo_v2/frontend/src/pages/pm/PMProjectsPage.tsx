@@ -1,12 +1,10 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { listProjects, createProjectWithPlan } from "../../services/projectService";
 import { getSetupAccounts } from "../../services/customerAdminSetupService";
 import { listBusinessUnits } from "../../services/businessUnitService";
 import { useToast } from "../../contexts/ToastContext";
-import { RagBadge as _RagBadge } from "../../components/RagBadge";
 import type { Project } from "../../types/project";
-import { formatStatus, getStatusBadgeClass } from "../../utils/formatters";
 import { PROJECT_TYPES, DELIVERY_MODELS, PROJECT_CATEGORIES, WORK_SIZE_UNITS, METRIC_CATEGORIES, FREQUENCIES, COMPLIANCE_LABEL } from "../../types/qpm";
 import type { KpiPlanMetric, QPMCatalogMetric } from "../../types/qpm";
 import { getKpiPlan, getCatalog, addPlanMetric, removePlanMetric } from "../../services/qpmService";

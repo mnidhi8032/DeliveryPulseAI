@@ -1,5 +1,5 @@
 /**
- * DM Project Review Page — dark enterprise theme
+ * DM Project Review Page — light purple theme matching PM pages.
  */
 import { useEffect, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -12,46 +12,44 @@ import type { KpiSummary } from "../../types/qpm";
 import type { DMReview } from "../../services/dmReviewService";
 import { RAG_STYLE as _RAG_STYLE } from "../../types/qpm";
 
-const RAG_PILL: Record<string, string> = {
-  GREEN: "bg-green-500 text-white",
-  AMBER: "bg-amber-500 text-white",
-  RED:   "bg-red-500 text-white",
+const C = { bg:"#f0f2ff", card:"#ffffff", primary:"#6c63ff", border:"#e8e6ff", shadow:"0 2px 16px rgba(108,99,255,0.10)", text:"#1a1a2e", muted:"#6b7280" };
+
+const RAG_CFG: Record<string, { dot: string; text: string; pill: string; bg: string }> = {
+  GREEN: { dot:"#22c55e", text:"#15803d", pill:"#f0fdf4", bg:"#bbf7d0" },
+  AMBER: { dot:"#f59e0b", text:"#b45309", pill:"#fffbeb", bg:"#fde68a" },
+  RED:   { dot:"#ef4444", text:"#b91c1c", pill:"#fef2f2", bg:"#fecaca" },
 };
-const RAG_DOT_BG: Record<string, string> = {
-  GREEN: "bg-green-500", AMBER: "bg-amber-400", RED: "bg-red-500",
-};
-const RAG_TEXT: Record<string, string> = {
-  GREEN: "text-green-400", AMBER: "text-amber-400", RED: "text-red-400",
-};
-const RAG_LABEL: Record<string, string> = { GREEN: "Green", AMBER: "Amber", RED: "Red" };
 
 function RagPill({ rag }: { rag: string | null }) {
-  if (!rag || !RAG_PILL[rag]) return <span className="text-slate-500">—</span>;
+  if (!rag || !RAG_CFG[rag]) return <span style={{ color: C.muted, fontSize:13 }}>—</span>;
+  const r = RAG_CFG[rag];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-semibold ${RAG_PILL[rag]}`}>
-      {RAG_LABEL[rag]}
+    <span style={{ display:"inline-flex", alignItems:"center", gap:6, background: r.pill, border:`1px solid ${r.bg}`, borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700, color: r.text }}>
+      <span style={{ width:7, height:7, borderRadius:"50%", background: r.dot }} />
+      {rag.charAt(0) + rag.slice(1).toLowerCase()}
     </span>
   );
 }
 
 function RagDot({ rag }: { rag: string | null }) {
-  if (!rag || !RAG_DOT_BG[rag]) return <span className="text-slate-500 text-sm">—</span>;
+  if (!rag || !RAG_CFG[rag]) return <span style={{ color: C.muted, fontSize:13 }}>—</span>;
+  const r = RAG_CFG[rag];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${RAG_TEXT[rag]}`}>
-      <span className={`h-2 w-2 rounded-full shrink-0 ${RAG_DOT_BG[rag]}`} />
-      {RAG_LABEL[rag]}
+    <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>
+      <span style={{ width:8, height:8, borderRadius:"50%", background: r.dot, flexShrink:0 }} />
+      <span style={{ fontSize:13, fontWeight:600, color: r.text }}>{rag.charAt(0) + rag.slice(1).toLowerCase()}</span>
     </span>
   );
 }
 
 function TrendLabel({ trend }: { trend: string | null }) {
-  if (!trend) return <span className="text-slate-500">—</span>;
+  if (!trend) return <span style={{ color: C.muted }}>—</span>;
   const t = trend.toLowerCase();
   if (t.includes("up") || t.includes("improv") || t.includes("increas"))
-    return <span className="text-green-400 text-sm">↑ Improving</span>;
+    return <span style={{ color:"#15803d", fontSize:13, fontWeight:600 }}>↑ Improving</span>;
   if (t.includes("down") || t.includes("declin") || t.includes("decreas"))
-    return <span className="text-red-400 text-sm">↓ Declining</span>;
-  return <span className="text-slate-400 text-sm">→ Stable</span>;
+    return <span style={{ color:"#b91c1c", fontSize:13, fontWeight:600 }}>↓ Declining</span>;
+  return <span style={{ color: C.muted, fontSize:13 }}>→ Stable</span>;
 }
 
 function fmt(val: string | number | null): string {
@@ -79,9 +77,7 @@ export function DMProjectReviewPage() {
   const load = useCallback(async () => {
     if (!projectId) return;
     try {
-      const [proj, plan, reviews] = await Promise.all([
-        getProject(projectId), getKpiPlan(projectId), listReviewsForProject(projectId),
-      ]);
+      const [proj, plan, reviews] = await Promise.all([getProject(projectId), getKpiPlan(projectId), listReviewsForProject(projectId)]);
       setProject(proj); setPlanId(plan.id);
       const s = await getKpiSummary(plan.id);
       setSummary(s); setPastReviews(reviews);
@@ -109,8 +105,7 @@ export function DMProjectReviewPage() {
   const remAI = (i: number) => setActionItems(p => p.filter((_, j) => j !== i));
 
   const loadForEdit = (r: DMReview) => {
-    setEditReviewId(r.id); setPeriodLabel(r.period_label);
-    setDmComments(r.dm_comments || "");
+    setEditReviewId(r.id); setPeriodLabel(r.period_label); setDmComments(r.dm_comments || "");
     setActionItems(r.action_items.length > 0 ? r.action_items : [""]);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -144,105 +139,106 @@ export function DMProjectReviewPage() {
   };
 
   if (loading) return (
-    <div className="space-y-4 animate-pulse">
-      <div className="h-7 w-48 rounded-xl bg-slate-700" />
-      <div className="h-28 rounded-2xl bg-slate-700" />
-      <div className="h-80 rounded-2xl bg-slate-700" />
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      {[1,2,3].map(i => <div key={i} style={{ borderRadius:20, height: i === 1 ? 60 : 120, background:"#e8e6ff" }} />)}
     </div>
   );
 
+  const inputStyle: React.CSSProperties = {
+    borderRadius:12, border:`1.5px solid ${C.border}`, padding:"10px 14px",
+    fontSize:14, color: C.text, outline:"none", width:"100%", boxSizing:"border-box",
+    background:"#faf9ff", fontFamily:"inherit",
+  };
+
   return (
-    <div className="space-y-7">
+    <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
 
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div style={{ display:"flex", flexWrap:"wrap", alignItems:"flex-start", justifyContent:"space-between", gap:16 }}>
         <div>
-          <Link to="/delivery-manager" className="inline-flex items-center gap-1 text-sm text-sky-400 hover:text-sky-300">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            Dashboard
+          <Link to="/delivery-manager" style={{ fontSize:13, color: C.muted, textDecoration:"none", display:"inline-flex", alignItems:"center", gap:4 }}>
+            ← Dashboard
           </Link>
-          <h1 className="mt-2 text-2xl font-bold text-white">{project?.project_name}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-400">
-            <span className="bg-slate-700/60 rounded-full px-2.5 py-0.5">{project?.business_unit_name}</span>
-            <span className="bg-slate-700/60 rounded-full px-2.5 py-0.5">{project?.account_name}</span>
-            <span>PM: {project?.project_manager_name || "—"}</span>
+          <h1 style={{ fontSize:26, fontWeight:900, color: C.text, margin:"8px 0 0" }}>{project?.project_name}</h1>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:6 }}>
+            {[project?.business_unit_name, project?.account_name, `PM: ${project?.project_manager_name || "—"}`].map((s, i) => (
+              <span key={i} style={{ background:"#f5f3ff", border:`1px solid ${C.border}`, borderRadius:20, padding:"3px 12px", fontSize:12, color: C.muted }}>
+                {s}
+              </span>
+            ))}
           </div>
         </div>
         {summary?.overall_rag && (
-          <div className="bg-[#252540] rounded-2xl border border-slate-700/50 px-5 py-3 flex items-center gap-3">
-            <span className="text-xs text-slate-400">Overall health</span>
+          <div style={{ background: C.card, borderRadius:16, border:`1.5px solid ${C.border}`, padding:"10px 18px", display:"flex", alignItems:"center", gap:10, boxShadow: C.shadow }}>
+            <span style={{ fontSize:13, color: C.muted, fontWeight:600 }}>Overall health</span>
             <RagPill rag={summary.overall_rag} />
           </div>
         )}
       </div>
 
-      {/* RAG tiles */}
+      {/* RAG counts */}
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Green",   count: summary.green_count,   bg: "bg-green-500" },
-            { label: "Amber",   count: summary.amber_count,   bg: "bg-amber-500" },
-            { label: "Red",     count: summary.red_count,     bg: "bg-red-500"   },
-            { label: "No data", count: summary.no_data_count, bg: "bg-slate-600" },
+            { label:"Green",   count: summary.green_count,   color:"#22c55e" },
+            { label:"Amber",   count: summary.amber_count,   color:"#f59e0b" },
+            { label:"Red",     count: summary.red_count,     color:"#ef4444" },
+            { label:"No data", count: summary.no_data_count, color:"#9ca3af" },
           ].map(s => (
-            <div key={s.label} className={`${s.bg} rounded-2xl px-5 py-4`}>
-              <p className="text-2xl font-bold text-white">{s.count}</p>
-              <p className="text-xs text-white/70 mt-0.5">{s.label}</p>
+            <div key={s.label} style={{ borderRadius:20, padding:"18px 20px", background: s.color, boxShadow:`0 4px 16px ${s.color}44` }}>
+              <p style={{ fontSize:32, fontWeight:900, color:"#fff", margin:0 }}>{s.count}</p>
+              <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.80)", margin:"5px 0 0", textTransform:"uppercase", letterSpacing:"0.06em" }}>{s.label}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* KPI metrics */}
+      {/* KPI metrics by category */}
       {summary && summary.metrics.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-base font-semibold text-slate-200">KPI Summary</h2>
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          <h2 style={{ fontSize:16, fontWeight:800, color: C.text, margin:0 }}>KPI Summary</h2>
           {Object.entries(byCategory).map(([cat, metrics]) => {
             const isOpen = expandedCats.has(cat);
             const catRags = metrics.map(m => m.rag_status).filter(Boolean);
             const catRag = catRags.includes("RED") ? "RED" : catRags.includes("AMBER") ? "AMBER" : catRags.length > 0 ? "GREEN" : null;
+            const dotColor = catRag ? RAG_CFG[catRag]?.dot : "#d1d5db";
             return (
-              <div key={cat} className="bg-[#252540] rounded-2xl border border-slate-700/30 overflow-hidden">
-                <button type="button"
-                  onClick={() => setExpandedCats(prev => { const n = new Set(prev); n.has(cat) ? n.delete(cat) : n.add(cat); return n; })}
-                  className="w-full flex items-center gap-3 px-6 py-4 hover:bg-slate-700/20 transition-colors cursor-pointer text-left">
-                  {catRag && <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${RAG_DOT_BG[catRag] ?? "bg-slate-500"}`} />}
-                  <span className="text-sm font-semibold text-slate-200 flex-1">{cat}</span>
-                  <span className="text-xs text-slate-500 bg-slate-700/50 rounded-full px-2.5 py-0.5">
+              <div key={cat} style={{ background: C.card, borderRadius:16, boxShadow: C.shadow, overflow:"hidden" }}>
+                <button type="button" onClick={() => setExpandedCats(prev => { const n = new Set(prev); n.has(cat) ? n.delete(cat) : n.add(cat); return n; })}
+                  style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"14px 20px", background:"transparent", border:"none", cursor:"pointer", textAlign:"left" }}
+                >
+                  <span style={{ width:10, height:10, borderRadius:"50%", background: dotColor, flexShrink:0 }} />
+                  <span style={{ flex:1, fontSize:14, fontWeight:700, color: C.text }}>{cat}</span>
+                  <span style={{ fontSize:11, fontWeight:600, color: C.muted, background:"#f5f3ff", borderRadius:20, padding:"2px 10px" }}>
                     {metrics.length} metric{metrics.length !== 1 ? "s" : ""}
                   </span>
-                  <svg className={`h-4 w-4 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg style={{ width:16, height:16, color: C.muted, transform: isOpen ? "rotate(180deg)" : "none", transition:"transform 0.2s" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
                 {isOpen && (
-                  <div className="border-t border-slate-700/30 overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead className="text-xs text-slate-500 border-b border-slate-700/30">
-                        <tr>
-                          <th className="px-6 py-2.5 text-left font-medium">Metric</th>
-                          <th className="px-4 py-2.5 text-right font-medium">Value</th>
-                          <th className="px-4 py-2.5 text-right font-medium">Target</th>
-                          <th className="px-4 py-2.5 text-left font-medium pl-6">RAG</th>
-                          <th className="px-4 py-2.5 text-left font-medium">Trend</th>
-                          <th className="px-4 py-2.5 text-left font-medium">Updated</th>
+                  <div style={{ borderTop:`1px solid ${C.border}`, overflowX:"auto" }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                      <thead>
+                        <tr style={{ borderBottom:`1px solid ${C.border}`, background:"#faf9ff" }}>
+                          {["Metric","Value","Target","RAG","Trend","Updated"].map(h => (
+                            <th key={h} style={{ padding:"8px 16px", textAlign: h === "Value" || h === "Target" ? "right" : "left", fontSize:11, fontWeight:700, color: C.muted, textTransform:"uppercase", letterSpacing:"0.05em" }}>{h}</th>
+                          ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-700/20">
+                      <tbody>
                         {metrics.map(m => (
-                          <tr key={m.plan_metric_id} className="hover:bg-slate-700/20 transition-colors">
-                            <td className="px-6 py-3 max-w-[220px]">
-                              <p className="font-semibold text-slate-200 truncate" title={m.metric_name}>{m.metric_name}</p>
-                              {m.uom && <p className="text-xs text-slate-500">{m.uom}</p>}
+                          <tr key={m.plan_metric_id} style={{ borderBottom:`1px solid ${C.border}` }}>
+                            <td style={{ padding:"12px 16px", maxWidth:220 }}>
+                              <p style={{ fontWeight:700, color: C.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={m.metric_name}>{m.metric_name}</p>
+                              {m.uom && <p style={{ fontSize:11, color: C.muted, margin:"2px 0 0" }}>{m.uom}</p>}
                             </td>
-                            <td className="px-4 py-3 text-right font-semibold text-white">{fmt(m.latest_value)}</td>
-                            <td className="px-4 py-3 text-right text-slate-400">{fmt(m.target)}</td>
-                            <td className="px-4 py-3 pl-6"><RagDot rag={m.rag_status} /></td>
-                            <td className="px-4 py-3"><TrendLabel trend={m.trend} /></td>
-                            <td className="px-4 py-3 text-slate-400">
-                              {m.last_updated ? new Date(m.last_updated).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                            <td style={{ padding:"12px 16px", textAlign:"right", fontWeight:700, color: C.text }}>{fmt(m.latest_value)}</td>
+                            <td style={{ padding:"12px 16px", textAlign:"right", color: C.muted }}>{fmt(m.target)}</td>
+                            <td style={{ padding:"12px 16px" }}><RagDot rag={m.rag_status} /></td>
+                            <td style={{ padding:"12px 16px" }}><TrendLabel trend={m.trend} /></td>
+                            <td style={{ padding:"12px 16px", color: C.muted }}>
+                              {m.last_updated ? new Date(m.last_updated).toLocaleDateString("en-US", { day:"numeric", month:"short", year:"numeric" }) : "—"}
                             </td>
                           </tr>
                         ))}
@@ -257,51 +253,47 @@ export function DMProjectReviewPage() {
       )}
 
       {summary && summary.metrics.length === 0 && (
-        <div className="bg-[#252540] rounded-2xl border border-dashed border-slate-600 p-14 text-center">
-          <p className="text-sm text-slate-400">No KPI measurements recorded yet for this project.</p>
+        <div style={{ background: C.card, borderRadius:20, border:`2px dashed ${C.border}`, padding:"48px 24px", textAlign:"center", boxShadow: C.shadow }}>
+          <p style={{ color: C.muted, fontSize:14 }}>No KPI measurements recorded yet for this project.</p>
         </div>
       )}
 
       {/* Review form */}
-      <div className="bg-[#252540] rounded-2xl border border-slate-700/30 overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-700/30">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/20 shrink-0">
-            <svg className="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div style={{ background: C.card, borderRadius:20, boxShadow: C.shadow, overflow:"hidden" }}>
+        <div style={{ background:"#f5f3ff", borderBottom:`1px solid ${C.border}`, padding:"18px 24px", display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{ width:38, height:38, borderRadius:12, background: C.primary + "20", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <svg style={{ width:18, height:18, color: C.primary }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-slate-200">{editReviewId ? "Edit Review" : "Submit Your Review"}</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Add commentary for this reporting period.</p>
+            <p style={{ fontSize:15, fontWeight:800, color: C.text, margin:0 }}>{editReviewId ? "Edit Review" : "Submit Your Review"}</p>
+            <p style={{ fontSize:12, color: C.muted, margin:"2px 0 0" }}>Add commentary for this reporting period.</p>
           </div>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-slate-400">Reporting period <span className="text-red-400">*</span></label>
-            <input type="text" required value={periodLabel} onChange={e => setPeriodLabel(e.target.value)}
-              placeholder="e.g. July 2026"
-              className="rounded-xl border border-slate-600 bg-slate-700/50 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50" />
+        <form onSubmit={handleSubmit} style={{ padding:"24px", display:"flex", flexDirection:"column", gap:18 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Reporting period <span style={{ color:"#ef4444" }}>*</span></label>
+            <input type="text" required value={periodLabel} onChange={e => setPeriodLabel(e.target.value)} placeholder="e.g. July 2026" style={inputStyle} />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-slate-400">Commentary <span className="text-red-400">*</span></label>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Commentary <span style={{ color:"#ef4444" }}>*</span></label>
             <textarea required rows={4} value={dmComments} onChange={e => setDmComments(e.target.value)}
               placeholder="Summarise the project's KPI performance this period…"
-              className="rounded-xl border border-slate-600 bg-slate-700/50 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 resize-none" />
+              style={{ ...inputStyle, resize:"none" }} />
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-400">Action items <span className="text-slate-600">(optional)</span></label>
-              <button type="button" onClick={addAI} className="text-xs text-sky-400 hover:text-sky-300 cursor-pointer">+ Add item</button>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Action items <span style={{ color: C.muted, fontWeight:400 }}>(optional)</span></label>
+              <button type="button" onClick={addAI} style={{ fontSize:12, color: C.primary, fontWeight:700, background:"transparent", border:"none", cursor:"pointer" }}>+ Add item</button>
             </div>
             {actionItems.map((item, idx) => (
-              <div key={idx} className="flex gap-2 items-center">
-                <span className="text-xs text-slate-500 w-5 text-right shrink-0">{idx + 1}.</span>
-                <input type="text" value={item} onChange={e => updAI(idx, e.target.value)}
-                  placeholder={`Action item ${idx + 1}…`}
-                  className="flex-1 rounded-xl border border-slate-600 bg-slate-700/50 px-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
+              <div key={idx} style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <span style={{ fontSize:12, color: C.muted, width:20, textAlign:"right", flexShrink:0 }}>{idx + 1}.</span>
+                <input type="text" value={item} onChange={e => updAI(idx, e.target.value)} placeholder={`Action item ${idx + 1}…`} style={{ ...inputStyle }} />
                 {actionItems.length > 1 && (
-                  <button type="button" onClick={() => remAI(idx)} className="text-slate-600 hover:text-red-400 cursor-pointer shrink-0">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <button type="button" onClick={() => remAI(idx)} style={{ background:"transparent", border:"none", cursor:"pointer", color:"#d1d5db", flexShrink:0, padding:4 }}>
+                    <svg style={{ width:16, height:16 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -309,14 +301,15 @@ export function DMProjectReviewPage() {
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-3 pt-2 border-t border-slate-700/30">
-            <button type="submit" disabled={saving}
-              className="rounded-xl bg-orange-500 text-white px-6 py-2.5 text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 cursor-pointer shadow-sm transition-colors">
+          <div style={{ display:"flex", alignItems:"center", gap:12, paddingTop:8, borderTop:`1px solid ${C.border}` }}>
+            <button type="submit" disabled={saving} style={{
+              borderRadius:12, background: C.primary, color:"#fff", padding:"10px 24px", fontSize:14, fontWeight:800, border:"none", cursor:"pointer",
+              boxShadow:`0 2px 10px ${C.primary}44`, opacity: saving ? 0.6 : 1,
+            }}>
               {saving ? "Saving…" : editReviewId ? "Update review" : "Submit review"}
             </button>
             {editReviewId && (
-              <button type="button" onClick={resetForm}
-                className="rounded-xl border border-slate-600 bg-transparent px-5 py-2.5 text-sm text-slate-400 hover:text-slate-200 hover:border-slate-500 cursor-pointer">
+              <button type="button" onClick={resetForm} style={{ borderRadius:12, border:`1.5px solid ${C.border}`, background:"transparent", color: C.muted, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer" }}>
                 Cancel
               </button>
             )}
@@ -326,34 +319,34 @@ export function DMProjectReviewPage() {
 
       {/* Past reviews */}
       {pastReviews.length > 0 && (
-        <div className="bg-[#252540] rounded-2xl border border-slate-700/30 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/30">
-            <h2 className="text-sm font-semibold text-slate-200">Review history</h2>
-            <span className="rounded-full bg-slate-700/50 text-slate-400 text-xs px-3 py-1">
+        <div style={{ background: C.card, borderRadius:20, boxShadow: C.shadow, overflow:"hidden" }}>
+          <div style={{ padding:"16px 24px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <p style={{ fontSize:15, fontWeight:800, color: C.text, margin:0 }}>Review history</p>
+            <span style={{ fontSize:12, color: C.muted, background:"#f5f3ff", borderRadius:20, padding:"3px 12px" }}>
               {pastReviews.length} review{pastReviews.length !== 1 ? "s" : ""}
             </span>
           </div>
-          <div className="divide-y divide-slate-700/20">
-            {pastReviews.map(r => (
-              <div key={r.id} className="px-6 py-5 space-y-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            {pastReviews.map((r, ri) => (
+              <div key={r.id} style={{ padding:"20px 24px", borderBottom: ri < pastReviews.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                <div style={{ display:"flex", flexWrap:"wrap", alignItems:"flex-start", justifyContent:"space-between", gap:10, marginBottom:12 }}>
                   <div>
-                    <span className="rounded-full bg-violet-500/20 text-violet-300 text-xs font-semibold px-3 py-1">{r.period_label}</span>
-                    <p className="text-xs text-slate-500 mt-1.5">{r.reviewed_by_name || "—"} · {new Date(r.reviewed_at).toLocaleString()}</p>
+                    <span style={{ background: C.primary + "18", color: C.primary, fontSize:12, fontWeight:700, borderRadius:20, padding:"3px 14px" }}>{r.period_label}</span>
+                    <p style={{ fontSize:11, color: C.muted, margin:"6px 0 0" }}>{r.reviewed_by_name || "—"} · {new Date(r.reviewed_at).toLocaleString()}</p>
                   </div>
-                  <button type="button" onClick={() => loadForEdit(r)}
-                    className="rounded-xl border border-slate-600 bg-transparent px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:border-slate-500 cursor-pointer">
+                  <button type="button" onClick={() => loadForEdit(r)} style={{ borderRadius:10, border:`1.5px solid ${C.border}`, background:"transparent", color: C.muted, padding:"6px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>
                     Edit
                   </button>
                 </div>
                 {r.dm_comments && (
-                  <p className="text-sm text-slate-300 whitespace-pre-wrap border-l-2 border-orange-500/40 pl-4 py-1">{r.dm_comments}</p>
+                  <p style={{ fontSize:14, color: C.text, borderLeft:`3px solid ${C.primary}44`, paddingLeft:14, margin:"0 0 10px", lineHeight:1.6 }}>{r.dm_comments}</p>
                 )}
                 {r.action_items.length > 0 && (
-                  <ul className="space-y-1.5 pl-1">
+                  <ul style={{ margin:0, padding:0, listStyle:"none", display:"flex", flexDirection:"column", gap:6 }}>
                     {r.action_items.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-400">
-                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0" />{item}
+                      <li key={idx} style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:13, color: C.muted }}>
+                        <span style={{ width:6, height:6, borderRadius:"50%", background: C.primary, flexShrink:0, marginTop:5 }} />
+                        {item}
                       </li>
                     ))}
                   </ul>
