@@ -57,12 +57,8 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: "Reports",        to: "/ceo/reports",            end: false, iconKey: "reports" },
   ],
   DELIVERY_HEAD: [
-    { label: "Dashboard",          to: "/delivery-head",                       end: true,  iconKey: "dashboard" },
-    { label: "My BU",              to: "/delivery-head/business-unit",         end: false, iconKey: "businessUnits" },
-    { label: "Projects",           to: "/delivery-head/projects",              end: false, iconKey: "projects" },
-    { label: "Submissions",        to: "/delivery-head/submissions",           end: false, iconKey: "submissions" },
-    { label: "Governance Reviews", to: "/delivery-head/governance-reviews",    end: false, iconKey: "governance" },
-    { label: "Compliance",         to: "/delivery-head/compliance",            end: false, iconKey: "compliance" },
+    { label: "Dashboard", to: "/delivery-head",           end: true,  iconKey: "dashboard" },
+    { label: "Projects",  to: "/delivery-head/projects",  end: false, iconKey: "projects" },
   ],
   DELIVERY_MANAGER: [
     { label: "Dashboard",    to: "/delivery-manager",               end: true,  iconKey: "dashboard" },

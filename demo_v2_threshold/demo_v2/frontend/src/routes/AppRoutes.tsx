@@ -29,11 +29,7 @@ import { PlatformAdminReportsPage as CEOReportsPage } from "../pages/platform/Pl
 // Delivery Head pages
 import { DeliveryHeadDashboardPage }     from "../pages/delivery-head/DeliveryHeadDashboardPage";
 import { DeliveryHeadProjectsPage }      from "../pages/delivery-head/DeliveryHeadProjectsPage";
-import { DeliveryHeadMyBUPage }          from "../pages/delivery-head/DeliveryHeadMyBUPage";
-import { DHSubmissionsPage }       from "../pages/dh/DHSubmissionsPage";
-import { DHSubmissionReviewPage }  from "../pages/dh/DHSubmissionReviewPage";
-import { GovernanceReviewsPage }   from "../pages/dh/GovernanceReviewsPage";
-import { DHQPMReviewPage }         from "../pages/dh/DHQPMReviewPage";
+import { DHProjectSummaryPage }          from "../pages/delivery-head/DHProjectSummaryPage";
 
 // Delivery Manager pages
 import { DMDashboardPage }          from "../pages/delivery-manager/DMDashboardPage";
@@ -55,7 +51,6 @@ import { PMSummaryPage }       from "../pages/pm/PMSummaryPage";
 
 // Shared
 import { ProjectHealthTimelinePage } from "../pages/shared/ProjectHealthTimelinePage";
-import { ComplianceReportPage }      from "../pages/shared/ComplianceReportPage";
 import { DashboardShellPage }        from "../pages/shell/DashboardShellPage";
 
 // Auth
@@ -109,14 +104,9 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute allowedRoles={["DELIVERY_HEAD"]} />}>
         <Route path="/delivery-head" element={<DeliveryHeadLayout />}>
           <Route index element={<DeliveryHeadDashboardPage />} />
-          <Route path="business-unit" element={<DeliveryHeadMyBUPage />} />
           <Route path="projects" element={<DeliveryHeadProjectsPage />} />
+          <Route path="projects/:projectId/summary" element={<DHProjectSummaryPage />} />
           <Route path="projects/:projectId/timeline" element={<ProjectHealthTimelinePage />} />
-          <Route path="projects/:projectId/qpm-review" element={<DHQPMReviewPage />} />
-          <Route path="submissions" element={<DHSubmissionsPage />} />
-          <Route path="submissions/:submissionId" element={<DHSubmissionReviewPage />} />
-          <Route path="governance-reviews" element={<GovernanceReviewsPage />} />
-          <Route path="compliance" element={<ComplianceReportPage />} />
         </Route>
       </Route>
 
