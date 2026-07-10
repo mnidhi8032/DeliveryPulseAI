@@ -12,9 +12,9 @@ interface RoleShellLayoutProps {
 
 export function RoleShellLayout({ title, role, basePath }: RoleShellLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-[#f5f7fa]">
+    <div className="flex min-h-screen" style={{ background: "#f0f2ff" }}>
       <Sidebar title={title} role={role} basePath={basePath} />
-      <main className="flex-1 overflow-auto min-w-0">
+      <main className="flex-1 overflow-auto min-w-0" style={{ background: "#f0f2ff" }}>
         <div className="px-8 py-7 max-w-[1400px]">
           <Header />
           <Outlet />

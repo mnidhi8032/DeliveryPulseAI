@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.action_item import ActionItem
+from app.models.notification import Notification
 from app.models.user import User
 from app.services.access_control_service import AccessControlService
 from app.repositories.project_repository import ProjectRepository
@@ -82,6 +83,26 @@ class ActionItemService:
         )
         self._session.add(item)
         self._session.commit()
+
+        # ── Spec 11: Notify the PM that a new action item was raised ──────────
+        try:
+            if project.project_manager_id and project.project_manager_id != user.id:
+                notif = Notification(
+                    id=uuid.uuid4(),
+                    user_id=project.project_manager_id,
+                    title=f"Action item raised — {project.project_name}",
+                    message=f"{user.full_name} raised: {root_cause[:120]}",
+                    category="WORKFLOW",
+                    type="ACTION_ITEM_CREATED",
+                    is_read=False,
+                    related_project_id=project.id,
+                )
+                self._session.add(notif)
+                self._session.commit()
+        except Exception:
+            # Notification failure must never break the action item creation
+            pass
+
         return item
 
     def update_status(

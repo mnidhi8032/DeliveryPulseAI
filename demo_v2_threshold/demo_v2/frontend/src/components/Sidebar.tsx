@@ -1,17 +1,9 @@
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-// ── SVG icon helpers ────────────────────────────────────────────────────────
-
-function Icon({ d, className = "h-4 w-4" }: { d: string; className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
-    </svg>
-  );
-}
-
-const ICONS = {
+// ── Icons ────────────────────────────────────────────────────────────────────
+const ICONS: Record<string, string> = {
   dashboard:    "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
   projects:     "M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z",
   submissions:  "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
@@ -27,153 +19,270 @@ const ICONS = {
 };
 
 interface NavItem {
-  label: string;
-  to: string;
-  end?: boolean;
-  iconKey?: keyof typeof ICONS;
-  badge?: string;
+  label: string; to: string; end?: boolean; iconKey?: keyof typeof ICONS; badge?: string;
 }
-
 interface SidebarProps {
   title: string;
-  role: "PM" | "CEO" | "DELIVERY_HEAD" | "DELIVERY_MANAGER" | "PLATFORM_ADMIN" | "DELIVERY_EXCELLENCE";
+  role: "PM"|"CEO"|"DELIVERY_HEAD"|"DELIVERY_MANAGER"|"PLATFORM_ADMIN"|"DELIVERY_EXCELLENCE";
   basePath: string;
 }
 
 const NAV_ITEMS: Record<string, NavItem[]> = {
   PM: [
-    { label: "Dashboard",    to: "/pm",               end: true,  iconKey: "dashboard" },
-    { label: "My Projects",  to: "/pm/projects",      end: false, iconKey: "projects" },
-    { label: "Summary",      to: "/pm/summary",       end: false, iconKey: "chart" },
+    { label: "Dashboard",   to: "/pm",          end: true,  iconKey: "dashboard" },
+    { label: "My Projects", to: "/pm/projects", end: false, iconKey: "projects"  },
+    { label: "Summary",     to: "/pm/summary",  end: false, iconKey: "chart"     },
+    { label: "Actions",     to: "/pm/actions",  end: false, iconKey: "action"    },
   ],
   DELIVERY_EXCELLENCE: [
-    { label: "Dashboard",      to: "/delivery-excellence",          end: true,  iconKey: "dashboard" },
-    { label: "Metric Catalog", to: "/delivery-excellence/catalog",  end: false, iconKey: "qpm" },
+    { label: "Dashboard",      to: "/delivery-excellence",         end: true,  iconKey: "dashboard" },
+    { label: "Metric Catalog", to: "/delivery-excellence/catalog", end: false, iconKey: "qpm"       },
   ],
   CEO: [
-    { label: "Dashboard",      to: "/ceo",                    end: true,  iconKey: "dashboard" },
-    { label: "Business Units", to: "/ceo/business-units",     end: false, iconKey: "businessUnits" },
-    { label: "Projects",       to: "/ceo/projects",           end: false, iconKey: "projects" },
-    { label: "Reports",        to: "/ceo/reports",            end: false, iconKey: "reports" },
+    { label: "Dashboard",      to: "/ceo",                 end: true,  iconKey: "dashboard"     },
+    { label: "Business Units", to: "/ceo/business-units",  end: false, iconKey: "businessUnits" },
+    { label: "Projects",       to: "/ceo/projects",        end: false, iconKey: "projects"      },
+    { label: "Reports",        to: "/ceo/reports",         end: false, iconKey: "reports"       },
   ],
   DELIVERY_HEAD: [
-    { label: "Dashboard", to: "/delivery-head",           end: true,  iconKey: "dashboard" },
-    { label: "Projects",  to: "/delivery-head/projects",  end: false, iconKey: "projects" },
+    { label: "Dashboard",          to: "/delivery-head",                    end: true,  iconKey: "dashboard"     },
+    { label: "My BU",              to: "/delivery-head/business-unit",      end: false, iconKey: "businessUnits" },
+    { label: "Projects",           to: "/delivery-head/projects",           end: false, iconKey: "projects"      },
+    { label: "Submissions",        to: "/delivery-head/submissions",        end: false, iconKey: "submissions"   },
+    { label: "Governance Reviews", to: "/delivery-head/governance-reviews", end: false, iconKey: "governance"    },
+    { label: "Compliance",         to: "/delivery-head/compliance",         end: false, iconKey: "compliance"    },
   ],
   DELIVERY_MANAGER: [
-    { label: "Dashboard",    to: "/delivery-manager",               end: true,  iconKey: "dashboard" },
-    { label: "Action Items", to: "/delivery-manager/actions",       end: false, iconKey: "action" },
+    { label: "Dashboard",    to: "/delivery-manager",         end: true,  iconKey: "dashboard" },
+    { label: "Action Items", to: "/delivery-manager/actions", end: false, iconKey: "action"    },
   ],
   PLATFORM_ADMIN: [
-    { label: "Dashboard",      to: "/platform",                end: true,  iconKey: "dashboard" },
+    { label: "Dashboard",      to: "/platform",                end: true,  iconKey: "dashboard"     },
     { label: "Business Units", to: "/platform/business-units", end: false, iconKey: "businessUnits" },
-    { label: "Reports",        to: "/platform/reports",        end: false, iconKey: "reports" },
-    { label: "Settings",       to: "/platform/settings",       end: false, iconKey: "settings" },
+    { label: "Reports",        to: "/platform/reports",        end: false, iconKey: "reports"       },
+    { label: "Settings",       to: "/platform/settings",       end: false, iconKey: "settings"      },
   ],
 };
+
+const roleLabel: Record<string, string> = {
+  PM: "Project Manager", CEO: "CEO", DELIVERY_HEAD: "Delivery Head",
+  DELIVERY_MANAGER: "Delivery Manager", PLATFORM_ADMIN: "Platform Admin",
+  DELIVERY_EXCELLENCE: "Delivery Excellence",
+};
+
+// Collapsed = 64px, Expanded = 220px
+const W_COLLAPSED = 64;
+const W_EXPANDED  = 220;
 
 export function Sidebar({ title, role }: SidebarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [expanded, setExpanded] = useState(false);
   const navItems = NAV_ITEMS[role] || [];
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
+  const handleLogout = () => { logout(); navigate("/login", { replace: true }); };
 
   const initials = user?.full_name
-    ? user.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+    ? user.full_name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()
     : "?";
 
-  const roleLabel: Record<string, string> = {
-    PM:                   "Project Manager",
-    CEO:                  "CEO",
-    DELIVERY_HEAD:        "Delivery Head",
-    DELIVERY_MANAGER:     "Delivery Manager",
-    PLATFORM_ADMIN:       "Platform Admin",
-    DELIVERY_EXCELLENCE:  "Delivery Excellence",
-  };
+  const w = expanded ? W_EXPANDED : W_COLLAPSED;
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-slate-800/60 bg-slate-950 text-slate-100">
-      {/* Brand */}
-      <div className="px-5 py-5 border-b border-slate-800/60">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 shadow-lg shadow-indigo-900/50">
-            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <>
+      {/* Inject sidebar transition CSS once */}
+      <style>{`
+        .sb-label {
+          overflow: hidden;
+          white-space: nowrap;
+          transition: max-width 0.25s ease, opacity 0.20s ease;
+        }
+        .sb-collapsed .sb-label { max-width: 0; opacity: 0; }
+        .sb-expanded  .sb-label { max-width: 160px; opacity: 1; }
+        .sb-nav-item {
+          display: flex; align-items: center; gap: 12px;
+          padding: 10px 18px; border-radius: 12px;
+          text-decoration: none; cursor: pointer;
+          transition: background 0.15s;
+          border: none; width: 100%; box-sizing: border-box;
+        }
+        .sb-collapsed .sb-nav-item { justify-content: center; padding: 10px 0; }
+        .sb-expanded  .sb-nav-item { justify-content: flex-start; padding: 10px 14px; }
+        .sb-nav-item:hover { background: rgba(255,255,255,0.12) !important; }
+        .sb-icon-wrap {
+          flex-shrink: 0; width: 28px; height: 28px;
+          display: flex; align-items: center; justify-content: center;
+          border-radius: 8px;
+          transition: background 0.15s;
+        }
+        .sb-tooltip {
+          position: absolute; left: calc(100% + 10px); top: 50%;
+          transform: translateY(-50%); z-index: 100;
+          background: #1a1a2e; color: #fff; font-size: 12px; font-weight: 600;
+          padding: 5px 10px; border-radius: 8px; white-space: nowrap;
+          pointer-events: none; opacity: 0;
+          transition: opacity 0.15s;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .sb-nav-item:hover .sb-tooltip { opacity: 1; }
+      `}</style>
+
+      <aside
+        onMouseEnter={() => setExpanded(true)}
+        onMouseLeave={() => setExpanded(false)}
+        className={expanded ? "sb-expanded" : "sb-collapsed"}
+        style={{
+          width: w, flexShrink: 0, display: "flex", flexDirection: "column",
+          background: "#3730a3",
+          minHeight: "100vh",
+          transition: "width 0.25s cubic-bezier(.4,0,.2,1)",
+          overflow: "hidden",
+          position: "relative",
+          zIndex: 40,
+        }}
+      >
+        {/* Brand */}
+        <div style={{
+          height: 64, display: "flex", alignItems: "center",
+          justifyContent: expanded ? "flex-start" : "center",
+          padding: expanded ? "0 16px" : "0",
+          borderBottom: "1px solid rgba(255,255,255,0.10)",
+          flexShrink: 0, gap: 10,
+          transition: "padding 0.25s ease, justify-content 0.25s ease",
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+            background: "rgba(255,255,255,0.20)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <div>
-            <p className="text-xs font-bold tracking-tight text-white">DeliveryPulse</p>
-            <p className="text-[9px] text-indigo-400 font-semibold tracking-widest uppercase">AI Platform</p>
-          </div>
+          <span className="sb-label" style={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>
+            DeliveryPulse
+          </span>
         </div>
-      </div>
 
-      {/* Role badge */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="rounded-lg bg-slate-900 border border-slate-800 px-3 py-2">
-          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Signed in as</p>
-          <p className="text-xs font-bold text-white mt-0.5">{roleLabel[role] || title}</p>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end ?? false}
-            className={({ isActive }) =>
-              `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
-                isActive
-                  ? "bg-indigo-600/15 text-white border border-indigo-500/30"
-                  : "text-slate-400 hover:bg-slate-900 hover:text-slate-100 border border-transparent"
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {item.iconKey && (
-                  <span className={`flex-shrink-0 transition-colors ${isActive ? "text-indigo-400" : "text-slate-500 group-hover:text-slate-300"}`}>
-                    <Icon d={ICONS[item.iconKey]} />
+        {/* Nav items */}
+        <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+          {navItems.map(item => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end ?? false}
+              style={({ isActive }) => ({
+                display: "flex",
+                alignItems: "center",
+                gap: expanded ? 12 : 0,
+                padding: expanded ? "10px 14px" : "10px 0",
+                justifyContent: expanded ? "flex-start" : "center",
+                borderRadius: 12,
+                textDecoration: "none",
+                fontSize: 13,
+                fontWeight: isActive ? 700 : 500,
+                color: isActive ? "#fff" : "rgba(255,255,255,0.70)",
+                background: isActive ? "#4f46e5" : "transparent",
+                boxShadow: isActive ? "0 2px 8px rgba(0,0,0,0.20)" : "none",
+                transition: "background 0.15s, padding 0.25s, gap 0.25s",
+                position: "relative",
+                width: "100%",
+                boxSizing: "border-box",
+              })}
+            >
+              {({ isActive }) => (
+                <>
+                  {/* Icon */}
+                  <span style={{
+                    flexShrink: 0, width: 28, height: 28,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    borderRadius: 8,
+                    background: isActive ? "rgba(255,255,255,0.18)" : "transparent",
+                  }}>
+                    {item.iconKey && (
+                      <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+                        stroke={isActive ? "#fff" : "rgba(255,255,255,0.75)"} strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d={ICONS[item.iconKey]} />
+                      </svg>
+                    )}
                   </span>
-                )}
-                <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{item.badge}</span>
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
-      </nav>
 
-      {/* User profile */}
-      <div className="border-t border-slate-800/60 p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600/20 border border-indigo-500/30 text-xs font-bold text-indigo-300">
+                  {/* Label — only visible when expanded */}
+                  <span className="sb-label" style={{ fontSize: 13, fontWeight: isActive ? 700 : 500 }}>
+                    {item.label}
+                  </span>
+
+                  {/* Tooltip — only when collapsed */}
+                  {!expanded && (
+                    <span style={{
+                      position: "absolute", left: "calc(100% + 12px)", top: "50%",
+                      transform: "translateY(-50%)", zIndex: 100,
+                      background: "#1a1a2e", color: "#fff", fontSize: 12, fontWeight: 600,
+                      padding: "5px 10px", borderRadius: 8, whiteSpace: "nowrap",
+                      pointerEvents: "none",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                      opacity: 0,
+                      transition: "opacity 0.15s",
+                    }}
+                      className="sb-tooltip"
+                    >
+                      {item.label}
+                    </span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* User avatar + info */}
+        <div style={{
+          borderTop: "1px solid rgba(255,255,255,0.10)",
+          padding: expanded ? "14px 12px" : "14px 0",
+          display: "flex", alignItems: "center",
+          justifyContent: expanded ? "flex-start" : "center",
+          gap: expanded ? 10 : 0,
+          flexShrink: 0,
+          transition: "padding 0.25s, gap 0.25s",
+        }}>
+          {/* Avatar */}
+          <div style={{
+            width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+            background: "rgba(0,0,0,0.25)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 12, fontWeight: 800, color: "#fff",
+            border: "2px solid rgba(255,255,255,0.25)",
+            cursor: "pointer",
+          }}
+            title={!expanded ? (user?.full_name ?? "") : undefined}
+          >
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="truncate text-xs font-semibold text-white">{user?.full_name}</p>
-            <p className="truncate text-[10px] text-slate-500">{user?.email}</p>
+
+          {/* Name + logout — only when expanded */}
+          <div className="sb-label" style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {user?.full_name}
+            </p>
+            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {roleLabel[role] || title}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            title="Sign out"
-            className="p-1.5 text-slate-500 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer flex-shrink-0"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-            </svg>
-          </button>
+
+          {/* Logout — only when expanded */}
+          <div className="sb-label" style={{ flexShrink: 0 }}>
+            <button type="button" onClick={handleLogout} title="Sign out"
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, color: "rgba(255,255,255,0.55)", display: "flex" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.20)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "none")}
+            >
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
