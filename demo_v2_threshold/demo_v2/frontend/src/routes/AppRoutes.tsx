@@ -30,6 +30,7 @@ import { PlatformAdminReportsPage as CEOReportsPage } from "../pages/platform/Pl
 import { DeliveryHeadDashboardPage }     from "../pages/delivery-head/DeliveryHeadDashboardPage";
 import { DeliveryHeadProjectsPage }      from "../pages/delivery-head/DeliveryHeadProjectsPage";
 import { DHProjectSummaryPage }          from "../pages/delivery-head/DHProjectSummaryPage";
+import { DHProjectTimelinePage }         from "../pages/delivery-head/DHProjectTimelinePage";
 
 // Delivery Manager pages
 import { DMDashboardPage }          from "../pages/delivery-manager/DMDashboardPage";
@@ -106,7 +107,7 @@ export function AppRoutes() {
           <Route index element={<DeliveryHeadDashboardPage />} />
           <Route path="projects" element={<DeliveryHeadProjectsPage />} />
           <Route path="projects/:projectId/summary" element={<DHProjectSummaryPage />} />
-          <Route path="projects/:projectId/timeline" element={<ProjectHealthTimelinePage />} />
+          <Route path="projects/:projectId/timeline" element={<DHProjectTimelinePage />} />
         </Route>
       </Route>
 

@@ -9,7 +9,7 @@ export function LoginPage() {
   const location = useLocation();
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
 
-  const [email, setEmail] = useState("pm1@deliverypulse.ai");
+  const [email, setEmail] = useState("buhead1@deliverypulse.ai");
   const [password, setPassword] = useState("Demo@12345");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -190,16 +190,21 @@ export function LoginPage() {
               {showCredentials && (
                 <div className="mt-3 space-y-2 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-3">
                   {[
-                    { role: "Project Manager 1", email: "pm1@deliverypulse.ai", color: "indigo" },
-                    { role: "Project Manager 2", email: "pm2@deliverypulse.ai", color: "indigo" },
-                    { role: "Project Manager 3", email: "pm3@deliverypulse.ai", color: "indigo" },
-                    { role: "Platform Admin", email: "admin@deliverypulse.ai", color: "purple" },
-                    { role: "CEO", email: "ceo@deliverypulse.ai", color: "rose" },
+                    { role: "Platform Admin",       email: "admin@deliverypulse.ai",   color: "purple" },
+                    { role: "CEO",                  email: "ceo@deliverypulse.ai",     color: "rose"   },
+                    { role: "Delivery Head (BU 1)", email: "buhead1@deliverypulse.ai", color: "sky"    },
+                    { role: "Delivery Head (BU 2)", email: "buhead2@deliverypulse.ai", color: "sky"    },
+                    { role: "Delivery Head (BU 3)", email: "buhead3@deliverypulse.ai", color: "sky"    },
+                    { role: "Delivery Manager 1",   email: "dm1@deliverypulse.ai",     color: "teal"   },
+                    { role: "Project Manager 1",    email: "pm1@deliverypulse.ai",     color: "indigo" },
+                    { role: "Project Manager 2",    email: "pm2@deliverypulse.ai",     color: "indigo" },
+                    { role: "Project Manager 3",    email: "pm3@deliverypulse.ai",     color: "indigo" },
+                    { role: "Delivery Excellence",  email: "de@deliverypulse.ai",      color: "amber"  },
                   ].map((account) => (
                     <button
                       key={account.email}
                       type="button"
-                      onClick={() => quickLogin(account.email, account.email.includes("admin") ? "Admin@123" : "Demo@12345")}
+                      onClick={() => quickLogin(account.email, account.email === "admin@deliverypulse.ai" ? "Admin@123" : "Demo@12345")}
                       className="w-full text-left px-3 py-2.5 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 transition-all group"
                     >
                       <div className="flex items-center justify-between">
