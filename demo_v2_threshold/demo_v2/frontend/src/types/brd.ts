@@ -36,6 +36,7 @@ export interface ActionItem {
   closed_at: string | null;
   action_status: "OPEN" | "IN_PROGRESS" | "CLOSED";
   created_by_user_id: string | null;
+  created_by_name: string | null;   // Spec 11 — DM who raised the action item
   created_at: string;
   updated_at: string;
 }

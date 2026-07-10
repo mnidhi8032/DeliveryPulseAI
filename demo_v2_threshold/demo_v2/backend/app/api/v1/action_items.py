@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.auth.dependencies import get_current_user
+from app.models.action_item import ActionItem
 from app.models.user import User
 from app.services.action_item_service import ActionItemService
 
@@ -49,10 +50,20 @@ class ActionItemResponse(BaseModel):
     closed_at: datetime | None
     action_status: str
     created_by_user_id: UUID | None
+    created_by_name: str | None = None   # Spec 11 — resolved from ORM relationship
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+def _serialize(item: ActionItem) -> ActionItemResponse:
+    """Build ActionItemResponse, resolving created_by_name from the ORM relationship."""
+    resp = ActionItemResponse.model_validate(item)
+    # Resolve name from the already-loaded relationship (no extra query)
+    if item.created_by is not None:
+        resp.created_by_name = item.created_by.full_name
+    return resp
 
 
 @router.get("/by-project/{project_id}", response_model=list[ActionItemResponse])
@@ -63,11 +74,8 @@ def list_action_items(
     overdue_only: bool = Query(False),
 ) -> list[ActionItemResponse]:
     svc = ActionItemService(db)
-    if overdue_only:
-        items = svc.list_overdue(current_user, project_id)
-    else:
-        items = svc.list_by_project(current_user, project_id)
-    return [ActionItemResponse.model_validate(i) for i in items]
+    items = svc.list_overdue(current_user, project_id) if overdue_only else svc.list_by_project(current_user, project_id)
+    return [_serialize(i) for i in items]
 
 
 @router.post("", response_model=ActionItemResponse, status_code=201)
@@ -88,7 +96,7 @@ def create_action_item(
         owner_name=body.owner_name,
         target_closure_date=body.target_closure_date,
     )
-    return ActionItemResponse.model_validate(item)
+    return _serialize(item)
 
 
 @router.patch("/{item_id}/status", response_model=ActionItemResponse)
@@ -106,7 +114,7 @@ def update_action_item_status(
         owner_name=body.owner_name,
         target_closure_date=body.target_closure_date,
     )
-    return ActionItemResponse.model_validate(item)
+    return _serialize(item)
 
 
 @router.delete("/{item_id}", status_code=204)

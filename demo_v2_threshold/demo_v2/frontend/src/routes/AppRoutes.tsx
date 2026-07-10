@@ -38,7 +38,6 @@ import { DMActionItemsPage }        from "../pages/delivery-manager/DMActionItem
 
 // PM pages
 import { PMProjectsPage }      from "../pages/pm/PMProjectsPage";
-import { PMProjectDetailPage } from "../pages/pm/PMProjectDetailPage";
 import { PMSubmissionPage }    from "../pages/pm/PMSubmissionPage";
 import { ProjectPhasesPage }   from "../pages/pm/ProjectPhasesPage";
 import { ActionItemsPage }     from "../pages/pm/ActionItemsPage";
@@ -48,6 +47,7 @@ import { QPMTrackerPage }      from "../pages/pm/QPMTrackerPage";
 import { QPMSummaryPage }      from "../pages/pm/QPMSummaryPage";
 import { QPMDocInfoPage }      from "../pages/pm/QPMDocInfoPage";
 import { PMSummaryPage }       from "../pages/pm/PMSummaryPage";
+import { PMAllActionsPage }    from "../pages/pm/PMAllActionsPage";
 
 // Shared
 import { ProjectHealthTimelinePage } from "../pages/shared/ProjectHealthTimelinePage";
@@ -124,7 +124,6 @@ export function AppRoutes() {
         <Route path="/pm" element={<PMLayout />}>
           <Route index element={<DashboardShellPage />} />
           <Route path="projects" element={<PMProjectsPage />} />
-          <Route path="projects/:projectId" element={<PMProjectDetailPage />} />
           <Route path="projects/:projectId/submissions/:submissionId" element={<PMSubmissionPage />} />
           <Route path="projects/:projectId/timeline" element={<ProjectHealthTimelinePage />} />
           <Route path="projects/:projectId/phases" element={<ProjectPhasesPage />} />
@@ -135,6 +134,7 @@ export function AppRoutes() {
           <Route path="projects/:projectId/qpm/summary" element={<QPMSummaryPage />} />
           <Route path="projects/:projectId/qpm/doc-info" element={<QPMDocInfoPage />} />
           <Route path="summary" element={<PMSummaryPage />} />
+          <Route path="actions" element={<PMAllActionsPage />} />
         </Route>
       </Route>
 

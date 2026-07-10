@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 body {
@@ -6,4 +7,27 @@ body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background-color: #f8fafc;
   color: #0f172a;
+}
+
+/* PM Summary page styles */
+@keyframes kpi-shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+.kpi-card-hover {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.kpi-card-hover:hover {
+  box-shadow: 0 6px 28px rgba(108,99,255,0.18) !important;
+  transform: translateY(-2px);
+}
+.kpi-select option {
+  background: #ffffff;
+  color: #1a1a2e;
+}
+.kpi-dim-row {
+  transition: background 0.15s ease;
+}
+.kpi-dim-row:hover {
+  background: rgba(108,99,255,0.06) !important;
 }

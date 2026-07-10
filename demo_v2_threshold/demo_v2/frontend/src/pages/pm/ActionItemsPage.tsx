@@ -260,6 +260,9 @@ export function ActionItemsPage() {
                 </div>
                 <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
                   {item.owner_name && <span>Owner: <strong className="text-slate-700">{item.owner_name}</strong></span>}
+                  {item.created_by_name && (
+                    <span>Raised by: <strong className="text-indigo-700">{item.created_by_name}</strong></span>
+                  )}
                   {item.target_closure_date && (
                     <span>Target: <strong className={isOverdue ? "text-red-600" : "text-slate-700"}>{item.target_closure_date}</strong></span>
                   )}

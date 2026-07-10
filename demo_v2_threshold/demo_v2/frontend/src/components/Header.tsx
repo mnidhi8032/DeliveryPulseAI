@@ -67,12 +67,18 @@ export function Header() {
       }
       setIsOpen(false);
 
+      // ACTION_ITEM_CREATED — deep-link PM to the consolidated actions page, filtered by project
+      if (notif.type === "ACTION_ITEM_CREATED" && notif.related_project_id && user?.role_code === "PM") {
+        navigate(`/pm/actions?project=${notif.related_project_id}`);
+        return;
+      }
+
       // Deep link routing based on role and notification context
       if (notif.related_submission_id) {
         try {
           // Verify that the submission draft still exists in the database
           await getSubmission(notif.related_submission_id);
-          
+
           if (user?.role_code === "PM") {
             navigate(`/pm/submissions/${notif.related_submission_id}`);
           } else if (user?.role_code === "DELIVERY_HEAD") {

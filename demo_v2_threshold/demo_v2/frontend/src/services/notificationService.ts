@@ -9,6 +9,7 @@ export interface Notification {
   type: string;
   is_read: boolean;
   related_submission_id: string | null;
+  related_project_id: string | null;
   created_at: string;
 }
 
