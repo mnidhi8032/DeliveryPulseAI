@@ -43,6 +43,7 @@ function StatTile({ label, value, bg }: { label: string; value: number; bg: stri
 // ── Bar chart ─────────────────────────────────────────────────────────────────
 function HealthBarChart({ green, amber, red, title }: { green: number; amber: number; red: number; title: string }) {
   const max = Math.max(green, amber, red, 1);
+
   const bars = [
     { label: "Green", value: green, color: "#10b981" },
     { label: "Amber", value: amber, color: "#f59e0b" },
