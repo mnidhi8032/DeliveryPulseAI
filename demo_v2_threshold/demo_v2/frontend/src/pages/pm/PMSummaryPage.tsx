@@ -460,9 +460,9 @@ export function PMSummaryPage() {
               const rag = summary.overall_rag;
               const color = RAG_COLOR[rag] ?? "#6b7280";
               const solidBg: Record<string, string> = {
-                GREEN: "linear-gradient(135deg, #052e16 0%, #064e3b 100%)",
-                AMBER: "linear-gradient(135deg, #1c1200 0%, #2d1a00 100%)",
-                RED:   "linear-gradient(135deg, #c50629ec 0%, #d3092bff 100%)",
+                GREEN: "linear-gradient(135deg, #e2f3eaff 0%, #7af375ff 100%)",
+                AMBER: "linear-gradient(135deg, #ecead9ff 0%, #e0e276ff 100%)",
+                RED:   "linear-gradient(135deg, #ec8b8bec 0%, #d30e2fff 100%)",
               };
               const borderColor: Record<string, string> = {
                 GREEN: "#00E0C640", AMBER: "#F59E0B40", RED: "#F43F5E40",
