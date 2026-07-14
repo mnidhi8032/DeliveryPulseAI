@@ -10,13 +10,13 @@ import type { ProjectReviewStatus } from "../../services/dmReviewService";
 
 // ── Design tokens (matches PM dashboard) ─────────────────────────────────────
 const C = {
-  bg:      "#f0f2ff",
-  card:    "#ffffff",
+  bg:      "var(--bg)",
+  card:    "var(--surface)",
   primary: "#6c63ff",
-  border:  "#e8e6ff",
+  border:  "var(--border)",
   shadow:  "0 2px 16px rgba(108,99,255,0.10)",
-  text:    "#1a1a2e",
-  muted:   "#6b7280",
+  text:    "var(--text)",
+  muted:   "var(--muted)",
 };
 
 // ── Stat card (matches PM style exactly) ─────────────────────────────────────
@@ -29,7 +29,7 @@ function StatCard({ label, value, sub, color }: {
       boxShadow: `0 4px 20px ${color}55`, position: "relative", overflow: "hidden",
     }}>
       <div style={{ position:"absolute", top:-18, right:-18, width:72, height:72, borderRadius:"50%", background:"rgba(255,255,255,0.15)" }} />
-      <p style={{ fontSize: 38, fontWeight: 900, color: "#fff", margin: 0, lineHeight: 1 }}>{value}</p>
+      <p style={{ fontSize: 38, fontWeight: 900, color: "var(--surface)", margin: 0, lineHeight: 1 }}>{value}</p>
       <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.80)", margin: "7px 0 0", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
       {sub && <p style={{ fontSize: 11, color: "rgba(255,255,255,0.60)", margin: "3px 0 0" }}>{sub}</p>}
     </div>
@@ -128,7 +128,7 @@ export function DMDashboardPage() {
 
   if (loading) return (
     <div style={{ display:"grid", gap:16, gridTemplateColumns:"repeat(4,1fr)" }}>
-      {[1,2,3,4].map(i => <div key={i} style={{ borderRadius:20, height:100, background:"#e8e6ff", animation:"pulse 1.5s infinite" }} />)}
+      {[1,2,3,4].map(i => <div key={i} style={{ borderRadius:20, height:100, background:"var(--border)", animation:"pulse 1.5s infinite" }} />)}
     </div>
   );
 
@@ -273,7 +273,7 @@ export function DMDashboardPage() {
                             style={{
                               display:"inline-block", borderRadius:10, padding:"7px 16px", fontSize:12, fontWeight:700, textDecoration:"none", transition:"all 0.15s",
                               background: needsReview ? C.primary : "transparent",
-                              color: needsReview ? "#fff" : C.primary,
+                              color: needsReview ? "var(--surface)" : C.primary,
                               border: needsReview ? "none" : `1.5px solid ${C.border}`,
                               boxShadow: needsReview ? `0 2px 10px ${C.primary}44` : "none",
                             }}

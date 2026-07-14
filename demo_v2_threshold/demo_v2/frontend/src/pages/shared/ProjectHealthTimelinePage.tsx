@@ -50,10 +50,10 @@ function HealthChart({ events }: { events: SubmissionTimelineEvent[] }) {
           <line
             x1={PAD.left} x2={PAD.left + chartW}
             y1={toY(v)} y2={toY(v)}
-            stroke="#e2e8f0" strokeWidth={1}
+            stroke="var(--border)" strokeWidth={1}
             strokeDasharray={v === 50 ? "4 3" : v === 80 ? "4 3" : undefined}
           />
-          <text x={PAD.left - 6} y={toY(v) + 4} textAnchor="end" fontSize={9} fill="#94a3b8">{v}</text>
+          <text x={PAD.left - 6} y={toY(v) + 4} textAnchor="end" fontSize={9} fill="var(--muted)">{v}</text>
         </g>
       ))}
 
@@ -98,15 +98,15 @@ function HealthChart({ events }: { events: SubmissionTimelineEvent[] }) {
           y={H - 6}
           textAnchor="middle"
           fontSize={8.5}
-          fill="#64748b"
+          fill="var(--muted)"
         >
           {new Date(e.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </text>
       ))}
 
       {/* Axis lines */}
-      <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={PAD.top + chartH} stroke="#cbd5e1" strokeWidth={1} />
-      <line x1={PAD.left} x2={PAD.left + chartW} y1={PAD.top + chartH} y2={PAD.top + chartH} stroke="#cbd5e1" strokeWidth={1} />
+      <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={PAD.top + chartH} stroke="var(--border)" strokeWidth={1} />
+      <line x1={PAD.left} x2={PAD.left + chartW} y1={PAD.top + chartH} y2={PAD.top + chartH} stroke="var(--border)" strokeWidth={1} />
     </svg>
   );
 }

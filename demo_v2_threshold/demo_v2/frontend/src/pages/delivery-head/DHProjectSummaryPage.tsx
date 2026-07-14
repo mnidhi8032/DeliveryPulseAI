@@ -36,7 +36,7 @@ function RagDonut({ green, amber, red, noData, categoryRag }: {
     { rag: "GREEN", value: green, color: "#10b981" },
     { rag: "AMBER", value: amber, color: "#f59e0b" },
     { rag: "RED",   value: red,   color: "#f43f5e" },
-    { rag: null,    value: noData,color: "#e2e8f0" },
+    { rag: null,    value: noData,color: "var(--border)" },
   ];
   let offset = 0;
   const arcs = slices.map(s => { const dash = (s.value / total) * circ; const arc = { ...s, dash, offset }; offset += dash; return arc; });
@@ -47,7 +47,7 @@ function RagDonut({ green, amber, red, noData, categoryRag }: {
     <div className="flex flex-col items-center gap-3 w-full">
       <div className="relative">
         <svg viewBox="0 0 128 128" className="w-36 h-36">
-          <circle cx={cx} cy={cy} r={R} fill="none" stroke="#f1f5f9" strokeWidth={20} />
+          <circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--bg)" strokeWidth={20} />
           {arcs.map((a, i) => (
             <circle key={i} cx={cx} cy={cy} r={R} fill="none"
               stroke={a.color} strokeWidth={hovered === a.rag ? 22 : 18}
@@ -58,8 +58,8 @@ function RagDonut({ green, amber, red, noData, categoryRag }: {
               onMouseLeave={() => setHovered(null)}
             />
           ))}
-          <text x={cx} y={cy - 4} textAnchor="middle" fontSize={22} fontWeight="bold" fill="#1e293b">{total - noData}</text>
-          <text x={cx} y={cy + 14} textAnchor="middle" fontSize={9} fill="#94a3b8">of {total}</text>
+          <text x={cx} y={cy - 4} textAnchor="middle" fontSize={22} fontWeight="bold" fill="var(--text)">{total - noData}</text>
+          <text x={cx} y={cy + 14} textAnchor="middle" fontSize={9} fill="var(--muted)">of {total}</text>
         </svg>
         {hovered && hoveredDims.length > 0 && (
           <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-20 rounded-xl border border-slate-200 bg-white shadow-xl p-3 min-w-[160px] pointer-events-none">
@@ -76,7 +76,7 @@ function RagDonut({ green, amber, red, noData, categoryRag }: {
         )}
       </div>
       <div className="flex flex-wrap gap-3 justify-center text-xs">
-        {[["GREEN", green, "#10b981"], ["AMBER", amber, "#f59e0b"], ["RED", red, "#f43f5e"], ["No Data", noData, "#cbd5e1"]].map(([l, v, c]) => (
+        {[["GREEN", green, "#10b981"], ["AMBER", amber, "#f59e0b"], ["RED", red, "#f43f5e"], ["No Data", noData, "var(--border)"]].map(([l, v, c]) => (
           <div key={l as string} className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: c as string }} />
             <span className="text-slate-500">{l}: <b className="text-slate-800">{v}</b></span>
@@ -124,18 +124,18 @@ function MetricTrendChart({ metric }: { metric: KpiSummaryMetric }) {
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: "340px", height: "160px" }}>
           {ticks.map((t, i) => (
             <g key={i}>
-              <line x1={padL} y1={yP(t)} x2={W - padR} y2={yP(t)} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3,3" />
-              <text x={padL - 4} y={yP(t) + 4} textAnchor="end" fontSize="8" fill="#94a3b8">{t % 1 === 0 ? t.toFixed(0) : t.toFixed(1)}</text>
+              <line x1={padL} y1={yP(t)} x2={W - padR} y2={yP(t)} stroke="var(--bg)" strokeWidth="1" strokeDasharray="3,3" />
+              <text x={padL - 4} y={yP(t) + 4} textAnchor="end" fontSize="8" fill="var(--muted)">{t % 1 === 0 ? t.toFixed(0) : t.toFixed(1)}</text>
             </g>
           ))}
-          {history.map((h, i) => <text key={i} x={xP(i)} y={H - 6} textAnchor="middle" fontSize="8" fill="#94a3b8">{(h.frequency_name || "").substring(0, 8)}</text>)}
+          {history.map((h, i) => <text key={i} x={xP(i)} y={H - 6} textAnchor="middle" fontSize="8" fill="var(--muted)">{(h.frequency_name || "").substring(0, 8)}</text>)}
           {lp && <path d={lp} fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5,4" />}
           {up && <path d={up} fill="none" stroke="#f43f5e" strokeWidth="1.5" strokeDasharray="5,4" />}
           {tp && <path d={tp} fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="5,4" />}
           {ap && <path d={ap} fill="none" stroke="#3b82f6" strokeWidth="2.5" />}
           {history.map((h, i) => h.actual_value != null && (
             <circle key={i} cx={xP(i)} cy={yP(Number(h.actual_value))} r="4"
-              fill={h.rag_status ? RAG_HEX[h.rag_status] || "#3b82f6" : "#3b82f6"} stroke="#ffffff" strokeWidth="1.5">
+              fill={h.rag_status ? RAG_HEX[h.rag_status] || "#3b82f6" : "#3b82f6"} stroke="var(--surface)" strokeWidth="1.5">
               <title>{h.frequency_name}: {Number(h.actual_value).toFixed(2)}</title>
             </circle>
           ))}
@@ -278,7 +278,7 @@ export function DHProjectSummaryPage() {
               rag === "RED" ? "bg-rose-50 border-rose-200" : "bg-rose-100 border-rose-300"
             }`}>
               <div className="w-14 h-14 rounded-xl flex items-center justify-center font-black text-white text-2xl shrink-0"
-                style={{ background: RAG_HEX[rag] ?? "#94a3b8" }}>
+                style={{ background: RAG_HEX[rag] ?? "var(--muted)" }}>
                 {rag[0]}
               </div>
               <div>
@@ -376,7 +376,7 @@ export function DHProjectSummaryPage() {
                               <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 truncate">{m.metric_category}</p>
                               <p className="text-xs font-bold text-slate-800 line-clamp-2 mt-0.5">{m.metric_name}</p>
                             </div>
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5" style={{ background: r ? RAG_HEX[r] : "#cbd5e1" }} />
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5" style={{ background: r ? RAG_HEX[r] : "var(--border)" }} />
                           </div>
                           <div className="flex items-end justify-between gap-2">
                             <div>

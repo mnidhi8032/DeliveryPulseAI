@@ -52,8 +52,8 @@ function HealthBarChart({ green, amber, red, title }: { green: number; amber: nu
           const y = padT + (1 - frac) * plotH;
           return (
             <g key={i}>
-              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray={frac === 0 ? "none" : "3,3"} />
-              {frac > 0 && <text x={padL - 4} y={y + 4} textAnchor="end" fontSize="8" fill="#94a3b8">{Math.round(frac * max)}</text>}
+              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--bg)" strokeWidth="1" strokeDasharray={frac === 0 ? "none" : "3,3"} />
+              {frac > 0 && <text x={padL - 4} y={y + 4} textAnchor="end" fontSize="8" fill="var(--muted)">{Math.round(frac * max)}</text>}
             </g>
           );
         })}
@@ -65,11 +65,11 @@ function HealthBarChart({ green, amber, red, title }: { green: number; amber: nu
             <g key={b.label}>
               <rect x={x} y={y} width={barW} height={barH} rx="6" ry="6" fill={b.color} opacity="0.9" />
               <text x={x + barW / 2} y={y - 5} textAnchor="middle" fontSize="12" fontWeight="700" fill={b.color}>{b.value}</text>
-              <text x={x + barW / 2} y={H - padB + 14} textAnchor="middle" fontSize="9" fill="#94a3b8">{b.label}</text>
+              <text x={x + barW / 2} y={H - padB + 14} textAnchor="middle" fontSize="9" fill="var(--muted)">{b.label}</text>
             </g>
           );
         })}
-        <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="#e2e8f0" strokeWidth="1" />
+        <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="var(--border)" strokeWidth="1" />
       </svg>
     </div>
   );
@@ -91,7 +91,7 @@ function ReviewDonut({ needsAttention, upToDate }: { needsAttention: number; upT
       <p className="text-[10px] text-slate-400 mb-3 uppercase tracking-widest">All accounts</p>
       <div className="flex-1 flex items-center justify-around gap-4">
         <svg viewBox="0 0 160 160" className="w-36 h-36 shrink-0">
-          <circle cx={cx} cy={cy} r={R} fill="none" stroke="#f1f5f9" strokeWidth={SW} />
+          <circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--bg)" strokeWidth={SW} />
           {upToDate > 0 && (
             <circle cx={cx} cy={cy} r={R} fill="none" stroke="#10b981" strokeWidth={SW}
               strokeDasharray={`${greenLen} ${circ - greenLen}`} strokeDashoffset={startOffset} strokeLinecap="round" />
@@ -101,7 +101,7 @@ function ReviewDonut({ needsAttention, upToDate }: { needsAttention: number; upT
               strokeDasharray={`${redLen} ${circ - redLen}`} strokeDashoffset={startOffset - greenLen} strokeLinecap="round" />
           )}
           <text x={cx} y={cy - 7} textAnchor="middle" fontSize="22" fontWeight="800" fill="#f43f5e">{pct}%</text>
-          <text x={cx} y={cy + 10} textAnchor="middle" fontSize="9" fill="#94a3b8">needs review</text>
+          <text x={cx} y={cy + 10} textAnchor="middle" fontSize="9" fill="var(--muted)">needs review</text>
         </svg>
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
@@ -206,7 +206,7 @@ export function DeliveryHeadDashboardPage() {
           { label: "Amber",    key: "AMBER",    val: amberCount,      color: "#d97706", bg: "rgba(217,119,6,0.08)"   },
           { label: "Red",      key: "RED",      val: redCount,        color: "#dc2626", bg: "rgba(220,38,38,0.08)"   },
           { label: "Critical", key: "CRITICAL", val: criticalCount,   color: "#9f1239", bg: "rgba(159,18,57,0.08)"   },
-          { label: "No score", key: "NO_DATA",  val: noDataCount,     color: "#64748b", bg: "rgba(100,116,139,0.08)" },
+          { label: "No score", key: "NO_DATA",  val: noDataCount,     color: "var(--muted)", bg: "rgba(100,116,139,0.08)" },
         ] as { label: string; key: string; val: number; color: string; bg: string }[]).map(s => (
           <button key={s.key} type="button" onClick={() => setRagFilter(s.key)} style={{
             display: "inline-flex", alignItems: "center", gap: 6,
@@ -215,8 +215,8 @@ export function DeliveryHeadDashboardPage() {
             border: `1.5px solid ${s.color}${ragFilter === s.key ? "" : "40"}`,
             transition: "background 0.15s",
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: ragFilter === s.key ? "#fff" : s.color, display: "inline-block" }} />
-            <span style={{ fontSize: 13, fontWeight: 800, color: ragFilter === s.key ? "#fff" : s.color }}>{s.val}</span>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: ragFilter === s.key ? "var(--surface)" : s.color, display: "inline-block" }} />
+            <span style={{ fontSize: 13, fontWeight: 800, color: ragFilter === s.key ? "var(--surface)" : s.color }}>{s.val}</span>
             <span style={{ fontSize: 11, fontWeight: 600, color: ragFilter === s.key ? "rgba(255,255,255,0.85)" : s.color }}>{s.label}</span>
           </button>
         ))}
@@ -234,7 +234,7 @@ export function DeliveryHeadDashboardPage() {
           {filtered.map(p => {
             const rag = p.current_rag;
             const isAtRisk = rag === "RED" || rag === "CRITICAL";
-            const borderColor = rag ? RAG_HEX[rag] : "#cbd5e1";
+            const borderColor = rag ? RAG_HEX[rag] : "var(--border)";
             const statusBg: Record<string, string> = {
               ACTIVE:    "bg-emerald-50  text-emerald-700 border-emerald-200",
               ON_HOLD:   "bg-amber-50    text-amber-700   border-amber-200",

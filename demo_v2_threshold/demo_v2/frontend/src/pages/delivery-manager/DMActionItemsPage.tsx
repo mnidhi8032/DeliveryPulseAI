@@ -9,7 +9,7 @@ import type { Project } from "../../types/project";
 import type { ActionItem } from "../../types/brd";
 import { useToast } from "../../contexts/ToastContext";
 
-const C = { bg:"#f0f2ff", card:"#ffffff", primary:"#6c63ff", border:"#e8e6ff", shadow:"0 2px 16px rgba(108,99,255,0.10)", text:"#1a1a2e", muted:"#6b7280" };
+const C = { bg:"var(--bg)", card:"var(--surface)", primary:"#6c63ff", border:"var(--border)", shadow:"0 2px 16px rgba(108,99,255,0.10)", text:"var(--text)", muted:"var(--muted)" };
 
 const STATUS_CFG: Record<string, { dot: string; bg: string; text: string; label: string }> = {
   OPEN:        { dot:"#f59e0b", bg:"#fffbeb", text:"#b45309", label:"Open"        },
@@ -62,7 +62,7 @@ export function DMActionItemsPage() {
 
   if (loading) return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-      {[1,2,3].map(i => <div key={i} style={{ borderRadius:20, height:80, background:"#e8e6ff" }} />)}
+      {[1,2,3].map(i => <div key={i} style={{ borderRadius:20, height:80, background:"var(--border)" }} />)}
     </div>
   );
 
@@ -87,7 +87,7 @@ export function DMActionItemsPage() {
         <button type="button" onClick={() => setShowForm(v => !v)} style={{
           borderRadius:12, padding:"10px 22px", fontSize:14, fontWeight:800, cursor:"pointer", transition:"all 0.15s",
           background: showForm ? "transparent" : C.primary,
-          color: showForm ? C.muted : "#fff",
+          color: showForm ? C.muted : "var(--surface)",
           border: showForm ? `1.5px solid ${C.border}` : "none",
           boxShadow: showForm ? "none" : `0 2px 10px ${C.primary}44`,
         } as React.CSSProperties}>
@@ -114,7 +114,7 @@ export function DMActionItemsPage() {
             { label:"In Progress", value: inProgressCount,    color:"#3b82f6" },
           ].map(s => (
             <div key={s.label} style={{ borderRadius:20, padding:"18px 20px", background: s.color, boxShadow:`0 4px 16px ${s.color}44` }}>
-              <p style={{ fontSize:32, fontWeight:900, color:"#fff", margin:0 }}>{s.value}</p>
+              <p style={{ fontSize:32, fontWeight:900, color:"var(--surface)", margin:0 }}>{s.value}</p>
               <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.80)", margin:"5px 0 0", textTransform:"uppercase", letterSpacing:"0.06em" }}>{s.label}</p>
             </div>
           ))}
@@ -151,7 +151,7 @@ export function DMActionItemsPage() {
             </div>
           ))}
           <button type="button" disabled={saving || !form.root_cause.trim() || !form.corrective_action.trim()} onClick={handleCreate}
-            style={{ borderRadius:12, background: C.primary, color:"#fff", padding:"10px 24px", fontSize:14, fontWeight:800, border:"none", cursor:"pointer", boxShadow:`0 2px 10px ${C.primary}44`, opacity: (saving || !form.root_cause.trim() || !form.corrective_action.trim()) ? 0.5 : 1, alignSelf:"flex-start" }}>
+            style={{ borderRadius:12, background: C.primary, color:"var(--surface)", padding:"10px 24px", fontSize:14, fontWeight:800, border:"none", cursor:"pointer", boxShadow:`0 2px 10px ${C.primary}44`, opacity: (saving || !form.root_cause.trim() || !form.corrective_action.trim()) ? 0.5 : 1, alignSelf:"flex-start" }}>
             {saving ? "Saving…" : "Create action item"}
           </button>
         </div>
@@ -165,7 +165,7 @@ export function DMActionItemsPage() {
               <p style={{ color: C.muted, fontSize:14 }}>No action items for this project yet.</p>
             </div>
           ) : actionItems.map(item => {
-            const sc = STATUS_CFG[item.action_status] ?? { dot:"#9ca3af", bg:"#f9fafb", text: C.muted, label: item.action_status };
+            const sc = STATUS_CFG[item.action_status] ?? { dot:"#9ca3af", bg:"var(--surface)", text: C.muted, label: item.action_status };
             return (
               <div key={item.id} style={{ background: C.card, borderRadius:20, boxShadow: C.shadow, padding:"20px 24px" }}>
                 <div style={{ display:"flex", flexWrap:"wrap", alignItems:"flex-start", justifyContent:"space-between", gap:12 }}>

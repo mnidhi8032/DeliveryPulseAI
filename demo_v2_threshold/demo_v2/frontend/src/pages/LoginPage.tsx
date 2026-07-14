@@ -46,7 +46,8 @@ export function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-100 px-4 py-12">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12"
+      style={{ background: "var(--bg)" }}>
       {/* Animated background orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: "4s" }} />
@@ -57,7 +58,8 @@ export function LoginPage() {
       {/* Main card container */}
       <div className="relative w-full max-w-md">
         {/* Glassmorphic card */}
-        <div className="relative rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl shadow-2xl shadow-slate-900/10">
+        <div className="relative rounded-3xl shadow-2xl shadow-slate-900/10"
+          style={{ border: "1px solid var(--border)", background: "var(--surface)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
           {/* Top gradient accent bar */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-t-3xl" />
           
@@ -72,7 +74,8 @@ export function LoginPage() {
                   <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/20 to-transparent" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 tracking-tight">
+                  <h1 className="text-2xl font-black tracking-tight"
+                    style={{ color: "var(--text)" }}>
                     DeliveryPulse
                   </h1>
                   <p className="text-[10px] font-bold text-indigo-600 tracking-[0.2em] uppercase">AI PLATFORM</p>

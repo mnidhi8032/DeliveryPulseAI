@@ -34,7 +34,7 @@ const RAG_BG_STYLE = (rag: string): React.CSSProperties => ({
 
 // ─── RAG pill badge ───────────────────────────────────────────────────────────
 function RagPill({ rag, size = "sm" }: { rag: string; size?: "xs" | "sm" }) {
-  const color = RAG_COLOR[rag] ?? "#6b7280";
+  const color = RAG_COLOR[rag] ?? "var(--muted)";
   const fs = size === "xs" ? "9px" : "10px";
   return (
     <span style={{
@@ -61,10 +61,7 @@ function GlassCard({ children, style, className }: {
 }) {
   return (
     <div className={className} style={{
-      background: "#ffffff",
-      border: "1px solid #e8e6ff",
-      borderRadius: 20,
-      boxShadow: "0 2px 16px rgba(108,99,255,0.10)",
+      background: "var(--surface)",border: "1px solid var(--border)",borderRadius: 20,boxShadow: "var(--shadow)",
       ...style,
     }}>
       {children}
@@ -137,10 +134,10 @@ function RagDonut({
               onMouseLeave={() => setHovered(null)}
             />
           ))}
-          <text x={cx} y={cy - 6} textAnchor="middle" fontSize={24} fontWeight="800" fill="#1a1a2e">
+          <text x={cx} y={cy - 6} textAnchor="middle" fontSize={24} fontWeight="800" fill="var(--text)">
             {total - noData}
           </text>
-          <text x={cx} y={cy + 12} textAnchor="middle" fontSize={9} fill="#6b7280" fontWeight="600">
+          <text x={cx} y={cy + 12} textAnchor="middle" fontSize={9} fill="var(--muted)" fontWeight="600">
             of {total}
           </text>
           <text x={cx} y={cy + 24} textAnchor="middle" fontSize={7} fill={"#6c63ff"} fontWeight="700" letterSpacing="0.1em">
@@ -152,19 +149,19 @@ function RagDonut({
           <div style={{
             position: "absolute", left: "calc(100% + 12px)", top: "50%",
             transform: "translateY(-50%)", zIndex: 20,
-            background: "#ffffff", border: "1px solid #e8e6ff",
+            background: "var(--surface)", border: "1px solid #e8e6ff",
             borderRadius: 14, padding: "12px 14px", minWidth: 170,
-            boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${RAG_COLOR[hovered] ?? "#e8e6ff"}30`,
+            boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${RAG_COLOR[hovered] ?? "var(--border)"}30`,
             pointerEvents: "none",
           }}>
-            <p style={{ fontSize: 9, fontWeight: 800, marginBottom: 8, color: RAG_COLOR[hovered] ?? "#1a1a2e", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            <p style={{ fontSize: 9, fontWeight: 800, marginBottom: 8, color: RAG_COLOR[hovered] ?? "var(--text)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
               {hovered} Dimensions
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {hoveredDimensions.map(d => (
                 <div key={d} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: RAG_COLOR[hovered] ?? "#6b7280", boxShadow: `0 0 6px ${RAG_COLOR[hovered]}` }} />
-                  <span style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 500 }}>{d}</span>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: RAG_COLOR[hovered] ?? "var(--muted)", boxShadow: `0 0 6px ${RAG_COLOR[hovered]}` }} />
+                  <span style={{ fontSize: 11, color: "var(--text)", fontWeight: 500 }}>{d}</span>
                 </div>
               ))}
             </div>
@@ -177,7 +174,7 @@ function RagDonut({
         {([["GREEN", green, "#22c55e"], ["AMBER", amber, "#f59e0b"], ["RED", red, "#ef4444"], ["No Data", noData, "#e5e7eb"]] as [string, number, string][]).map(([l, v, c]) => (
           <div key={l} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: c, boxShadow: c !== "#e5e7eb" ? `0 0 6px ${c}` : "none" }} />
-            <span style={{ fontSize: 11, color: "#6b7280" }}>{l}: <b style={{ color: "#1a1a2e" }}>{v}</b></span>
+            <span style={{ fontSize: 11, color: "var(--muted)" }}>{l}: <b style={{ color: "var(--text)" }}>{v}</b></span>
           </div>
         ))}
       </div>
@@ -192,9 +189,9 @@ function MetricTrendChart({ metric }: { metric: KpiSummaryMetric }) {
   if (!hasData) return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "center",
-      height: 120, fontSize: 12, color: "#6b7280",
-      background: "#f8f7ff", borderRadius: 12,
-      border: `1px dashed ${"#e8e6ff"}`,
+      height: 120, fontSize: 12, color: "var(--muted)",
+      background: "var(--surface)", borderRadius: 12,
+      border: `1px dashed ${"var(--border)"}`,
     }}>
       Not enough data to show trend
     </div>
@@ -256,7 +253,7 @@ function MetricTrendChart({ metric }: { metric: KpiSummaryMetric }) {
             <svg width="22" height="10">
               <line x1="0" y1="5" x2="22" y2="5" stroke={l.color} strokeWidth="2" strokeDasharray={l.dash ? "4,3" : undefined} />
             </svg>
-            <span style={{ fontSize: 10, color: "#6b7280", fontWeight: 600 }}>{l.label}</span>
+            <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 600 }}>{l.label}</span>
           </div>
         ))}
       </div>
@@ -264,7 +261,7 @@ function MetricTrendChart({ metric }: { metric: KpiSummaryMetric }) {
       {/* Chart */}
       <div style={{
         borderRadius: 12, border: "1px solid #e8e6ff",
-        background: "#f8f7ff", overflowX: "auto",
+        background: "var(--surface)", overflowX: "auto",
       }}>
         <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", minWidth: 340, height: 160 }}>
           <defs>
@@ -278,13 +275,13 @@ function MetricTrendChart({ metric }: { metric: KpiSummaryMetric }) {
             <g key={i}>
               <line x1={padL} y1={yPos(t)} x2={W - padR} y2={yPos(t)}
                 stroke="rgba(108,99,255,0.04)" strokeWidth="1" />
-              <text x={padL - 4} y={yPos(t) + 4} textAnchor="end" fontSize="8" fill="#6b7280">
+              <text x={padL - 4} y={yPos(t) + 4} textAnchor="end" fontSize="8" fill="var(--muted)">
                 {t % 1 === 0 ? t.toFixed(0) : t.toFixed(1)}
               </text>
             </g>
           ))}
           {history.map((h, i) => (
-            <text key={i} x={xPos(i)} y={H - 6} textAnchor="middle" fontSize="8" fill="#6b7280">
+            <text key={i} x={xPos(i)} y={H - 6} textAnchor="middle" fontSize="8" fill="var(--muted)">
               {(h.frequency_name || "").substring(0, 8)}
             </text>
           ))}
@@ -300,7 +297,7 @@ function MetricTrendChart({ metric }: { metric: KpiSummaryMetric }) {
             <g key={i}>
               <circle cx={xPos(i)} cy={yPos(Number(h.actual_value))} r="5"
                 fill={h.rag_status ? RAG_COLOR[h.rag_status] || "#6c63ff" : "#6c63ff"}
-                stroke={"#ffffff"} strokeWidth="2"
+                stroke={"var(--surface)"} strokeWidth="2"
                 style={{ filter: `drop-shadow(0 0 4px ${h.rag_status ? RAG_COLOR[h.rag_status] : "#6c63ff"})` }}
               />
               <title>{h.frequency_name}: {Number(h.actual_value).toFixed(2)}</title>
@@ -313,9 +310,9 @@ function MetricTrendChart({ metric }: { metric: KpiSummaryMetric }) {
       <div style={{ overflowX: "auto", borderRadius: 10, border: "1px solid #e8e6ff" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
           <thead>
-            <tr style={{ background: "#f8f7ff", borderBottom: "1px solid #e8e6ff" }}>
+            <tr style={{ background: "var(--surface)", borderBottom: "1px solid #e8e6ff" }}>
               {[["Period", "left"], ["Actual", "right"], ["Target", "right"], ["LSL", "right"], ["USL", "right"], ["RAG", "center"]].map(([h, align]) => (
-                <th key={h} style={{ padding: "8px 10px", textAlign: align as "left" | "right" | "center", color: "#6b7280", fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", textTransform: "uppercase" }}>{h}</th>
+                <th key={h} style={{ padding: "8px 10px", textAlign: align as "left" | "right" | "center", color: "var(--muted)", fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", textTransform: "uppercase" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -326,13 +323,13 @@ function MetricTrendChart({ metric }: { metric: KpiSummaryMetric }) {
                 background: i === 0 ? "rgba(108,99,255,0.06)" : "transparent",
                 transition: "background 0.15s",
               }}>
-                <td style={{ padding: "7px 10px", fontWeight: 600, color: "#1a1a2e" }}>
+                <td style={{ padding: "7px 10px", fontWeight: 600, color: "var(--text)" }}>
                   {h.frequency_name || "--"}
                   {i === 0 && (
                     <span style={{ marginLeft: 6, fontSize: 8, background: "rgba(108,99,255,0.12)", color: "#6c63ff", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>Latest</span>
                   )}
                 </td>
-                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#1a1a2e" }}>{h.actual_value != null ? Number(h.actual_value).toFixed(2) : "--"}</td>
+                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "var(--text)" }}>{h.actual_value != null ? Number(h.actual_value).toFixed(2) : "--"}</td>
                 <td style={{ padding: "7px 10px", textAlign: "right", color: "#22c55e" }}>{h.target != null ? Number(h.target).toFixed(2) : "--"}</td>
                 <td style={{ padding: "7px 10px", textAlign: "right", color: "#f59e0b" }}>{h.lsl != null ? Number(h.lsl).toFixed(2) : "--"}</td>
                 <td style={{ padding: "7px 10px", textAlign: "right", color: "#ef4444" }}>{h.usl != null ? Number(h.usl).toFixed(2) : "--"}</td>
@@ -387,8 +384,8 @@ export function PMSummaryPage() {
   /* ── Page wrapper styles ─────────────────────────────── */
   const pageStyle: React.CSSProperties = {
     minHeight: "100%",
-    background: "#f0f2ff",
-    color: "#1a1a2e",
+    background: "var(--bg)",
+    color: "var(--text)",
     fontFamily: "'Inter', 'Poppins', system-ui, sans-serif",
     padding: "4px 0 40px",
   };
@@ -403,10 +400,10 @@ export function PMSummaryPage() {
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <div>
             <SectionLabel>Project Manager · Analytics</SectionLabel>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: "#1a1a2e", margin: 0, letterSpacing: "-0.02em" }}>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", margin: 0, letterSpacing: "-0.02em" }}>
               KPI Summary
             </h1>
-            <p style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>Overall health and metric trends</p>
+            <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Overall health and metric trends</p>
           </div>
 
           {/* Project selector */}
@@ -417,10 +414,10 @@ export function PMSummaryPage() {
               className="kpi-select"
               style={{
                 appearance: "none", WebkitAppearance: "none",
-                background: "#ffffff",
+                background: "var(--surface)",
                 border: "1px solid #e8e6ff",
                 borderRadius: 12, padding: "10px 42px 10px 14px",
-                fontSize: 13, fontWeight: 600, color: "#1a1a2e",
+                fontSize: 13, fontWeight: 600, color: "var(--text)",
                 minWidth: 240, cursor: "pointer", outline: "none",
                 boxShadow: "0 0 0 0 #6c63ff",
                 transition: "border-color 0.2s, box-shadow 0.2s",
@@ -439,7 +436,7 @@ export function PMSummaryPage() {
         {projects.length === 0 && (
           <GlassCard style={{ padding: "56px 24px", textAlign: "center" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>📊</div>
-            <p style={{ color: "#6b7280", fontSize: 14 }}>No projects yet. Create a project from My Projects.</p>
+            <p style={{ color: "var(--muted)", fontSize: 14 }}>No projects yet. Create a project from My Projects.</p>
           </GlassCard>
         )}
 
@@ -458,7 +455,7 @@ export function PMSummaryPage() {
             {/* Overall RAG banner */}
             {summary.overall_rag && (() => {
               const rag = summary.overall_rag;
-              const color = RAG_COLOR[rag] ?? "#6b7280";
+              const color = RAG_COLOR[rag] ?? "var(--muted)";
               const solidBg: Record<string, string> = {
                 GREEN: "linear-gradient(135deg, #e2f3eaff 0%, #7af375ff 100%)",
                 AMBER: "linear-gradient(135deg, #ecead9ff 0%, #e0e276ff 100%)",
@@ -471,7 +468,7 @@ export function PMSummaryPage() {
                 <div style={{
                   borderRadius: 20,
                   background: solidBg[rag] ?? `linear-gradient(135deg, #1A2640, #131C2E)`,
-                  border: `1px solid ${borderColor[rag] ?? "#e8e6ff"}`,
+                  border: `1px solid ${borderColor[rag] ?? "var(--border)"}`,
                   padding: "20px 24px",
                   display: "flex", alignItems: "center", gap: 20,
                   boxShadow: `0 4px 32px ${color}25, inset 0 1px 0 rgba(255,255,255,0.06)`,
@@ -481,7 +478,7 @@ export function PMSummaryPage() {
                     background: `linear-gradient(135deg, ${color}50, ${color}25)`,
                     border: `1px solid ${color}60`,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 22, fontWeight: 900, color: "#1a1a2e", flexShrink: 0,
+                    fontSize: 22, fontWeight: 900, color: "var(--text)", flexShrink: 0,
                     boxShadow: `0 0 24px ${color}40`,
                   }}>
                     {rag[0]}
@@ -490,7 +487,7 @@ export function PMSummaryPage() {
                     <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(26,26,46,0.5)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>
                       Overall Project Health
                     </p>
-                    <p style={{ fontSize: 22, fontWeight: 900, color: "#1a1a2e", letterSpacing: "-0.01em", lineHeight: 1 }}>
+                    <p style={{ fontSize: 22, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.01em", lineHeight: 1 }}>
                       {rag}
                     </p>
                   </div>
@@ -511,8 +508,8 @@ export function PMSummaryPage() {
               <GlassCard style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12, overflow: "visible" }} className="kpi-card-hover">
                 <div>
                   <SectionLabel>Distribution</SectionLabel>
-                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1a1a2e", margin: 0 }}>KPI Health Distribution</h2>
-                  <p style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>Hover a slice to see dimensions</p>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>KPI Health Distribution</h2>
+                  <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>Hover a slice to see dimensions</p>
                 </div>
                 <RagDonut
                   green={summary.green_count}
@@ -527,17 +524,17 @@ export function PMSummaryPage() {
               <GlassCard style={{ padding: 24 }} className="kpi-card-hover">
                 <div style={{ marginBottom: 14 }}>
                   <SectionLabel>Breakdown</SectionLabel>
-                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1a1a2e", margin: 0 }}>Dimension Status</h2>
-                  <p style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>Click a dimension to see its metrics</p>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>Dimension Status</h2>
+                  <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>Click a dimension to see its metrics</p>
                 </div>
                 {Object.keys(summary.category_rag).length === 0 ? (
-                  <p style={{ fontSize: 12, color: "#6b7280" }}>No data yet. Enter KPI measurements first.</p>
+                  <p style={{ fontSize: 12, color: "var(--muted)" }}>No data yet. Enter KPI measurements first.</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {Object.entries(summary.category_rag).map(([cat, rag]) => {
                       const isOpen = expandedDimension === cat;
                       const dimMetrics = metricsByCategory[cat] || [];
-                      const color = RAG_COLOR[rag] ?? "#6b7280";
+                      const color = RAG_COLOR[rag] ?? "var(--muted)";
                       return (
                         <div key={cat} style={{ borderRadius: 12, overflow: "hidden", ...RAG_BG_STYLE(rag) }}>
                           <button
@@ -552,8 +549,8 @@ export function PMSummaryPage() {
                           >
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <RagPill rag={rag} size="xs" />
-                              <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a2e" }}>{cat}</span>
-                              <span style={{ fontSize: 10, color: "#6b7280" }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{cat}</span>
+                              <span style={{ fontSize: 10, color: "var(--muted)" }}>
                                 {dimMetrics.length} metric{dimMetrics.length !== 1 ? "s" : ""}
                               </span>
                             </div>
@@ -564,16 +561,16 @@ export function PMSummaryPage() {
                           </button>
 
                           {isOpen && (
-                            <div style={{ borderTop: "1px solid #e8e6ff", background: "#faf9ff" }}>
+                            <div style={{ borderTop: "1px solid #e8e6ff", background: "var(--surface)" }}>
                               {dimMetrics.filter(m => m.rag_status != null).length === 0 ? (
-                                <p style={{ padding: "12px 16px", fontSize: 11, color: "#6b7280" }}>No data entered yet.</p>
+                                <p style={{ padding: "12px 16px", fontSize: 11, color: "var(--muted)" }}>No data entered yet.</p>
                               ) : dimMetrics.filter(m => m.rag_status != null).map(m => (
                                 <div key={m.plan_metric_id} style={{
                                   padding: "9px 16px", display: "flex", alignItems: "center",
                                   justifyContent: "space-between", gap: 12,
                                   borderBottom: "1px solid #e8e6ff",
                                 }}>
-                                  <p style={{ fontSize: 11, fontWeight: 600, color: "#1a1a2e", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {m.metric_name}
                                   </p>
                                   {m.rag_status && <RagPill rag={m.rag_status} size="xs" />}
@@ -594,7 +591,7 @@ export function PMSummaryPage() {
               <div>
                 <div style={{ marginBottom: 16 }}>
                   <SectionLabel>All KPIs</SectionLabel>
-                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1a1a2e", margin: 0 }}>All Metrics</h2>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>All Metrics</h2>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
                   {summary.metrics.map(m => {
@@ -617,14 +614,14 @@ export function PMSummaryPage() {
                                 <p style={{ fontSize: 10, fontWeight: 700, color: "#6c63ff", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>
                                   {m.metric_category}
                                 </p>
-                                <p style={{ fontSize: 16, fontWeight: 800, color: "#1a1a2e" }}>{m.metric_name}</p>
-                                <p style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                                <p style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>{m.metric_name}</p>
+                                <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
                                   {m.intent} · {m.uom}
                                 </p>
                               </div>
                               <button
                                 onClick={() => setExpandedMetric(null)}
-                                style={{ background: "rgba(108,99,255,0.08)", border: "1px solid #e8e6ff", borderRadius: 8, padding: "6px 12px", fontSize: 11, color: "#6b7280", cursor: "pointer", fontWeight: 600 }}
+                                style={{ background: "rgba(108,99,255,0.08)", border: "1px solid #e8e6ff", borderRadius: 8, padding: "6px 12px", fontSize: 11, color: "var(--muted)", cursor: "pointer", fontWeight: 600 }}
                               >
                                 ✕ Close
                               </button>
@@ -644,7 +641,7 @@ export function PMSummaryPage() {
                         className="kpi-card-hover"
                         style={{
                           borderRadius: 16, cursor: "pointer",
-                          background: "#ffffff",
+                          background: "var(--surface)",
                           border: `1px solid ${color}28`,
                           boxShadow: `0 2px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(108,99,255,0.04)`,
                           padding: 16, overflow: "hidden", position: "relative",
@@ -657,7 +654,7 @@ export function PMSummaryPage() {
                           <p style={{ fontSize: 9, fontWeight: 700, color: "#6c63ff", textTransform: "uppercase", letterSpacing: "0.10em", marginBottom: 4 }}>
                             {m.metric_category || "—"}
                           </p>
-                          <p style={{ fontSize: 12, fontWeight: 700, color: "#1a1a2e", lineHeight: 1.3,
+                          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", lineHeight: 1.3,
                             display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                             {m.metric_name}
                           </p>
@@ -665,10 +662,10 @@ export function PMSummaryPage() {
 
                         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
                           <div>
-                            <p style={{ fontSize: 9, color: "#6b7280", fontWeight: 600, marginBottom: 2 }}>LATEST</p>
-                            <p style={{ fontSize: 22, fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>
+                            <p style={{ fontSize: 9, color: "var(--muted)", fontWeight: 600, marginBottom: 2 }}>LATEST</p>
+                            <p style={{ fontSize: 22, fontWeight: 900, color: "var(--text)", lineHeight: 1 }}>
                               {m.latest_value != null ? Number(m.latest_value).toFixed(2) : "--"}
-                              {m.uom && <span style={{ fontSize: 10, fontWeight: 400, color: "#6b7280", marginLeft: 3 }}>{m.uom}</span>}
+                              {m.uom && <span style={{ fontSize: 10, fontWeight: 400, color: "var(--muted)", marginLeft: 3 }}>{m.uom}</span>}
                             </p>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
@@ -693,10 +690,10 @@ export function PMSummaryPage() {
             {summary.metrics.length === 0 && (
               <GlassCard style={{ padding: "56px 24px", textAlign: "center" }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>📈</div>
-                <p style={{ color: "#6b7280", fontSize: 14 }}>
+                <p style={{ color: "var(--muted)", fontSize: 14 }}>
                   No KPI data entered yet for {selectedProject?.project_name}.
                 </p>
-                <p style={{ color: "#6b7280", fontSize: 12, marginTop: 6 }}>
+                <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 6 }}>
                   Go to My Projects and click Data Entry to start entering metrics.
                 </p>
               </GlassCard>
@@ -708,7 +705,7 @@ export function PMSummaryPage() {
         {!loadingSummary && !summary && selectedProjectId && (
           <GlassCard style={{ padding: "56px 24px", textAlign: "center" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🗂️</div>
-            <p style={{ color: "#6b7280", fontSize: 14 }}>No KPI plan found for this project yet.</p>
+            <p style={{ color: "var(--muted)", fontSize: 14 }}>No KPI plan found for this project yet.</p>
           </GlassCard>
         )}
 

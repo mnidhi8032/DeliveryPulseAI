@@ -1,0 +1,172 @@
+/* ─── Dark theme overrides ─────────────────────────────────────────────────
+   This file is imported AFTER tailwindcss so it can safely override
+   Tailwind utility classes without triggering the Tailwind v4 CSS parser.
+   ─────────────────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-slate-50,
+[data-theme="dark"] .bg-slate-100,
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-100,
+[data-theme="dark"] .bg-indigo-50 {
+  background-color: var(--surface) !important;
+}
+
+/* ── Cards / panels — exclude colored stat tiles ── */
+[data-theme="dark"] .rounded-xl:not([class*="bg-violet"]):not([class*="bg-sky"]):not([class*="bg-emerald"]):not([class*="bg-orange"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-blue"]):not([class*="bg-indigo"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-gradient"]):not([class*="from-"]),
+[data-theme="dark"] .rounded-2xl:not([class*="bg-violet"]):not([class*="bg-sky"]):not([class*="bg-emerald"]):not([class*="bg-orange"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-blue"]):not([class*="bg-indigo"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-gradient"]):not([class*="from-"]),
+[data-theme="dark"] .rounded-lg:not([class*="bg-violet"]):not([class*="bg-sky"]):not([class*="bg-emerald"]):not([class*="bg-orange"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-blue"]):not([class*="bg-indigo"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-gradient"]):not([class*="from-"]),
+[data-theme="dark"] .rounded-3xl:not([class*="bg-violet"]):not([class*="bg-sky"]):not([class*="bg-emerald"]):not([class*="bg-orange"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-blue"]):not([class*="bg-indigo"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-gradient"]):not([class*="from-"]) {
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+[data-theme="dark"] .border-slate-100,
+[data-theme="dark"] .border-slate-200,
+[data-theme="dark"] .border-slate-300,
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-indigo-100,
+[data-theme="dark"] .border-indigo-200 {
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .divide-slate-100 > * + *,
+[data-theme="dark"] .divide-slate-200 > * + *,
+[data-theme="dark"] .divide-y > * + * {
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800,
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800 {
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] .text-slate-600,
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-gray-600 {
+  color: var(--muted) !important;
+}
+
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-400,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-400 {
+  color: var(--muted) !important;
+  opacity: 0.9;
+}
+
+[data-theme="dark"] thead,
+[data-theme="dark"] th,
+[data-theme="dark"] .bg-slate-50 {
+  background-color: rgba(255,255,255,0.04) !important;
+  color: var(--muted) !important;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--muted) !important;
+  opacity: 0.6;
+}
+
+[data-theme="dark"] .bg-slate-100,
+[data-theme="dark"] .bg-gray-100 {
+  background-color: rgba(255,255,255,0.06) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .border-slate-300 {
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .bg-emerald-100 { background-color: rgba(16,185,129,0.15) !important; }
+[data-theme="dark"] .bg-amber-100   { background-color: rgba(245,158,11,0.15)  !important; }
+[data-theme="dark"] .bg-rose-100,
+[data-theme="dark"] .bg-red-100     { background-color: rgba(244,63,94,0.15)   !important; }
+[data-theme="dark"] .bg-blue-100    { background-color: rgba(59,130,246,0.15)  !important; }
+[data-theme="dark"] .bg-indigo-100  { background-color: rgba(99,102,241,0.15)  !important; }
+[data-theme="dark"] .bg-purple-100  { background-color: rgba(168,85,247,0.15)  !important; }
+[data-theme="dark"] .bg-teal-100    { background-color: rgba(20,184,166,0.15)  !important; }
+[data-theme="dark"] .bg-emerald-50  { background-color: rgba(16,185,129,0.08)  !important; }
+[data-theme="dark"] .bg-amber-50    { background-color: rgba(245,158,11,0.08)  !important; }
+[data-theme="dark"] .bg-rose-50     { background-color: rgba(244,63,94,0.08)   !important; }
+[data-theme="dark"] .bg-red-50      { background-color: rgba(239,68,68,0.08)   !important; }
+[data-theme="dark"] .bg-blue-50     { background-color: rgba(59,130,246,0.08)  !important; }
+[data-theme="dark"] .bg-purple-50   { background-color: rgba(168,85,247,0.08)  !important; }
+[data-theme="dark"] .bg-teal-50     { background-color: rgba(20,184,166,0.08)  !important; }
+[data-theme="dark"] .bg-slate-900   { background-color: #4338ca !important; }
+[data-theme="dark"] .bg-slate-200   { background-color: rgba(255,255,255,0.08) !important; }
+
+[data-theme="dark"] .bg-slate-950\/40 {
+  background-color: rgba(0,0,0,0.65) !important;
+}
+
+[data-theme="dark"] .border-b,
+[data-theme="dark"] .border-t,
+[data-theme="dark"] .border-r,
+[data-theme="dark"] .border-l,
+[data-theme="dark"] .border {
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .text-white { color: #ffffff !important; }
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  outline-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(129,140,248,0.25) !important;
+}
+
+[data-theme="dark"] .text-indigo-600,
+[data-theme="dark"] .text-indigo-700 {
+  color: var(--primary) !important;
+}
+
+[data-theme="dark"] .border-indigo-600 {
+  border-color: var(--primary) !important;
+}
+
+/* ── Delivery Head stat tiles — keep colorful gradients, just boost contrast ── */
+[data-theme="dark"] .bg-gradient-to-br,
+[data-theme="dark"] .bg-gradient-to-r,
+[data-theme="dark"] .bg-gradient-to-tr {
+  /* gradient tiles intentionally keep their color — no override needed */
+}
+
+/* ── Fix card/panel rows in DH pages ── */
+[data-theme="dark"] tr:hover {
+  background-color: rgba(255,255,255,0.04) !important;
+}
+
+/* ── Login page outer wrapper ── */
+[data-theme="dark"] .from-slate-50,
+[data-theme="dark"] .to-slate-100,
+[data-theme="dark"] .via-indigo-50\/30 {
+  --tw-gradient-from: var(--bg) !important;
+  --tw-gradient-to: var(--bg) !important;
+}
+
+/* ── Fix any remaining from-slate-900 gradient text on dark bg ── */
+[data-theme="dark"] .from-slate-900,
+[data-theme="dark"] .via-indigo-900 {
+  --tw-gradient-from: #e0e7ff !important;
+  --tw-gradient-via: #c7d2fe !important;
+}
+
+/* ── Make sure modal overlays are dark ── */
+[data-theme="dark"] .fixed.inset-0.bg-black\/50,
+[data-theme="dark"] .fixed.inset-0.bg-slate-900\/50 {
+  background-color: rgba(0,0,0,0.7) !important;
+}
