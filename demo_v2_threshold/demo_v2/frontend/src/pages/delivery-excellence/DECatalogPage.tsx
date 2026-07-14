@@ -1,6 +1,7 @@
 /**
  * Delivery Excellence -- QPM Metric Catalog Management
  * Two tabs: Metric Catalog (browse/edit/add) | Pending Requests (approve/reject PM custom metric requests)
+ * Theme: Light purple (matches PM page)
  */
 import React, { useEffect, useState } from "react";
 import { useToast } from "../../contexts/ToastContext";
@@ -9,6 +10,45 @@ import { listMetricRequests, decideMetricRequest } from "../../services/metricAp
 import type { MetricApprovalRequest } from "../../services/metricApprovalService";
 import type { QPMCatalogMetric } from "../../types/qpm";
 import { METRIC_CATEGORIES, FREQUENCIES, COMPLIANCE_LABEL } from "../../types/qpm";
+
+// ─── Theme tokens (matches PM page) ─────────────────────────────────────────
+const T = {
+  bg: "#f0f2ff",
+  cardBg: "#ffffff",
+  cardBorder: "#e8e6ff",
+  cardShadow: "0 2px 16px rgba(108,99,255,0.10)",
+  accent: "#6c63ff",
+  accentDark: "#5a52e0",
+  accentText: "#6366F1",
+  text: "#1a1a2e",
+  textMuted: "#6b7280",
+  inputBorder: "#e8e6ff",
+  inputFocus: "#6c63ff",
+  rowHover: "rgba(108,99,255,0.04)",
+  divider: "#e8e6ff",
+  tableBg: "#f8f7ff",
+  badgeBg: "rgba(108,99,255,0.10)",
+};
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+function GlassCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{
+      background: T.cardBg, border: `1px solid ${T.cardBorder}`,
+      borderRadius: 16, boxShadow: T.cardShadow, ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: T.accentText, textTransform: "uppercase", marginBottom: 4 }}>
+      {children}
+    </p>
+  );
+}
 
 const INTENT_OPTIONS = ["Higher the better", "Lower the better", "Nominal the best", "Within Limits", "Not Applicable"];
 
@@ -138,91 +178,170 @@ export function DECatalogPage() {
   });
   const pendingCount = requests.filter(r => r.status === "PENDING").length;
 
-  if (loading) return <div className="h-64 rounded-xl bg-slate-200 animate-pulse" />;
+  // ── Shared input style ────────────────────────────────────────────────────
+  const inputStyle: React.CSSProperties = {
+    borderRadius: 10, border: `1px solid ${T.inputBorder}`,
+    padding: "8px 12px", fontSize: 12, color: T.text,
+    background: T.cardBg, outline: "none", width: "100%",
+    fontFamily: "inherit",
+  };
+
+  if (loading) return (
+    <div style={{
+      height: 240, borderRadius: 16,
+      background: "linear-gradient(90deg,#ede9ff 25%,#f3f0ff 50%,#ede9ff 75%)",
+      backgroundSize: "200% 100%",
+      animation: "kpi-shimmer 1.5s ease-in-out infinite",
+    }} />
+  );
 
   return (
-    <div className="space-y-5 text-slate-800">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, color: T.text, fontFamily: "'Inter','Poppins',system-ui,sans-serif" }}>
+
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
         <div>
-          <h1 className="text-xl font-bold text-slate-900">QPM Metric Catalog</h1>
-          <p className="text-xs text-slate-500 mt-0.5">{metrics.length} metrics total</p>
+          <SectionLabel>Delivery Excellence · Catalog</SectionLabel>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: T.text, margin: 0, letterSpacing: "-0.02em" }}>
+            QPM Metric Catalog
+          </h1>
+          <p style={{ fontSize: 13, color: T.textMuted, marginTop: 4 }}>{metrics.length} metrics total</p>
         </div>
         {activeTab === "catalog" && (
-          <button onClick={openCreate} className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 cursor-pointer">
+          <button
+            onClick={openCreate}
+            style={{
+              background: `linear-gradient(135deg, ${T.accent}, ${T.accentDark})`,
+              color: "#ffffff", border: "none", borderRadius: 12,
+              padding: "10px 20px", fontSize: 12, fontWeight: 700,
+              cursor: "pointer", boxShadow: `0 4px 14px ${T.accent}40`,
+              letterSpacing: "0.02em",
+            }}
+          >
             + Add Metric
           </button>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex border border-slate-200 bg-slate-50 p-1 rounded-lg gap-1 w-fit">
-        <button type="button" onClick={() => setActiveTab("catalog")}
-          className={`px-5 py-2 text-xs font-bold rounded transition ${activeTab === "catalog" ? "bg-white text-slate-900 shadow border border-slate-200" : "text-slate-500 hover:text-slate-800"}`}>
-          Metric Catalog
-        </button>
-        <button type="button" onClick={() => setActiveTab("requests")}
-          className={`px-5 py-2 text-xs font-bold rounded transition relative ${activeTab === "requests" ? "bg-indigo-600 text-white shadow" : "text-slate-500 hover:text-slate-800"}`}>
-          Pending Requests
-          {pendingCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white">{pendingCount}</span>
-          )}
-        </button>
+      {/* ── Tabs ───────────────────────────────────────────── */}
+      <div style={{
+        display: "inline-flex", gap: 4, padding: 4,
+        background: "#f0f2ff", border: `1px solid ${T.cardBorder}`,
+        borderRadius: 12,
+      }}>
+        {(["catalog", "requests"] as const).map(tab => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            style={{
+              position: "relative", padding: "8px 20px",
+              fontSize: 11, fontWeight: 700, borderRadius: 9, border: "none",
+              cursor: "pointer", transition: "all 0.2s",
+              background: activeTab === tab
+                ? (tab === "requests" ? T.accent : T.cardBg)
+                : "transparent",
+              color: activeTab === tab
+                ? (tab === "requests" ? "#fff" : T.text)
+                : T.textMuted,
+              boxShadow: activeTab === tab ? T.cardShadow : "none",
+            }}
+          >
+            {tab === "catalog" ? "Metric Catalog" : "Pending Requests"}
+            {tab === "requests" && pendingCount > 0 && (
+              <span style={{
+                position: "absolute", top: -4, right: -4,
+                width: 16, height: 16, borderRadius: "50%",
+                background: "#ef4444", color: "#fff",
+                fontSize: 9, fontWeight: 800,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>{pendingCount}</span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* ── PENDING REQUESTS TAB ── */}
       {activeTab === "requests" && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="px-5 py-3 bg-slate-50 border-b border-slate-100">
-            <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Custom Metric Requests from Project Managers</p>
+        <GlassCard>
+          <div style={{ padding: "12px 20px", background: T.tableBg, borderBottom: `1px solid ${T.divider}`, borderRadius: "16px 16px 0 0" }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: T.accentText, textTransform: "uppercase", letterSpacing: "0.12em", margin: 0 }}>
+              Custom Metric Requests from Project Managers
+            </p>
           </div>
           {requestsLoading ? (
-            <p className="px-5 py-8 text-sm text-slate-400 text-center">Loading...</p>
+            <p style={{ padding: "32px 20px", fontSize: 13, color: T.textMuted, textAlign: "center" }}>Loading...</p>
           ) : requests.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-slate-400 text-center">No requests yet.</p>
+            <p style={{ padding: "48px 20px", fontSize: 13, color: T.textMuted, textAlign: "center" }}>No requests yet.</p>
           ) : (
-            <div className="divide-y divide-slate-100">
-              {requests.map(r => (
-                <div key={r.id} className={`p-5 space-y-3 ${r.status === "PENDING" ? "bg-amber-50/30" : ""}`}>
-                  <div className="flex items-start gap-3 flex-wrap">
-                    <span className="font-bold text-slate-900 text-sm">{r.metric_name}</span>
-                    {r.metric_category && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 border border-slate-200">{r.metric_category}</span>}
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold border ${
-                      r.status === "APPROVED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                      r.status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
-                      "bg-amber-100 text-amber-700 border-amber-300"
-                    }`}>{r.status}</span>
+            <div>
+              {requests.map((r, idx) => (
+                <div key={r.id} style={{
+                  padding: "20px", display: "flex", flexDirection: "column", gap: 12,
+                  borderBottom: idx < requests.length - 1 ? `1px solid ${T.divider}` : "none",
+                  background: r.status === "PENDING" ? "rgba(245,158,11,0.04)" : "transparent",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <span style={{ fontWeight: 700, color: T.text, fontSize: 13 }}>{r.metric_name}</span>
+                    {r.metric_category && (
+                      <span style={{
+                        borderRadius: 6, background: T.badgeBg, border: `1px solid ${T.cardBorder}`,
+                        padding: "1px 8px", fontSize: 9, fontWeight: 700, color: T.accentText,
+                      }}>{r.metric_category}</span>
+                    )}
+                    <span style={{
+                      borderRadius: 999, padding: "2px 9px", fontSize: 9, fontWeight: 700,
+                      border: `1px solid ${r.status === "APPROVED" ? "rgba(34,197,94,0.3)" : r.status === "REJECTED" ? "rgba(239,68,68,0.3)" : "rgba(245,158,11,0.4)"}`,
+                      color: r.status === "APPROVED" ? "#16a34a" : r.status === "REJECTED" ? "#dc2626" : "#b45309",
+                      background: r.status === "APPROVED" ? "rgba(34,197,94,0.08)" : r.status === "REJECTED" ? "rgba(239,68,68,0.08)" : "rgba(245,158,11,0.10)",
+                    }}>{r.status}</span>
                   </div>
-                  <p className="text-xs text-slate-500">
-                    Requested by <span className="font-semibold">{r.requested_by_name}</span>
-                    {r.project_name && <> for <span className="font-semibold">{r.project_name}</span></>}
-                    <span className="ml-2 text-slate-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                  <p style={{ fontSize: 11, color: T.textMuted, margin: 0 }}>
+                    Requested by <strong style={{ color: T.text }}>{r.requested_by_name}</strong>
+                    {r.project_name && <> for <strong style={{ color: T.text }}>{r.project_name}</strong></>}
+                    <span style={{ marginLeft: 8, color: "#9ca3af" }}>{new Date(r.created_at).toLocaleDateString()}</span>
                   </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] text-slate-600">
-                    {r.uom && <div><span className="font-bold text-slate-500">UOM:</span> {r.uom}</div>}
-                    {r.intent && <div><span className="font-bold text-slate-500">Intent:</span> {r.intent}</div>}
-                    {r.frequency && <div><span className="font-bold text-slate-500">Frequency:</span> {r.frequency}</div>}
-                    {r.formula && <div className="col-span-2"><span className="font-bold text-slate-500">Formula:</span> {r.formula}</div>}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))", gap: 6, fontSize: 10, color: T.textMuted }}>
+                    {r.uom && <div><span style={{ fontWeight: 700 }}>UOM:</span> {r.uom}</div>}
+                    {r.intent && <div><span style={{ fontWeight: 700 }}>Intent:</span> {r.intent}</div>}
+                    {r.frequency && <div><span style={{ fontWeight: 700 }}>Frequency:</span> {r.frequency}</div>}
+                    {r.formula && <div style={{ gridColumn: "span 2" }}><span style={{ fontWeight: 700 }}>Formula:</span> {r.formula}</div>}
                   </div>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                    <p className="text-[10px] font-bold text-amber-700 mb-0.5">PM Justification</p>
-                    <p className="text-xs text-amber-900">{r.justification}</p>
+                  <div style={{ borderRadius: 10, border: "1px solid rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", padding: "10px 14px" }}>
+                    <p style={{ fontSize: 9, fontWeight: 800, color: "#b45309", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.08em" }}>PM Justification</p>
+                    <p style={{ fontSize: 11, color: "#92400e", margin: 0 }}>{r.justification}</p>
                   </div>
                   {r.review_comments && (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                      <p className="text-[10px] font-bold text-slate-500 mb-0.5">Review Comment</p>
-                      <p className="text-xs text-slate-700">{r.review_comments}</p>
+                    <div style={{ borderRadius: 10, border: `1px solid ${T.cardBorder}`, background: T.tableBg, padding: "10px 14px" }}>
+                      <p style={{ fontSize: 9, fontWeight: 800, color: T.textMuted, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.08em" }}>Review Comment</p>
+                      <p style={{ fontSize: 11, color: T.text, margin: 0 }}>{r.review_comments}</p>
                     </div>
                   )}
                   {r.status === "PENDING" && (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApprove(r.id)} disabled={decidingId === r.id}
-                        className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer">
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => handleApprove(r.id)}
+                        disabled={decidingId === r.id}
+                        style={{
+                          background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "#fff",
+                          border: "none", borderRadius: 10, padding: "8px 18px",
+                          fontSize: 11, fontWeight: 700, cursor: "pointer",
+                          opacity: decidingId === r.id ? 0.5 : 1,
+                          boxShadow: "0 2px 10px rgba(34,197,94,0.25)",
+                        }}
+                      >
                         {decidingId === r.id ? "Approving..." : "Approve"}
                       </button>
-                      <button onClick={() => { setRejectModal({ id: r.id, name: r.metric_name }); setRejectComment(""); }}
+                      <button
+                        onClick={() => { setRejectModal({ id: r.id, name: r.metric_name }); setRejectComment(""); }}
                         disabled={decidingId === r.id}
-                        className="rounded-lg border border-rose-300 bg-white px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-50 cursor-pointer">
+                        style={{
+                          background: T.cardBg, color: "#dc2626",
+                          border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "8px 18px",
+                          fontSize: 11, fontWeight: 700, cursor: "pointer",
+                          opacity: decidingId === r.id ? 0.5 : 1,
+                        }}
+                      >
                         Reject
                       </button>
                     </div>
@@ -231,74 +350,147 @@ export function DECatalogPage() {
               ))}
             </div>
           )}
-        </div>
+        </GlassCard>
       )}
 
       {/* ── CATALOG TAB ── */}
       {activeTab === "catalog" && (
         <>
           {/* Filters */}
-          <div className="flex flex-wrap gap-3">
-            <input type="text" placeholder="Search metric name..." value={search} onChange={e => setSearch(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs w-52 focus:outline-none focus:ring-1 focus:ring-slate-400" />
-            <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                placeholder="Search metric name..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ ...inputStyle, width: 200, paddingLeft: 32 }}
+              />
+              <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+                width="12" height="12" fill="none" viewBox="0 0 24 24" stroke={T.textMuted} strokeWidth={2.5}>
+                <circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" />
+              </svg>
+            </div>
+            <select
+              value={catFilter}
+              onChange={e => setCatFilter(e.target.value)}
+              style={{ ...inputStyle, width: "auto", cursor: "pointer" }}
+            >
               <option value="">All Categories</option>
               {categories.map(c => <option key={c}>{c}</option>)}
             </select>
-            <span className="text-xs text-slate-400 self-center">{filtered.length} metrics</span>
+            <span style={{ fontSize: 11, color: T.textMuted }}>{filtered.length} metrics</span>
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs divide-y divide-slate-100">
-                <thead className="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wide">
-                  <tr>
+          <GlassCard style={{ overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                <thead>
+                  <tr style={{ background: T.tableBg, borderBottom: `1px solid ${T.divider}` }}>
                     {["Category","Name","Formula","UOM","Intent","Compliance","Target","LSL","USL","Freq","Status",""].map(h => (
-                      <th key={h} className="px-3 py-3 text-left whitespace-nowrap">{h}</th>
+                      <th key={h} style={{
+                        padding: "10px 12px", textAlign: "left", whiteSpace: "nowrap",
+                        fontSize: 9, fontWeight: 700, color: T.accentText,
+                        textTransform: "uppercase", letterSpacing: "0.08em",
+                      }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-400">No metrics found.</td></tr>
-                  ) : filtered.map(m => (
-                    <tr key={m.id} className={`hover:bg-slate-50 ${!m.is_active ? "opacity-50" : ""}`}>
-                      <td className="px-3 py-2"><span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 border border-slate-200">{m.category}</span></td>
-                      <td className="px-3 py-2 font-semibold text-slate-800 max-w-[160px]"><div className="truncate" title={m.name}>{m.name}</div></td>
-                      <td className="px-3 py-2 text-slate-500 max-w-[180px]"><div className="truncate text-[10px]" title={m.formula || ""}>{m.formula || "--"}</div></td>
-                      <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{m.uom || "--"}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <span className={`text-[9px] font-semibold rounded px-1.5 py-0.5 ${
-                          (m.intent||"").toLowerCase().includes("higher") ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          (m.intent||"").toLowerCase().includes("lower") ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                          "bg-slate-100 text-slate-600 border border-slate-200"
-                        }`}>{m.intent || "--"}</span>
+                    <tr>
+                      <td colSpan={12} style={{ padding: "48px 16px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
+                        No metrics found.
                       </td>
-                      <td className="px-3 py-2">
+                    </tr>
+                  ) : filtered.map((m, idx) => (
+                    <tr key={m.id} style={{
+                      borderBottom: idx < filtered.length - 1 ? `1px solid ${T.divider}` : "none",
+                      opacity: m.is_active ? 1 : 0.45,
+                      transition: "background 0.15s",
+                    }}
+                      onMouseEnter={e => (e.currentTarget.style.background = T.rowHover)}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <td style={{ padding: "9px 12px" }}>
+                        <span style={{
+                          borderRadius: 6, background: T.badgeBg, border: `1px solid ${T.cardBorder}`,
+                          padding: "2px 8px", fontSize: 9, fontWeight: 700, color: T.accentText, whiteSpace: "nowrap",
+                        }}>{m.category}</span>
+                      </td>
+                      <td style={{ padding: "9px 12px", fontWeight: 600, color: T.text, maxWidth: 160 }}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.name}>{m.name}</div>
+                      </td>
+                      <td style={{ padding: "9px 12px", color: T.textMuted, maxWidth: 180 }}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 10 }} title={m.formula || ""}>{m.formula || "--"}</div>
+                      </td>
+                      <td style={{ padding: "9px 12px", color: T.textMuted, whiteSpace: "nowrap" }}>{m.uom || "--"}</td>
+                      <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>
+                        <span style={{
+                          borderRadius: 6, fontSize: 9, fontWeight: 600, padding: "2px 7px",
+                          background: (m.intent||"").toLowerCase().includes("higher") ? "rgba(34,197,94,0.08)"
+                            : (m.intent||"").toLowerCase().includes("lower") ? "rgba(239,68,68,0.08)"
+                            : T.badgeBg,
+                          border: `1px solid ${(m.intent||"").toLowerCase().includes("higher") ? "rgba(34,197,94,0.25)"
+                            : (m.intent||"").toLowerCase().includes("lower") ? "rgba(239,68,68,0.25)"
+                            : T.cardBorder}`,
+                          color: (m.intent||"").toLowerCase().includes("higher") ? "#16a34a"
+                            : (m.intent||"").toLowerCase().includes("lower") ? "#dc2626"
+                            : T.accentText,
+                        }}>{m.intent || "--"}</span>
+                      </td>
+                      <td style={{ padding: "9px 12px" }}>
                         {m.compliance ? (
-                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold border ${
-                            m.compliance === "M" ? "bg-rose-50 text-rose-700 border-rose-200" :
-                            m.compliance === "C" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                            "bg-slate-100 text-slate-600 border-slate-200"
-                          }`}>{COMPLIANCE_LABEL[m.compliance] || m.compliance}</span>
+                          <span style={{
+                            borderRadius: 999, padding: "2px 8px", fontSize: 9, fontWeight: 700,
+                            background: m.compliance === "M" ? "rgba(239,68,68,0.08)"
+                              : m.compliance === "C" ? "rgba(245,158,11,0.08)"
+                              : T.badgeBg,
+                            border: `1px solid ${m.compliance === "M" ? "rgba(239,68,68,0.25)"
+                              : m.compliance === "C" ? "rgba(245,158,11,0.25)"
+                              : T.cardBorder}`,
+                            color: m.compliance === "M" ? "#dc2626"
+                              : m.compliance === "C" ? "#b45309"
+                              : T.accentText,
+                          }}>{COMPLIANCE_LABEL[m.compliance] || m.compliance}</span>
                         ) : "--"}
                       </td>
-                      <td className="px-3 py-2 font-mono">{m.default_target ?? 0}</td>
-                      <td className="px-3 py-2 font-mono">{m.default_lsl ?? 0}</td>
-                      <td className="px-3 py-2 font-mono">{m.default_usl ?? 0}</td>
-                      <td className="px-3 py-2 text-slate-500 text-[10px] whitespace-nowrap">{m.frequency ? m.frequency.substring(0, 20) : "--"}</td>
-                      <td className="px-3 py-2">
-                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold border ${m.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
+                      <td style={{ padding: "9px 12px", fontFamily: "monospace", color: T.text }}>{m.default_target ?? 0}</td>
+                      <td style={{ padding: "9px 12px", fontFamily: "monospace", color: "#f59e0b" }}>{m.default_lsl ?? 0}</td>
+                      <td style={{ padding: "9px 12px", fontFamily: "monospace", color: "#ef4444" }}>{m.default_usl ?? 0}</td>
+                      <td style={{ padding: "9px 12px", color: T.textMuted, fontSize: 10, whiteSpace: "nowrap" }}>
+                        {m.frequency ? m.frequency.substring(0, 20) : "--"}
+                      </td>
+                      <td style={{ padding: "9px 12px" }}>
+                        <span style={{
+                          borderRadius: 999, padding: "2px 9px", fontSize: 9, fontWeight: 700,
+                          background: m.is_active ? "rgba(34,197,94,0.08)" : T.badgeBg,
+                          border: `1px solid ${m.is_active ? "rgba(34,197,94,0.25)" : T.cardBorder}`,
+                          color: m.is_active ? "#16a34a" : T.textMuted,
+                        }}>
                           {m.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-1">
-                          <button onClick={() => openEdit(m)} className="rounded px-2 py-1 text-[10px] font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 cursor-pointer">Edit</button>
-                          <button onClick={() => handleToggle(m)}
-                            className={`rounded px-2 py-1 text-[10px] font-bold cursor-pointer ${m.is_active ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100" : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"}`}>
+                      <td style={{ padding: "9px 12px" }}>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={() => openEdit(m)}
+                            style={{
+                              borderRadius: 8, padding: "4px 10px", fontSize: 10, fontWeight: 700, cursor: "pointer",
+                              background: T.cardBg, color: T.text,
+                              border: `1px solid ${T.cardBorder}`,
+                            }}
+                          >Edit</button>
+                          <button
+                            onClick={() => handleToggle(m)}
+                            style={{
+                              borderRadius: 8, padding: "4px 10px", fontSize: 10, fontWeight: 700, cursor: "pointer",
+                              background: m.is_active ? "rgba(239,68,68,0.07)" : "rgba(34,197,94,0.07)",
+                              color: m.is_active ? "#dc2626" : "#16a34a",
+                              border: `1px solid ${m.is_active ? "rgba(239,68,68,0.25)" : "rgba(34,197,94,0.25)"}`,
+                            }}
+                          >
                             {m.is_active ? "Deactivate" : "Activate"}
                           </button>
                         </div>
@@ -308,43 +500,88 @@ export function DECatalogPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </GlassCard>
         </>
       )}
 
-      {/* Reject confirmation modal */}
+      {/* ── Reject confirmation modal ── */}
       {rejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-slate-900">Reject Request</h3>
-            <p className="text-xs text-slate-600">Rejecting: <strong>{rejectModal.name}</strong></p>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-700">Reason (optional)</label>
-              <textarea value={rejectComment} onChange={e => setRejectComment(e.target.value)} rows={3}
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 50,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(15,10,40,0.35)", backdropFilter: "blur(6px)",
+          padding: 16,
+        }}>
+          <GlassCard style={{ width: "100%", maxWidth: 420, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: T.text, margin: 0 }}>Reject Request</h3>
+            <p style={{ fontSize: 12, color: T.textMuted, margin: 0 }}>Rejecting: <strong style={{ color: T.text }}>{rejectModal.name}</strong></p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Reason (optional)</label>
+              <textarea
+                value={rejectComment}
+                onChange={e => setRejectComment(e.target.value)}
+                rows={3}
                 placeholder="Explain why this request is rejected..."
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400" />
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
             </div>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setRejectModal(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">Cancel</button>
-              <button onClick={handleReject} disabled={!!decidingId}
-                className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer">
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setRejectModal(null)}
+                style={{
+                  borderRadius: 10, border: `1px solid ${T.cardBorder}`, background: T.cardBg,
+                  padding: "9px 18px", fontSize: 11, fontWeight: 700, color: T.text, cursor: "pointer",
+                }}
+              >Cancel</button>
+              <button
+                onClick={handleReject}
+                disabled={!!decidingId}
+                style={{
+                  borderRadius: 10, border: "none",
+                  background: "linear-gradient(135deg,#ef4444,#dc2626)",
+                  padding: "9px 18px", fontSize: 11, fontWeight: 700, color: "#fff",
+                  cursor: "pointer", opacity: decidingId ? 0.5 : 1,
+                  boxShadow: "0 4px 14px rgba(239,68,68,0.35)",
+                }}
+              >
                 {decidingId ? "Rejecting..." : "Confirm Reject"}
               </button>
             </div>
-          </div>
+          </GlassCard>
         </div>
       )}
 
-      {/* Add/Edit metric modal */}
+      {/* ── Add/Edit metric modal ── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">{editMetric ? "Edit Metric" : "Add New Metric"}</h3>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer text-xs font-bold">[x]</button>
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 50,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(15,10,40,0.35)", backdropFilter: "blur(6px)",
+          padding: 16,
+        }}>
+          <GlassCard style={{
+            width: "100%", maxWidth: 640, maxHeight: "90vh",
+            overflowY: "auto", padding: 24,
+            display: "flex", flexDirection: "column", gap: 20,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${T.divider}`, paddingBottom: 12 }}>
+              <div>
+                <SectionLabel>{editMetric ? "Edit" : "New"} Metric</SectionLabel>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: T.text, margin: 0 }}>
+                  {editMetric ? "Edit Metric" : "Add New Metric"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  background: "transparent", border: `1px solid ${T.cardBorder}`, borderRadius: 8,
+                  width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", color: T.textMuted, fontSize: 14, fontWeight: 700,
+                }}
+              >×</button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 {([
                   { label: "Category *", key: "category", type: "select", options: METRIC_CATEGORIES },
                   { label: "Metric Name *", key: "name", type: "text", placeholder: "E.g. Effort Variance" },
@@ -357,50 +594,87 @@ export function DECatalogPage() {
                   { label: "Default USL", key: "default_usl", type: "number" },
                   { label: "Metrics Type", key: "metrics_type", type: "select", options: ["Result","Enabler","Insight"] },
                 ] as any[]).map(({ label, key, type, placeholder, options }) => (
-                  <div key={key} className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">{label}</label>
+                  <div key={key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{label}</label>
                     {type === "select" ? (
-                      <select value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400">
+                      <select
+                        value={(form as any)[key]}
+                        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                        style={{ ...inputStyle, cursor: "pointer" }}
+                      >
                         <option value="">Select...</option>
-                        {(options as any[]).map(o => Array.isArray(o) ? <option key={o[0]} value={o[0]}>{o[1]}</option> : <option key={o} value={o}>{o}</option>)}
+                        {(options as any[]).map(o => Array.isArray(o)
+                          ? <option key={o[0]} value={o[0]}>{o[1]}</option>
+                          : <option key={o} value={o}>{o}</option>
+                        )}
                       </select>
                     ) : (
-                      <input type={type} placeholder={placeholder || ""} value={(form as any)[key]}
+                      <input
+                        type={type}
+                        placeholder={placeholder || ""}
+                        value={(form as any)[key]}
                         onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400" />
+                        style={inputStyle}
+                      />
                     )}
                   </div>
                 ))}
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-700">Formula</label>
-                <textarea value={form.formula} onChange={e => setForm(f => ({ ...f, formula: e.target.value }))}
-                  rows={2} placeholder="E.g. (Actual / Planned) * 100"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400" />
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Formula</label>
+                <textarea
+                  value={form.formula}
+                  onChange={e => setForm(f => ({ ...f, formula: e.target.value }))}
+                  rows={2}
+                  placeholder="E.g. (Actual / Planned) * 100"
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-700">Applicable Project Types (comma-separated)</label>
-                <input type="text" value={form.project_type} onChange={e => setForm(f => ({ ...f, project_type: e.target.value }))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Applicable Project Types (comma-separated)</label>
+                <input
+                  type="text"
+                  value={form.project_type}
+                  onChange={e => setForm(f => ({ ...f, project_type: e.target.value }))}
                   placeholder="E.g. Fresh Development,Testing,Migration"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400" />
+                  style={inputStyle}
+                />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-700">Applicable Delivery Models (comma-separated)</label>
-                <input type="text" value={form.delivery_model} onChange={e => setForm(f => ({ ...f, delivery_model: e.target.value }))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Applicable Delivery Models (comma-separated)</label>
+                <input
+                  type="text"
+                  value={form.delivery_model}
+                  onChange={e => setForm(f => ({ ...f, delivery_model: e.target.value }))}
                   placeholder="E.g. Agile-Scrum,Waterfall,Iterative"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400" />
+                  style={inputStyle}
+                />
               </div>
-              <div className="flex gap-3 pt-2 border-t border-slate-100">
-                <button type="submit" disabled={saving || !form.name || !form.category}
-                  className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer">
+              <div style={{ display: "flex", gap: 10, borderTop: `1px solid ${T.divider}`, paddingTop: 14 }}>
+                <button
+                  type="submit"
+                  disabled={saving || !form.name || !form.category}
+                  style={{
+                    flex: 1, background: `linear-gradient(135deg,${T.accent},${T.accentDark})`,
+                    color: "#fff", border: "none", borderRadius: 12,
+                    padding: "10px 0", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    boxShadow: `0 4px 14px ${T.accent}40`,
+                    opacity: saving || !form.name || !form.category ? 0.5 : 1,
+                  }}
+                >
                   {saving ? "Saving..." : editMetric ? "Update Metric" : "Add to Catalog"}
                 </button>
-                <button type="button" onClick={() => setShowModal(false)}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">Cancel</button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    borderRadius: 12, border: `1px solid ${T.cardBorder}`, background: T.cardBg,
+                    padding: "10px 20px", fontSize: 12, fontWeight: 600, color: T.text, cursor: "pointer",
+                  }}
+                >Cancel</button>
               </div>
             </form>
-          </div>
+          </GlassCard>
         </div>
       )}
     </div>
