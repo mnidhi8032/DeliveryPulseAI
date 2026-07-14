@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import {
   listNotifications,
   getUnreadCount,
@@ -12,6 +13,7 @@ import { getSubmission } from "../services/submissionService";
 
 export function Header() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -126,7 +128,7 @@ export function Header() {
   };
 
   return (
-    <header className="flex items-center justify-between pb-6 mb-6 border-b border-slate-150 gap-4">
+    <header className="flex items-center justify-between pb-6 mb-6 gap-4" style={{ borderBottom: "1px solid var(--border)" }}>
       <style>{`
         @keyframes bell-wiggle {
           0%, 100% { transform: rotate(0deg); }
@@ -146,13 +148,62 @@ export function Header() {
       {/* Page title — rendered by each page's own h1, this is a spacer */}
       <div className="flex-1" />
 
-      {/* Right side: notification bell + user info + logout */}
+      {/* Right side: theme toggle + notification bell + user info + logout */}
       <div className="flex items-center gap-4">
+
+        {/* Dark / Light mode toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          style={{
+            display: "flex", alignItems: "center", gap: 7,
+            borderRadius: 999, padding: "5px 14px 5px 10px",
+            background: theme === "dark" ? "#1e1e2e" : "var(--bg)",
+            border: theme === "dark" ? "1.5px solid #2d2b6e" : "1.5px solid #e8e6ff",
+            cursor: "pointer",
+            transition: "background 0.25s, border-color 0.25s",
+            boxShadow: "0 1px 6px rgba(108,99,255,0.12)",
+            position: "relative",
+          }}
+        >
+          {/* Toggle track */}
+          <span style={{
+            position: "relative",
+            width: 36, height: 20, borderRadius: 999, display: "inline-flex", alignItems: "center",
+            background: theme === "dark" ? "#6c63ff" : "var(--border)",
+            transition: "background 0.25s",
+            flexShrink: 0,
+          }}>
+            {/* Thumb */}
+            <span style={{
+              position: "absolute",
+              width: 14, height: 14, borderRadius: "50%",
+              background: theme === "dark" ? "var(--surface)" : "#6c63ff",
+              left: theme === "dark" ? 20 : 2,
+              transition: "left 0.25s cubic-bezier(.4,0,.2,1), background 0.25s",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+            }} />
+          </span>
+          {/* Label */}
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            color: theme === "dark" ? "#c7d2fe" : "#6c63ff",
+            letterSpacing: "0.04em",
+            userSelect: "none",
+          }}>
+            {theme === "dark" ? "DARK" : "LIGHT"}
+          </span>
+        </button>
+
         {/* Notification Bell with Badge & Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="animate-bell relative p-2 text-slate-500 transition-all rounded-full hover:bg-slate-50 hover:text-slate-700 focus:outline-none cursor-pointer"
+            className="animate-bell relative p-2 transition-all rounded-full focus:outline-none cursor-pointer"
+            style={{ color: "var(--muted)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(148,163,184,0.15)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "none")}
             aria-label="View notifications"
           >
             <svg
@@ -171,7 +222,8 @@ export function Header() {
             </svg>
 
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-white animate-pulse">
+              <span className="absolute top-1 right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white animate-pulse"
+                style={{ boxShadow: "0 0 0 2px var(--surface)" }}>
                 {unreadCount}
               </span>
             )}
@@ -179,18 +231,25 @@ export function Header() {
 
           {/* Glassmorphic Dropdown Drawer */}
           {isOpen && (
-            <div className="absolute right-0 z-50 w-96 mt-3 origin-top-right rounded-2xl border border-white/20 bg-white/80 backdrop-blur-xl shadow-2xl ring-1 ring-black/5 focus:outline-none transition-all duration-200">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100/50">
+            <div className="absolute right-0 z-50 w-96 mt-3 origin-top-right rounded-2xl shadow-2xl ring-1 ring-black/5 focus:outline-none transition-all duration-200"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+              }}
+            >
+              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
                 <div>
-                  <h3 className="font-semibold text-slate-800">Notifications</h3>
-                  <p className="text-[11px] text-slate-400">
+                  <h3 style={{ color: "var(--text)" }} className="font-semibold">Notifications</h3>
+                  <p className="text-[11px]" style={{ color: "var(--muted)" }}>
                     {unreadCount} unread message{unreadCount !== 1 ? "s" : ""}
                   </p>
                 </div>
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer"
+                    style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)", background: "none", border: "none", cursor: "pointer" }}
                   >
                     Mark all as read
                   </button>
@@ -199,56 +258,60 @@ export function Header() {
 
               <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-100/50">
                 {notifications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.2}
-                      stroke="currentColor"
-                      className="w-12 h-12 mb-2 text-slate-300"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9.143 17.082a24.248 24.248 0 0 0 3.844.148 24.252 24.252 0 0 0 3.844-.148m-7.688 0a24.277 24.277 0 0 1 7.688 0m-7.688 0a24.255 24.255 0 0 1-1.388-6.022 8.966 8.966 0 0 1 12.113 0c.012 2.112.553 4.103 1.51 5.822M9.143 17.082a24.255 24.255 0 0 1-1.047 0m1.047 0c.732.063 1.464.095 2.197.095m0 0c.733 0 1.465-.032 2.197-.095m-2.197.095a24.253 24.253 0 0 0 2.197-.095"
-                      />
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 24px", color: "var(--muted)" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.2} stroke="currentColor" style={{ width: 48, height: 48, marginBottom: 8, color: "var(--border)" }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.143 17.082a24.248 24.248 0 0 0 3.844.148 24.252 24.252 0 0 0 3.844-.148m-7.688 0a24.277 24.277 0 0 1 7.688 0m-7.688 0a24.255 24.255 0 0 1-1.388-6.022 8.966 8.966 0 0 1 12.113 0c.012 2.112.553 4.103 1.51 5.822M9.143 17.082a24.255 24.255 0 0 1-1.047 0m1.047 0c.732.063 1.464.095 2.197.095m0 0c.733 0 1.465-.032 2.197-.095m-2.197.095a24.253 24.253 0 0 0 2.197-.095" />
                     </svg>
-                    <p className="text-sm">No new notifications</p>
+                    <p style={{ fontSize: 13, color: "var(--muted)" }}>No new notifications</p>
                   </div>
                 ) : (
                   notifications.map((notif) => (
                     <div
                       key={notif.id}
                       onClick={() => handleNotificationClick(notif)}
-                      className={`flex gap-3 px-5 py-4 cursor-pointer hover:bg-slate-50/50 transition-colors ${
-                        !notif.is_read ? "bg-indigo-50/10" : ""
-                      }`}
+                      style={{
+                        display: "flex", gap: 12, padding: "16px 20px",
+                        cursor: "pointer", borderBottom: "1px solid var(--border)",
+                        background: !notif.is_read ? "rgba(99,102,241,0.06)" : "transparent",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(99,102,241,0.08)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = !notif.is_read ? "rgba(99,102,241,0.06)" : "transparent")}
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${getCategoryStyles(
-                              notif.category
-                            )}`}
-                          >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <span style={{
+                            padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700,
+                            textTransform: "uppercase", letterSpacing: "0.06em",
+                            background: notif.category === "RISK" ? "rgba(244,63,94,0.12)" :
+                                        notif.category === "APPROVAL" ? "rgba(245,158,11,0.12)" :
+                                        notif.category === "WORKFLOW" ? "rgba(99,102,241,0.12)" :
+                                        "rgba(148,163,184,0.12)",
+                            color: notif.category === "RISK" ? "#f43f5e" :
+                                   notif.category === "APPROVAL" ? "#f59e0b" :
+                                   notif.category === "WORKFLOW" ? "#818cf8" :
+                                   "var(--muted)",
+                          }}>
                             {notif.category}
                           </span>
-                          <span className="text-[10px] text-slate-400">
+                          <span style={{ fontSize: 10, color: "var(--muted)" }}>
                             {formatTimeAgo(notif.created_at)}
                           </span>
                         </div>
-                        <h4 className={`text-xs font-semibold text-slate-800 ${!notif.is_read ? "font-bold text-slate-900" : ""}`}>
+                        <h4 style={{
+                          fontSize: 12, fontWeight: notif.is_read ? 600 : 700,
+                          color: "var(--text)", margin: 0,
+                        }}>
                           {notif.title}
                         </h4>
-                        <p className="mt-0.5 text-xs text-slate-500 leading-normal line-clamp-2">
+                        <p style={{ marginTop: 3, fontSize: 11, color: "var(--muted)", lineHeight: 1.45,
+                          overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as "vertical" }}>
                           {notif.message}
                         </p>
                       </div>
-
-                      <div className="flex items-center">
+                      <div style={{ display: "flex", alignItems: "center" }}>
                         {!notif.is_read && (
-                          <span className="w-2 h-2 bg-indigo-500 rounded-full flex-shrink-0" />
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#818cf8", flexShrink: 0 }} />
                         )}
                       </div>
                     </div>
@@ -260,34 +323,25 @@ export function Header() {
         </div>
 
         {/* User Profile Info & Logout */}
-        <div className="h-6 w-[1px] bg-slate-200" />
+        <div style={{ width: 1, height: 24, background: "var(--border)" }} />
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-xs font-semibold text-slate-700">
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
               {user?.full_name}
             </p>
-            <p className="text-[10px] text-slate-400 capitalize">
+            <p style={{ fontSize: 10, color: "var(--muted)", textTransform: "capitalize" }}>
               {user?.role_code.replace("_", " ")}
             </p>
           </div>
           <button
             onClick={logout}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors cursor-pointer"
+            style={{ padding: 6, borderRadius: "50%", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", display: "flex", transition: "background 0.15s" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(148,163,184,0.15)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "none")}
             title="Log out"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.8}
-              stroke="currentColor"
-              className="w-5 h-5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
-              />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" style={{ width: 20, height: 20 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
             </svg>
           </button>
         </div>

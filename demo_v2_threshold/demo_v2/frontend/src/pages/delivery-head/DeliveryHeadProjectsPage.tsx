@@ -76,7 +76,7 @@ export function DeliveryHeadProjectsPage() {
             { label: "Amber",    key: "AMBER",    val: amberCnt,        color: "#d97706", bg: "rgba(217,119,6,0.08)"   },
             { label: "Red",      key: "RED",      val: redCnt,          color: "#dc2626", bg: "rgba(220,38,38,0.08)"   },
             { label: "Critical", key: "CRITICAL", val: criticalCnt,     color: "#9f1239", bg: "rgba(159,18,57,0.08)"   },
-            { label: "No score", key: "NO_DATA",  val: noScoreCnt,      color: "#64748b", bg: "rgba(100,116,139,0.08)" },
+            { label: "No score", key: "NO_DATA",  val: noScoreCnt,      color: "var(--muted)", bg: "rgba(100,116,139,0.08)" },
           ] as { label: string; key: string; val: number; color: string; bg: string }[]).map(s => (
             <button key={s.key} type="button" onClick={() => setRagFilter(s.key)} style={{
               display: "inline-flex", alignItems: "center", gap: 6,
@@ -85,8 +85,8 @@ export function DeliveryHeadProjectsPage() {
               border: `1.5px solid ${s.color}${ragFilter === s.key ? "" : "40"}`,
               transition: "background 0.15s",
             }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: ragFilter === s.key ? "#fff" : s.color, display: "inline-block" }} />
-              <span style={{ fontSize: 13, fontWeight: 800, color: ragFilter === s.key ? "#fff" : s.color }}>{s.val}</span>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: ragFilter === s.key ? "var(--surface)" : s.color, display: "inline-block" }} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: ragFilter === s.key ? "var(--surface)" : s.color }}>{s.val}</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: ragFilter === s.key ? "rgba(255,255,255,0.85)" : s.color }}>{s.label}</span>
             </button>
           ))}
@@ -110,7 +110,7 @@ export function DeliveryHeadProjectsPage() {
           {filtered.map(p => {
             const rag = p.current_rag;
             const isAtRisk = rag === "RED" || rag === "CRITICAL";
-            const borderColor = rag ? RAG_HEX[rag] : "#cbd5e1";
+            const borderColor = rag ? RAG_HEX[rag] : "var(--border)";
             const statusBg: Record<string, string> = {
               ACTIVE:    "bg-emerald-50  text-emerald-700 border-emerald-200",
               ON_HOLD:   "bg-amber-50    text-amber-700   border-amber-200",
@@ -161,7 +161,7 @@ export function DeliveryHeadProjectsPage() {
                 {/* health */}
                 <div className="w-32 flex-shrink-0 py-4 px-4 border-l border-slate-100 hidden sm:flex items-center gap-2">
                   <span className={`h-2 w-2 rounded-full flex-shrink-0 ${rag ? RAG_DOT_BG[rag] : "bg-slate-300"}`} />
-                  <span className="text-xs font-semibold" style={{ color: rag ? RAG_HEX[rag] : "#94a3b8" }}>{rag ?? "—"}</span>
+                  <span className="text-xs font-semibold" style={{ color: rag ? RAG_HEX[rag] : "var(--muted)" }}>{rag ?? "—"}</span>
                 </div>
 
                 {/* status pill */}

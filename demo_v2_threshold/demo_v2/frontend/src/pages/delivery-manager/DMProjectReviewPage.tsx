@@ -12,7 +12,7 @@ import type { KpiSummary } from "../../types/qpm";
 import type { DMReview } from "../../services/dmReviewService";
 import { RAG_STYLE as _RAG_STYLE } from "../../types/qpm";
 
-const C = { bg:"#f0f2ff", card:"#ffffff", primary:"#6c63ff", border:"#e8e6ff", shadow:"0 2px 16px rgba(108,99,255,0.10)", text:"#1a1a2e", muted:"#6b7280" };
+const C = { bg:"var(--bg)", card:"var(--surface)", primary:"#6c63ff", border:"var(--border)", shadow:"0 2px 16px rgba(108,99,255,0.10)", text:"var(--text)", muted:"var(--muted)" };
 
 const RAG_CFG: Record<string, { dot: string; text: string; pill: string; bg: string }> = {
   GREEN: { dot:"#22c55e", text:"#15803d", pill:"#f0fdf4", bg:"#bbf7d0" },
@@ -140,7 +140,7 @@ export function DMProjectReviewPage() {
 
   if (loading) return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-      {[1,2,3].map(i => <div key={i} style={{ borderRadius:20, height: i === 1 ? 60 : 120, background:"#e8e6ff" }} />)}
+      {[1,2,3].map(i => <div key={i} style={{ borderRadius:20, height: i === 1 ? 60 : 120, background:"var(--border)" }} />)}
     </div>
   );
 
@@ -186,7 +186,7 @@ export function DMProjectReviewPage() {
             { label:"No data", count: summary.no_data_count, color:"#9ca3af" },
           ].map(s => (
             <div key={s.label} style={{ borderRadius:20, padding:"18px 20px", background: s.color, boxShadow:`0 4px 16px ${s.color}44` }}>
-              <p style={{ fontSize:32, fontWeight:900, color:"#fff", margin:0 }}>{s.count}</p>
+              <p style={{ fontSize:32, fontWeight:900, color:"var(--surface)", margin:0 }}>{s.count}</p>
               <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.80)", margin:"5px 0 0", textTransform:"uppercase", letterSpacing:"0.06em" }}>{s.label}</p>
             </div>
           ))}
@@ -303,7 +303,7 @@ export function DMProjectReviewPage() {
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:12, paddingTop:8, borderTop:`1px solid ${C.border}` }}>
             <button type="submit" disabled={saving} style={{
-              borderRadius:12, background: C.primary, color:"#fff", padding:"10px 24px", fontSize:14, fontWeight:800, border:"none", cursor:"pointer",
+              borderRadius:12, background: C.primary, color:"var(--surface)", padding:"10px 24px", fontSize:14, fontWeight:800, border:"none", cursor:"pointer",
               boxShadow:`0 2px 10px ${C.primary}44`, opacity: saving ? 0.6 : 1,
             }}>
               {saving ? "Saving…" : editReviewId ? "Update review" : "Submit review"}

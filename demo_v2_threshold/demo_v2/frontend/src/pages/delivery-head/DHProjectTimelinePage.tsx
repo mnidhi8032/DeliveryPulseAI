@@ -36,8 +36,8 @@ function HealthChart({ events }: { events: SubmissionTimelineEvent[] }) {
       </defs>
       {[0, 25, 50, 75, 100].map(v => (
         <g key={v}>
-          <line x1={P.l} x2={P.l + cW} y1={toY(v)} y2={toY(v)} stroke="#f1f5f9" strokeWidth={1} strokeDasharray={v === 50 ? "4 3" : undefined} />
-          <text x={P.l - 6} y={toY(v) + 4} textAnchor="end" fontSize={9} fill="#94a3b8">{v}</text>
+          <line x1={P.l} x2={P.l + cW} y1={toY(v)} y2={toY(v)} stroke="var(--bg)" strokeWidth={1} strokeDasharray={v === 50 ? "4 3" : undefined} />
+          <text x={P.l - 6} y={toY(v) + 4} textAnchor="end" fontSize={9} fill="var(--muted)">{v}</text>
         </g>
       ))}
       <rect x={P.l} y={toY(100)} width={cW} height={toY(80) - toY(100)} fill="#10b98110" />
@@ -55,12 +55,12 @@ function HealthChart({ events }: { events: SubmissionTimelineEvent[] }) {
         );
       })}
       {scored.map((e, i) => (
-        <text key={i} x={toX(i)} y={H - 6} textAnchor="middle" fontSize={8.5} fill="#94a3b8">
+        <text key={i} x={toX(i)} y={H - 6} textAnchor="middle" fontSize={8.5} fill="var(--muted)">
           {new Date(e.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </text>
       ))}
-      <line x1={P.l} x2={P.l}      y1={P.t}      y2={P.t + cH} stroke="#e2e8f0" strokeWidth={1} />
-      <line x1={P.l} x2={P.l + cW} y1={P.t + cH} y2={P.t + cH} stroke="#e2e8f0" strokeWidth={1} />
+      <line x1={P.l} x2={P.l}      y1={P.t}      y2={P.t + cH} stroke="var(--border)" strokeWidth={1} />
+      <line x1={P.l} x2={P.l + cW} y1={P.t + cH} y2={P.t + cH} stroke="var(--border)" strokeWidth={1} />
     </svg>
   );
 }
