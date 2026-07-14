@@ -96,21 +96,6 @@ export function Header() {
     }
   };
 
-  // Helper to format category badges
-  const getCategoryStyles = (category: string) => {
-    switch (category.toUpperCase()) {
-      case "RISK":
-        return "bg-rose-50 text-rose-600 border border-rose-100";
-      case "APPROVAL":
-        return "bg-amber-50 text-amber-600 border border-amber-100";
-      case "WORKFLOW":
-        return "bg-indigo-50 text-indigo-600 border border-indigo-100";
-      case "SYSTEM":
-      default:
-        return "bg-slate-50 text-slate-600 border border-slate-100";
-    }
-  };
-
   // Helper to render friendly relative time
   const formatTimeAgo = (dateStr: string) => {
     const d = new Date(dateStr);
