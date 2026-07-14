@@ -151,11 +151,11 @@ export function Sidebar({ title, role }: SidebarProps) {
             background: "rgba(255,255,255,0.20)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2.2}>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="var(--surface)" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <span className="sb-label" style={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>
+          <span className="sb-label" style={{ fontSize: 13, fontWeight: 800, color: "var(--surface)", letterSpacing: "-0.01em" }}>
             DeliveryPulse
           </span>
         </div>
@@ -177,7 +177,7 @@ export function Sidebar({ title, role }: SidebarProps) {
                 textDecoration: "none",
                 fontSize: 13,
                 fontWeight: isActive ? 700 : 500,
-                color: isActive ? "#fff" : "rgba(255,255,255,0.70)",
+                color: isActive ? "var(--surface)" : "rgba(255,255,255,0.70)",
                 background: isActive ? "#4f46e5" : "transparent",
                 boxShadow: isActive ? "0 2px 8px rgba(0,0,0,0.20)" : "none",
                 transition: "background 0.15s, padding 0.25s, gap 0.25s",
@@ -197,7 +197,7 @@ export function Sidebar({ title, role }: SidebarProps) {
                   }}>
                     {item.iconKey && (
                       <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
-                        stroke={isActive ? "#fff" : "rgba(255,255,255,0.75)"} strokeWidth={1.8}>
+                        stroke={isActive ? "var(--surface)" : "rgba(255,255,255,0.75)"} strokeWidth={1.8}>
                         <path strokeLinecap="round" strokeLinejoin="round" d={ICONS[item.iconKey]} />
                       </svg>
                     )}
@@ -213,7 +213,7 @@ export function Sidebar({ title, role }: SidebarProps) {
                     <span style={{
                       position: "absolute", left: "calc(100% + 12px)", top: "50%",
                       transform: "translateY(-50%)", zIndex: 100,
-                      background: "#1a1a2e", color: "#fff", fontSize: 12, fontWeight: 600,
+                      background: "var(--text)", color: "var(--surface)", fontSize: 12, fontWeight: 600,
                       padding: "5px 10px", borderRadius: 8, whiteSpace: "nowrap",
                       pointerEvents: "none",
                       boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
@@ -246,7 +246,7 @@ export function Sidebar({ title, role }: SidebarProps) {
             width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
             background: "rgba(0,0,0,0.25)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 12, fontWeight: 800, color: "#fff",
+            fontSize: 12, fontWeight: 800, color: "var(--surface)",
             border: "2px solid rgba(255,255,255,0.25)",
             cursor: "pointer",
           }}
@@ -257,7 +257,7 @@ export function Sidebar({ title, role }: SidebarProps) {
 
           {/* Name + logout — only when expanded */}
           <div className="sb-label" style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "var(--surface)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {user?.full_name}
             </p>
             <p style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

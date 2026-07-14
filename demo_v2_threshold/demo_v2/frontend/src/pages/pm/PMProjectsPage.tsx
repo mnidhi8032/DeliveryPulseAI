@@ -228,7 +228,7 @@ export function PMProjectsPage() {
   if (loading) return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "8px 0" }}>
       {[1,2,3].map(i => (
-        <div key={i} style={{ height: 60, borderRadius: 14, background: "#fff", border: "1.5px solid #e8e6ff", boxShadow: "0 2px 12px rgba(108,99,255,0.08)", animation: "pulse 1.5s ease-in-out infinite" }} />
+        <div key={i} style={{ height: 60, borderRadius: 14, background: "var(--surface)", border: "1.5px solid #e8e6ff", boxShadow: "0 2px 12px rgba(108,99,255,0.08)", animation: "pulse 1.5s ease-in-out infinite" }} />
       ))}
     </div>
   );
@@ -249,7 +249,7 @@ export function PMProjectsPage() {
     GREEN: "#16a34a", AMBER: "#d97706", RED: "#dc2626", CRITICAL: "#dc2626",
   };
   const ragBg: Record<string, string> = {
-    GREEN: "#f0fdf4", AMBER: "#fffbeb", RED: "#fff1f2", CRITICAL: "#fff1f2",
+    GREEN: "rgba(34,197,94,0.10)", AMBER: "rgba(245,158,11,0.10)", RED: "rgba(239,68,68,0.10)", CRITICAL: "rgba(239,68,68,0.10)",
   };
 
   return (
@@ -261,10 +261,10 @@ export function PMProjectsPage() {
           <p style={{ fontSize: 10, fontWeight: 700, color: "#6c63ff", textTransform: "uppercase", letterSpacing: "0.14em", margin: "0 0 6px" }}>
             Project Manager
           </p>
-          <h1 style={{ fontSize: 24, fontWeight: 900, color: "#1a1a2e", margin: 0, letterSpacing: "-0.02em" }}>
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: "var(--text)", margin: 0, letterSpacing: "-0.02em" }}>
             My Projects
           </h1>
-          <p style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
             Projects you're assigned to as project manager
           </p>
         </div>
@@ -272,7 +272,7 @@ export function PMProjectsPage() {
           onClick={handleOpenCreate}
           style={{
             display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 14,
-            background: "#6c63ff", color: "#fff", fontSize: 13, fontWeight: 700,
+            background: "#6c63ff", color: "var(--surface)", fontSize: 13, fontWeight: 700,
             padding: "11px 22px", border: "none", cursor: "pointer",
             boxShadow: "0 4px 16px rgba(108,99,255,0.35)",
             transition: "background 0.15s, transform 0.15s",
@@ -280,7 +280,7 @@ export function PMProjectsPage() {
           onMouseEnter={e => (e.currentTarget.style.background = "#5b52f0")}
           onMouseLeave={e => (e.currentTarget.style.background = "#6c63ff")}
         >
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2.5}>
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--surface)" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
           Create Project
@@ -295,7 +295,7 @@ export function PMProjectsPage() {
             { label: "Green",    value: greenCnt, color: "#16a34a", bg: "rgba(34,197,94,0.08)"   },
             { label: "Amber",    value: amberCnt, color: "#d97706", bg: "rgba(245,158,11,0.08)"  },
             { label: "Red",      value: redCnt,   color: "#dc2626", bg: "rgba(239,68,68,0.08)"   },
-            { label: "No score", value: noScore,  color: "#6b7280", bg: "rgba(107,114,128,0.08)" },
+            { label: "No score", value: noScore,  color: "var(--muted)", bg: "rgba(107,114,128,0.08)" },
           ].map(s => (
             <div key={s.label} style={{
               display: "inline-flex", alignItems: "center", gap: 7,
@@ -313,7 +313,7 @@ export function PMProjectsPage() {
       {/* ── Empty state ── */}
       {projects.length === 0 ? (
         <div style={{
-          borderRadius: 20, border: "2px dashed #e8e6ff", background: "#fff",
+          borderRadius: 20, border: "2px dashed #e8e6ff", background: "var(--surface)",
           padding: "60px 24px", textAlign: "center",
           boxShadow: "0 2px 16px rgba(108,99,255,0.08)",
         }}>
@@ -322,11 +322,11 @@ export function PMProjectsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
           </div>
-          <p style={{ fontSize: 15, fontWeight: 700, color: "#1a1a2e", margin: 0 }}>No projects yet</p>
-          <p style={{ fontSize: 12, color: "#6b7280", marginTop: 6, marginBottom: 20 }}>Create your first project to get started.</p>
+          <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>No projects yet</p>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, marginBottom: 20 }}>Create your first project to get started.</p>
           <button onClick={handleOpenCreate} style={{
             display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 12,
-            background: "#6c63ff", color: "#fff", fontSize: 13, fontWeight: 700,
+            background: "#6c63ff", color: "var(--surface)", fontSize: 13, fontWeight: 700,
             padding: "11px 22px", border: "none", cursor: "pointer",
             boxShadow: "0 4px 16px rgba(108,99,255,0.35)",
           }}>
@@ -338,20 +338,20 @@ export function PMProjectsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {projects.map(p => {
             const rag = p.current_rag;
-            const leftColor = rag ? (ragBorderColor[rag] ?? "#e8e6ff") : "#e8e6ff";
-            const textColor = rag ? (ragTextColor[rag] ?? "#6b7280") : "#6b7280";
-            const chipBg    = rag ? (ragBg[rag] ?? "#f8f7ff") : "#f8f7ff";
+            const leftColor = rag ? (ragBorderColor[rag] ?? "var(--border)") : "var(--border)";
+            const textColor = rag ? (ragTextColor[rag] ?? "var(--muted)") : "var(--muted)";
+            const chipBg    = rag ? (ragBg[rag] ?? "var(--bg)") : "var(--bg)";
             const ragLabel  = rag ? (rag.charAt(0) + rag.slice(1).toLowerCase()) : "No score";
 
-            const statusBg: Record<string,string>    = { ACTIVE:"#f0fdf4", ON_HOLD:"#fffbeb", COMPLETED:"#eff6ff", CANCELLED:"#f9fafb" };
-            const statusColor: Record<string,string> = { ACTIVE:"#16a34a", ON_HOLD:"#d97706", COMPLETED:"#2563eb", CANCELLED:"#9ca3af" };
+            const statusBg: Record<string,string>    = { ACTIVE:"rgba(34,197,94,0.10)", ON_HOLD:"rgba(245,158,11,0.10)", COMPLETED:"rgba(59,130,246,0.10)", CANCELLED:"var(--surface)" };
+            const statusColor: Record<string,string> = { ACTIVE:"#16a34a", ON_HOLD:"#d97706", COMPLETED:"#2563eb", CANCELLED:"var(--muted)" };
             const statusLabel: Record<string,string> = { ACTIVE:"Active", ON_HOLD:"On Hold", COMPLETED:"Completed", CANCELLED:"Cancelled" };
 
             const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : null;
 
             return (
               <div key={p.id} style={{
-                borderRadius: 16, background: "#fff",
+                borderRadius: 16, background: "var(--surface)",
                 border: "1.5px solid #e8e6ff",
                 borderLeft: `4px solid ${leftColor}`,
                 boxShadow: "0 2px 14px rgba(108,99,255,0.09)",
@@ -373,22 +373,22 @@ export function PMProjectsPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
                       <span style={{ fontSize: 9, fontWeight: 800, color: "#6c63ff", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.12em" }}>{p.project_code}</span>
                       <span style={{ fontSize: 9, fontWeight: 700, borderRadius: 999, padding: "1px 7px",
-                        color: statusColor[p.status] ?? "#6b7280",
-                        background: statusBg[p.status] ?? "#f9fafb",
+                        color: statusColor[p.status] ?? "var(--muted)",
+                        background: statusBg[p.status] ?? "var(--surface)",
                       }}>{statusLabel[p.status] ?? p.status}</span>
                     </div>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e", margin: 0, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.project_name}</p>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", margin: 0, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.project_name}</p>
                   </div>
 
                   {/* Account / BU — 200px */}
                   <div style={{ width: 200, flexShrink: 0, paddingLeft: 20 }}>
-                    <p style={{ fontSize: 13, color: "#1a1a2e", fontWeight: 600, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.account_name}</p>
-                    <p style={{ fontSize: 11, color: "#9ca3af", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.business_unit_name}</p>
+                    <p style={{ fontSize: 13, color: "var(--text)", fontWeight: 600, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.account_name}</p>
+                    <p style={{ fontSize: 11, color: "var(--muted)", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.business_unit_name}</p>
                   </div>
 
                   {/* Dates — 180px */}
                   <div style={{ width: 180, flexShrink: 0, paddingLeft: 20 }}>
-                    <p style={{ fontSize: 11, color: "#9ca3af", margin: 0, whiteSpace: "nowrap" }}>
+                    <p style={{ fontSize: 11, color: "var(--muted)", margin: 0, whiteSpace: "nowrap" }}>
                       {(p.start_date || p.target_end_date)
                         ? `${formatDate(p.start_date) ?? ""}${p.target_end_date ? ` → ${formatDate(p.target_end_date)}` : ""}`
                         : "—"}
@@ -422,7 +422,7 @@ export function PMProjectsPage() {
                     <button onClick={() => openMetricsPanel(p)} style={{
                       borderRadius: 10, padding: "7px 16px",
                       fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
-                      color: "#1a1a2e", background: "#f8f7ff",
+                      color: "var(--text)", background: "var(--bg)",
                       border: "1.5px solid #e8e6ff", cursor: "pointer",
                     }}>Metrics</button>
                   </div>
@@ -436,13 +436,13 @@ export function PMProjectsPage() {
       {/* Create Project Modal */}
       {modalOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,26,46,0.45)", padding: 16, backdropFilter: "blur(6px)" }}>
-          <div style={{ width: "100%", maxWidth: 560, borderRadius: 24, border: "1.5px solid #e8e6ff", background: "#fff", padding: 28, boxShadow: "0 16px 64px rgba(108,99,255,0.18)", maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ width: "100%", maxWidth: 560, borderRadius: 24, border: "1.5px solid #e8e6ff", background: "var(--surface)", padding: 28, boxShadow: "0 16px 64px rgba(108,99,255,0.18)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", borderBottom: "1.5px solid #e8e6ff", paddingBottom: 16, marginBottom: 20 }}>
               <div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: "#1a1a2e", margin: 0 }}>Create New Project</h3>
-                <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>Mandatory metrics will be auto-selected on creation.</p>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Create New Project</h3>
+                <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Mandatory metrics will be auto-selected on creation.</p>
               </div>
-              <button onClick={() => setModalOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "#9ca3af", cursor: "pointer", lineHeight: 1 }}>&times;</button>
+              <button onClick={() => setModalOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}>&times;</button>
             </div>
 
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -451,14 +451,14 @@ export function PMProjectsPage() {
                 <p style={{ fontSize: 10, fontWeight: 800, color: "#6c63ff", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 12px" }}>Project Details</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Business Unit</label>
-                    <div style={{ borderRadius: 10, border: "1.5px solid #e8e6ff", background: "#f8f7ff", padding: "9px 14px", fontSize: 13, color: "#374151", fontWeight: 500 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Business Unit</label>
+                    <div style={{ borderRadius: 10, border: "1.5px solid #e8e6ff", background: "var(--bg)", padding: "9px 14px", fontSize: 13, color: "var(--text)", fontWeight: 500 }}>
                       {pmBusinessUnit ? pmBusinessUnit.name : "No Business Unit assigned"}
                     </div>
                     {!pmBusinessUnit && <p style={{ fontSize: 10, color: "#d97706" }}>Not assigned to any BU. Contact an administrator.</p>}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Account / Client *</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Account / Client *</label>
                     <select required value={form.account_id} onChange={e => setForm(f => ({ ...f, account_id: e.target.value }))}
                       disabled={accounts.length === 0}
                       className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:opacity-50">
@@ -468,13 +468,13 @@ export function PMProjectsPage() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Project Code *</label>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Project Code *</label>
                       <input type="text" required placeholder="E.g. PROJ-001" value={form.project_code}
                         onChange={e => setForm(f => ({ ...f, project_code: e.target.value }))}
                         className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Project Name *</label>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Project Name *</label>
                       <input type="text" required placeholder="E.g. Banking Portal" value={form.project_name}
                         onChange={e => setForm(f => ({ ...f, project_name: e.target.value }))}
                         className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
@@ -482,12 +482,12 @@ export function PMProjectsPage() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Start Date</label>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Start Date</label>
                       <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
                         className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Target End Date</label>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Target End Date</label>
                       <input type="date" value={form.target_end_date} onChange={e => setForm(f => ({ ...f, target_end_date: e.target.value }))}
                         className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
                     </div>
@@ -496,7 +496,7 @@ export function PMProjectsPage() {
               </div>
 
               {/* Engagement Model */}
-              <div style={{ borderRadius: 14, border: "1.5px solid #d5d0ff", background: "#f8f7ff", padding: 16 }}>
+              <div style={{ borderRadius: 14, border: "1.5px solid #d5d0ff", background: "var(--bg)", padding: 16 }}>
                 <p style={{ fontSize: 10, fontWeight: 800, color: "#6c63ff", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 4px" }}>Engagement Model *</p>
                 <p style={{ fontSize: 11, color: "#818cf8", margin: "0 0 12px" }}>Mandatory metrics will be auto-selected based on these values.</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -507,7 +507,7 @@ export function PMProjectsPage() {
                     { label: "Work Size Unit", key: "work_size_unit" as const, opts: WORK_SIZE_UNITS, required: false },
                   ].map(f2 => (
                     <div key={f2.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{f2.label}</label>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{f2.label}</label>
                       <select required={f2.required} value={form[f2.key]} onChange={e => setForm(f => ({ ...f, [f2.key]: e.target.value }))}
                         className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                         <option value="">Select...</option>
@@ -521,11 +521,11 @@ export function PMProjectsPage() {
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 4, borderTop: "1.5px solid #e8e6ff" }}>
                 <button type="button" onClick={() => setModalOpen(false)} style={{
                   borderRadius: 10, border: "1.5px solid #e8e6ff", padding: "9px 18px",
-                  fontSize: 12, fontWeight: 700, color: "#374151", background: "#fff", cursor: "pointer",
+                  fontSize: 12, fontWeight: 700, color: "var(--text)", background: "var(--surface)", cursor: "pointer",
                 }}>Cancel</button>
                 <button type="submit" disabled={saving} style={{
                   borderRadius: 10, padding: "9px 22px",
-                  fontSize: 12, fontWeight: 700, color: "#fff",
+                  fontSize: 12, fontWeight: 700, color: "var(--surface)",
                   background: saving ? "#a5b4fc" : "#6c63ff", border: "none", cursor: saving ? "not-allowed" : "pointer",
                   boxShadow: "0 4px 14px rgba(108,99,255,0.35)",
                 }}>{saving ? "Creating..." : "Create Project"}</button>
@@ -538,22 +538,22 @@ export function PMProjectsPage() {
       {/* Manage Metrics Panel */}
       {metricsPanel && (
         <div style={{ position:"fixed",inset:0,zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(26,26,46,0.45)",padding:16,backdropFilter:"blur(6px)" }}>
-          <div style={{ width:"100%",maxWidth:640,borderRadius:24,border:"1.5px solid #e8e6ff",background:"#fff",padding:28,boxShadow:"0 16px 64px rgba(108,99,255,0.18)",maxHeight:"90vh",overflowY:"auto" }}>
+          <div style={{ width:"100%",maxWidth:640,borderRadius:24,border:"1.5px solid #e8e6ff",background:"var(--surface)",padding:28,boxShadow:"0 16px 64px rgba(108,99,255,0.18)",maxHeight:"90vh",overflowY:"auto" }}>
             <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1.5px solid #e8e6ff",paddingBottom:16,marginBottom:20 }}>
               <div>
-                <h3 style={{ fontSize:17,fontWeight:800,color:"#1a1a2e",margin:0 }}>Manage Metrics — {metricsPanel.projectName}</h3>
-                <p style={{ fontSize:12,color:"#6b7280",marginTop:4 }}>Mandatory metrics are locked and cannot be removed.</p>
+                <h3 style={{ fontSize:17,fontWeight:800,color:"var(--text)",margin:0 }}>Manage Metrics — {metricsPanel.projectName}</h3>
+                <p style={{ fontSize:12,color:"var(--muted)",marginTop:4 }}>Mandatory metrics are locked and cannot be removed.</p>
               </div>
-              <button onClick={() => setMetricsPanel(null)} style={{ background:"none",border:"none",fontSize:22,color:"#9ca3af",cursor:"pointer",lineHeight:1 }}>&times;</button>
+              <button onClick={() => setMetricsPanel(null)} style={{ background:"none",border:"none",fontSize:22,color:"var(--muted)",cursor:"pointer",lineHeight:1 }}>&times;</button>
             </div>
             {metricsLoading ? (
-              <div style={{ padding:"40px 0",textAlign:"center",color:"#6b7280",fontSize:13 }}>Loading metrics…</div>
+              <div style={{ padding:"40px 0",textAlign:"center",color:"var(--muted)",fontSize:13 }}>Loading metrics…</div>
             ) : (
               <>
                 <div style={{ borderRadius:12,border:"1.5px solid #e8e6ff",overflow:"hidden",marginBottom:16 }}>
                   <table style={{ width:"100%",borderCollapse:"collapse",fontSize:13 }}>
                     <thead>
-                      <tr style={{ background:"#f8f7ff",borderBottom:"1.5px solid #e8e6ff" }}>
+                      <tr style={{ background:"var(--bg)",borderBottom:"1.5px solid #e8e6ff" }}>
                         {["Metric","Category","Frequency","Priority",""].map(h => (
                           <th key={h} style={{ padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,color:"#6c63ff",textTransform:"uppercase",letterSpacing:"0.08em" }}>{h}</th>
                         ))}
@@ -561,26 +561,26 @@ export function PMProjectsPage() {
                     </thead>
                     <tbody>
                       {planMetrics.length === 0 ? (
-                        <tr><td colSpan={5} style={{ padding:"24px 12px",textAlign:"center",color:"#9ca3af",fontSize:12 }}>No metrics yet.</td></tr>
+                        <tr><td colSpan={5} style={{ padding:"24px 12px",textAlign:"center",color:"var(--muted)",fontSize:12 }}>No metrics yet.</td></tr>
                       ) : planMetrics.map(m => (
                         <tr key={m.id} style={{ borderBottom:"1px solid #e8e6ff" }}>
-                          <td style={{ padding:"10px 12px",fontWeight:600,color:"#1a1a2e" }}>
+                          <td style={{ padding:"10px 12px",fontWeight:600,color:"var(--text)" }}>
                             {m.metric_name}
                             {m.is_custom && <span style={{ marginLeft:6,fontSize:9,background:"rgba(108,99,255,0.10)",color:"#6c63ff",borderRadius:4,padding:"1px 5px",fontWeight:700 }}>Custom</span>}
                           </td>
-                          <td style={{ padding:"10px 12px",fontSize:12,color:"#6b7280" }}>{m.metric_category || "—"}</td>
-                          <td style={{ padding:"10px 12px",fontSize:12,color:"#6b7280" }}>{m.frequency || "—"}</td>
+                          <td style={{ padding:"10px 12px",fontSize:12,color:"var(--muted)" }}>{m.metric_category || "—"}</td>
+                          <td style={{ padding:"10px 12px",fontSize:12,color:"var(--muted)" }}>{m.frequency || "—"}</td>
                           <td style={{ padding:"10px 12px" }}>
                             <span style={{ borderRadius:999,padding:"2px 9px",fontSize:10,fontWeight:700,border:"1px solid",
-                              color:m.priority==="M"?"#dc2626":"#6b7280",
-                              background:m.priority==="M"?"#fff1f2":"#f9fafb",
+                              color:m.priority==="M"?"#dc2626":"var(--muted)",
+                              background:m.priority==="M"?"rgba(239,68,68,0.10)":"var(--surface)",
                               borderColor:m.priority==="M"?"#fca5a5":"#e5e7eb" }}>
                               {COMPLIANCE_LABEL[m.priority || ""] || m.priority || "—"}
                             </span>
                           </td>
                           <td style={{ padding:"10px 12px",textAlign:"right" }}>
                             {m.priority === "M" ? (
-                              <span style={{ fontSize:11,color:"#9ca3af",fontWeight:600 }}>Locked</span>
+                              <span style={{ fontSize:11,color:"var(--muted)",fontWeight:600 }}>Locked</span>
                             ) : (
                               <button onClick={() => handleRemoveMetric(m.id)} style={{ fontSize:12,color:"#ef4444",fontWeight:700,background:"none",border:"none",cursor:"pointer" }}>Remove</button>
                             )}
@@ -591,16 +591,16 @@ export function PMProjectsPage() {
                   </table>
                 </div>
                 {!showAddForm ? (
-                  <button onClick={() => setShowAddForm(true)} style={{ borderRadius:10,padding:"9px 18px",fontSize:12,fontWeight:700,color:"#fff",background:"#6c63ff",border:"none",cursor:"pointer",boxShadow:"0 4px 14px rgba(108,99,255,0.30)" }}>
+                  <button onClick={() => setShowAddForm(true)} style={{ borderRadius:10,padding:"9px 18px",fontSize:12,fontWeight:700,color:"var(--surface)",background:"#6c63ff",border:"none",cursor:"pointer",boxShadow:"0 4px 14px rgba(108,99,255,0.30)" }}>
                     + Add Metric
                   </button>
                 ) : (
-                  <div style={{ borderRadius:14,border:"1.5px solid #e8e6ff",background:"#f8f7ff",padding:16 }}>
-                    <div style={{ display:"flex",border:"1.5px solid #e8e6ff",background:"#fff",borderRadius:10,padding:4,gap:4,marginBottom:14 }}>
+                  <div style={{ borderRadius:14,border:"1.5px solid #e8e6ff",background:"var(--bg)",padding:16 }}>
+                    <div style={{ display:"flex",border:"1.5px solid #e8e6ff",background:"var(--surface)",borderRadius:10,padding:4,gap:4,marginBottom:14 }}>
                       {(["catalog","custom"] as const).map(tab => (
                         <button key={tab} type="button" onClick={() => setAddTab(tab)} style={{ flex:1,padding:"7px 0",fontSize:12,fontWeight:700,borderRadius:8,border:"none",cursor:"pointer",
                           background:addTab===tab?(tab==="catalog"?"#6c63ff":"#9333ea"):"transparent",
-                          color:addTab===tab?"#fff":"#6b7280",transition:"background 0.15s" }}>
+                          color:addTab===tab?"var(--surface)":"var(--muted)",transition:"background 0.15s" }}>
                           {tab==="catalog" ? "From Catalog" : "Request Custom"}
                         </button>
                       ))}
@@ -608,8 +608,8 @@ export function PMProjectsPage() {
                     <form onSubmit={handleAddMetric} style={{ display:"flex",flexDirection:"column",gap:12 }}>
                       {addTab === "catalog" ? (
                         <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                          <p style={{ fontSize:11,color:"#6b7280",margin:"0 0 8px" }}>Select from standard catalog — added immediately, no approval needed.</p>
-                          <label style={{ fontSize:12,fontWeight:600,color:"#374151" }}>Catalog Metric *</label>
+                          <p style={{ fontSize:11,color:"var(--muted)",margin:"0 0 8px" }}>Select from standard catalog — added immediately, no approval needed.</p>
+                          <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Catalog Metric *</label>
                           <select required value={addForm.catalog_metric_id} onChange={e => setAddForm(f => ({ ...f, catalog_metric_id: e.target.value }))}
                             className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                             <option value="">-- Select metric --</option>
@@ -618,16 +618,16 @@ export function PMProjectsPage() {
                         </div>
                       ) : (
                         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
-                          <div style={{ borderRadius:10,border:"1.5px solid #fcd34d",background:"#fffbeb",padding:"10px 12px",fontSize:11,color:"#92400e",gridColumn:"1/-1" }}>
+                          <div style={{ borderRadius:10,border:"1.5px solid #fcd34d",background:"rgba(245,158,11,0.10)",padding:"10px 12px",fontSize:11,color:"#92400e",gridColumn:"1/-1" }}>
                             Custom metric requests require Delivery Excellence approval. You'll be notified once reviewed.
                           </div>
                           <div style={{ gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"#374151" }}>Metric Name *</label>
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Metric Name *</label>
                             <input type="text" required value={addForm.metric_name} onChange={e => setAddForm(f => ({ ...f, metric_name: e.target.value }))} placeholder="E.g. Sprint Velocity"
                               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
                           </div>
                           <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"#374151" }}>Category</label>
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Category</label>
                             <select value={addForm.metric_category} onChange={e => setAddForm(f => ({ ...f, metric_category: e.target.value }))}
                               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                               <option value="">Select…</option>
@@ -635,26 +635,26 @@ export function PMProjectsPage() {
                             </select>
                           </div>
                           <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"#374151" }}>UOM</label>
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>UOM</label>
                             <input type="text" value={addForm.uom} onChange={e => setAddForm(f => ({ ...f, uom: e.target.value }))} placeholder="E.g. %"
                               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
                           </div>
                           <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"#374151" }}>Intent</label>
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Intent</label>
                             <select value={addForm.intent} onChange={e => setAddForm(f => ({ ...f, intent: e.target.value }))}
                               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                               {["Higher the better","Lower the better","Nominal the best","Within Limits"].map(i => <option key={i} value={i}>{i}</option>)}
                             </select>
                           </div>
                           <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"#374151" }}>Frequency</label>
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Frequency</label>
                             <select value={addForm.frequency} onChange={e => setAddForm(f => ({ ...f, frequency: e.target.value }))}
                               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                               {FREQUENCIES.map(fr => <option key={fr} value={fr}>{fr}</option>)}
                             </select>
                           </div>
                           <div style={{ gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"#374151" }}>Why is this metric needed? *</label>
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Why is this metric needed? *</label>
                             <textarea required value={addForm.justification} onChange={e => setAddForm(f => ({ ...f, justification: e.target.value }))}
                               rows={3} placeholder="Explain why this custom metric is needed..."
                               className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
@@ -663,8 +663,8 @@ export function PMProjectsPage() {
                         </div>
                       )}
                       <div style={{ display:"flex",justifyContent:"flex-end",gap:10,paddingTop:4 }}>
-                        <button type="button" onClick={() => setShowAddForm(false)} style={{ borderRadius:10,border:"1.5px solid #e8e6ff",padding:"8px 16px",fontSize:12,fontWeight:700,color:"#374151",background:"#fff",cursor:"pointer" }}>Cancel</button>
-                        <button type="submit" disabled={addingMetric} style={{ borderRadius:10,padding:"8px 18px",fontSize:12,fontWeight:700,color:"#fff",border:"none",cursor:addingMetric?"not-allowed":"pointer",
+                        <button type="button" onClick={() => setShowAddForm(false)} style={{ borderRadius:10,border:"1.5px solid #e8e6ff",padding:"8px 16px",fontSize:12,fontWeight:700,color:"var(--text)",background:"var(--surface)",cursor:"pointer" }}>Cancel</button>
+                        <button type="submit" disabled={addingMetric} style={{ borderRadius:10,padding:"8px 18px",fontSize:12,fontWeight:700,color:"var(--surface)",border:"none",cursor:addingMetric?"not-allowed":"pointer",
                           background:addTab==="catalog"?"#6c63ff":"#9333ea",opacity:addingMetric?0.6:1 }}>
                           {addingMetric ? "Submitting..." : addTab === "catalog" ? "Add to Plan" : "Send to DE"}
                         </button>
@@ -675,11 +675,11 @@ export function PMProjectsPage() {
                         <p style={{ fontSize:10,fontWeight:700,color:"#6c63ff",textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 10px" }}>My Pending Requests</p>
                         <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
                           {myRequests.map(r => (
-                            <div key={r.id} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:12,borderRadius:10,border:"1.5px solid #e8e6ff",background:"#fff",padding:"8px 14px" }}>
-                              <span style={{ fontWeight:600,color:"#1a1a2e" }}>{r.metric_name}</span>
+                            <div key={r.id} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:12,borderRadius:10,border:"1.5px solid #e8e6ff",background:"var(--surface)",padding:"8px 14px" }}>
+                              <span style={{ fontWeight:600,color:"var(--text)" }}>{r.metric_name}</span>
                               <span style={{ borderRadius:999,padding:"2px 10px",fontSize:10,fontWeight:700,border:"1px solid",
                                 color:r.status==="APPROVED"?"#16a34a":r.status==="REJECTED"?"#dc2626":"#d97706",
-                                background:r.status==="APPROVED"?"#f0fdf4":r.status==="REJECTED"?"#fff1f2":"#fffbeb",
+                                background:r.status==="APPROVED"?"rgba(34,197,94,0.10)":r.status==="REJECTED"?"rgba(239,68,68,0.10)":"rgba(245,158,11,0.10)",
                                 borderColor:r.status==="APPROVED"?"#86efac":r.status==="REJECTED"?"#fca5a5":"#fcd34d" }}>{r.status}</span>
                             </div>
                           ))}

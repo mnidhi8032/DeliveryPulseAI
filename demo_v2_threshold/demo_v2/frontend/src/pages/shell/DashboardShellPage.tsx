@@ -10,13 +10,13 @@ import type { Project } from "../../types/project";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  bg:       "#f0f2ff",
-  card:     "#ffffff",
+  bg:       "var(--bg)",
+  card:     "var(--surface)",
   primary:  "#6c63ff",
   purple2:  "#7c73ff",
-  text:     "#1a1a2e",
-  muted:    "#6b7280",
-  border:   "#e8e6ff",
+  text:     "var(--text)",
+  muted:    "var(--muted)",
+  border:   "var(--border)",
   shadow:   "0 2px 16px rgba(108,99,255,0.10)",
   shadowHov:"0 6px 28px rgba(108,99,255,0.18)",
 };
@@ -110,7 +110,7 @@ function ProjectCard({ project }: { project: Project }) {
   const ragColor = rag === "GREEN" ? "#22c55e" : rag === "AMBER" ? "#f59e0b" : rag === "RED" ? "#ef4444" : "#94a3b8";
 
   const statusBg: Record<string, string> = {
-    ACTIVE: "#f0fdf4", ON_HOLD: "#fffbeb", COMPLETED: "#eff6ff", CANCELLED: "#f8fafc",
+    ACTIVE: "rgba(34,197,94,0.10)", ON_HOLD: "rgba(245,158,11,0.10)", COMPLETED: "rgba(59,130,246,0.10)", CANCELLED: "#f8fafc",
   };
   const statusColor: Record<string, string> = {
     ACTIVE: "#16a34a", ON_HOLD: "#d97706", COMPLETED: "#2563eb", CANCELLED: "#94a3b8",
@@ -137,7 +137,7 @@ function ProjectCard({ project }: { project: Project }) {
             <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
               <span style={{ fontSize:9, fontWeight:800, color:C.primary, fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.12em" }}>{project.project_code}</span>
               <span style={{ fontSize:9, fontWeight:700, borderRadius:999, padding:"2px 7px",
-                color: statusColor[project.status] ?? "#6b7280",
+                color: statusColor[project.status] ?? "var(--muted)",
                 background: statusBg[project.status] ?? "#f8fafc",
               }}>{statusLabel[project.status] ?? project.status}</span>
             </div>
@@ -148,7 +148,7 @@ function ProjectCard({ project }: { project: Project }) {
           </div>
           <div style={{ flexShrink:0 }}>
             {rag ? <RagBadge rag={rag} showDot /> : (
-              <span style={{ fontSize:10, color:C.muted, background:"#f3f4f6", borderRadius:999, padding:"3px 10px", fontWeight:600 }}>No score</span>
+              <span style={{ fontSize:10, color:C.muted, background:"var(--border)", borderRadius:999, padding:"3px 10px", fontWeight:600 }}>No score</span>
             )}
           </div>
         </div>
@@ -285,7 +285,7 @@ export function DashboardShellPage() {
                       <span style={{ fontWeight:700, color:cfg.text }}>{cfg.label}</span>
                       <span style={{ fontWeight:700, color:C.text }}>{cnt} <span style={{ color:C.muted, fontWeight:400 }}>({pct}%)</span></span>
                     </div>
-                    <div style={{ width:"100%", height:7, background:"#f3f4f6", borderRadius:999, overflow:"hidden" }}>
+                    <div style={{ width:"100%", height:7, background:"var(--border)", borderRadius:999, overflow:"hidden" }}>
                       <div style={{ height:"100%", width:`${pct}%`, background:cfg.bar, borderRadius:999, transition:"width 0.7s" }} />
                     </div>
                   </div>
@@ -320,17 +320,17 @@ export function DashboardShellPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {[1,2,3].map(i => (
               <div key={i} style={{ borderRadius:20, border:`1.5px solid ${C.border}`, background:C.card, padding:20 }} className="animate-pulse">
-                <div style={{ height:10, width:"40%", background:"#e8e6ff", borderRadius:6, marginBottom:10 }} />
-                <div style={{ height:14, width:"70%", background:"#e8e6ff", borderRadius:6, marginBottom:16 }} />
-                <div style={{ height:10, width:"100%", background:"#f0f2ff", borderRadius:6, marginBottom:8 }} />
-                <div style={{ height:10, width:"60%", background:"#f0f2ff", borderRadius:6 }} />
+                <div style={{ height:10, width:"40%", background:"var(--border)", borderRadius:6, marginBottom:10 }} />
+                <div style={{ height:14, width:"70%", background:"var(--border)", borderRadius:6, marginBottom:16 }} />
+                <div style={{ height:10, width:"100%", background:"var(--bg)", borderRadius:6, marginBottom:8 }} />
+                <div style={{ height:10, width:"60%", background:"var(--bg)", borderRadius:6 }} />
               </div>
             ))}
           </div>
         )}
 
         {!loading && error && (
-          <div style={{ borderRadius:16, border:"1px solid #fecaca", background:"#fff7f7", padding:"40px 24px", textAlign:"center" }}>
+          <div style={{ borderRadius:16, border:"1px solid #fecaca", background:"var(--surface)", padding:"40px 24px", textAlign:"center" }}>
             <p style={{ fontSize:14, fontWeight:700, color:"#dc2626", margin:0 }}>Could not connect to the server</p>
             <p style={{ fontSize:12, color:C.muted, marginTop:6 }}>Make sure the backend is running, then refresh.</p>
           </div>

@@ -11,13 +11,13 @@ import type { Project } from "../../types/project";
 import type { ActionItem } from "../../types/brd";
 
 const C = {
-  primary: "#6c63ff",
-  bg: "#f0f2ff",
-  card: "#ffffff",
-  border: "#e8e6ff",
-  text: "#1a1a2e",
-  muted: "#6b7280",
-  shadow: "0 2px 16px rgba(108,99,255,0.10)",
+  primary: "var(--primary)",
+  bg:      "var(--bg)",
+  card:    "var(--surface)",
+  border:  "var(--border)",
+  text:    "var(--text)",
+  muted:   "var(--muted)",
+  shadow:  "var(--shadow)",
 };
 
 const STATUSES = ["OPEN", "IN_PROGRESS", "CLOSED"] as const;
@@ -28,7 +28,7 @@ function StatusBadge({ s }: { s: string }) {
     IN_PROGRESS: { bg: "#fffbeb", color: "#d97706", border: "#fcd34d" },
     CLOSED:      { bg: "#f0fdf4", color: "#16a34a", border: "#86efac" },
   };
-  const st = styles[s] ?? { bg: "#f9fafb", color: "#6b7280", border: "#e5e7eb" };
+  const st = styles[s] ?? { bg: "#f9fafb", color: "var(--muted)", border: "#e5e7eb" };
   return (
     <span style={{
       fontSize: 10, fontWeight: 700, borderRadius: 999,
@@ -132,7 +132,7 @@ export function PMAllActionsPage() {
       {!loading && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           {([
-            { label: "All",         key: "ALL",         val: items.length,        color: "#6c63ff", bg: "rgba(108,99,255,0.08)" },
+            { label: "All",         key: "ALL",         val: items.length,        color: "var(--primary)", bg: "rgba(108,99,255,0.08)" },
             { label: "Open",        key: "OPEN",        val: counts.OPEN,         color: "#dc2626", bg: "rgba(239,68,68,0.08)"  },
             { label: "In Progress", key: "IN_PROGRESS", val: counts.IN_PROGRESS,  color: "#d97706", bg: "rgba(245,158,11,0.08)" },
             { label: "Closed",      key: "CLOSED",      val: counts.CLOSED,       color: "#16a34a", bg: "rgba(34,197,94,0.08)"  },
@@ -237,7 +237,7 @@ export function PMAllActionsPage() {
                         appearance: "none", WebkitAppearance: "none",
                         borderRadius: 8, border: `1.5px solid ${C.border}`,
                         padding: "5px 10px", fontSize: 11, fontWeight: 600,
-                        color: C.text, background: C.bg, cursor: "pointer", outline: "none",
+                        color: C.text, background: "var(--bg)", cursor: "pointer", outline: "none",
                       }}>
                       {STATUSES.map(s => <option key={s}>{s}</option>)}
                     </select>
