@@ -51,8 +51,9 @@ import { PMSummaryPage }       from "../pages/pm/PMSummaryPage";
 import { PMAllActionsPage }    from "../pages/pm/PMAllActionsPage";
 
 // Shared
-import { ProjectHealthTimelinePage } from "../pages/shared/ProjectHealthTimelinePage";
-import { DashboardShellPage }        from "../pages/shell/DashboardShellPage";
+import { ProjectHealthTimelinePage }     from "../pages/shared/ProjectHealthTimelinePage";
+import { ProjectSummaryReadOnlyPage }    from "../pages/shared/ProjectSummaryReadOnlyPage";
+import { DashboardShellPage }            from "../pages/shell/DashboardShellPage";
 
 // Auth
 import { LoginPage }        from "../pages/LoginPage";
@@ -74,6 +75,7 @@ export function AppRoutes() {
         <Route path="/delivery-excellence" element={<DeliveryExcellenceLayout />}>
           <Route index element={<PortfolioDashboardPage />} />
           <Route path="catalog" element={<DECatalogPage />} />
+          <Route path="projects/:projectId/summary" element={<ProjectSummaryReadOnlyPage />} />
         </Route>
       </Route>
 
@@ -84,6 +86,7 @@ export function AppRoutes() {
           <Route path="business-units" element={<PlatformAdminBusinessUnitsPage />} />
           <Route path="bu/:id" element={<PlatformAdminBUAnalysisPage />} />
           <Route path="projects/:projectId/timeline" element={<ProjectHealthTimelinePage />} />
+          <Route path="projects/:projectId/summary" element={<ProjectSummaryReadOnlyPage />} />
           <Route path="reports" element={<PlatformAdminReportsPage />} />
           <Route path="settings" element={<PlatformAdminSettingsPage />} />
         </Route>
@@ -97,6 +100,7 @@ export function AppRoutes() {
           <Route path="business-units/:id" element={<CEOBUDetailPage />} />
           <Route path="projects" element={<CEOProjectsPage />} />
           <Route path="projects/:projectId/timeline" element={<ProjectHealthTimelinePage />} />
+          <Route path="projects/:projectId/summary" element={<ProjectSummaryReadOnlyPage />} />
           <Route path="reports" element={<CEOReportsPage />} />
         </Route>
       </Route>

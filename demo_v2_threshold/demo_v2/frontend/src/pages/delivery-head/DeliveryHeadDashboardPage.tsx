@@ -16,18 +16,6 @@ const RAG_HEX: Record<string, string> = {
 const RAG_DOT_BG: Record<string, string> = {
   GREEN: "bg-emerald-500", AMBER: "bg-amber-400", RED: "bg-rose-500", CRITICAL: "bg-rose-700",
 };
-const RAG_LABEL_CLS: Record<string, string> = {
-  GREEN:    "text-emerald-700 bg-emerald-50 border-emerald-200",
-  AMBER:    "text-amber-700   bg-amber-50   border-amber-200",
-  RED:      "text-rose-700    bg-rose-50    border-rose-200",
-  CRITICAL: "text-rose-800    bg-rose-100   border-rose-300",
-};
-const RAG_PILL_CLS: Record<string, string> = {
-  GREEN:    "bg-emerald-50  text-emerald-700 border-emerald-200",
-  AMBER:    "bg-amber-50    text-amber-700   border-amber-200",
-  RED:      "bg-rose-50     text-rose-700    border-rose-200",
-  CRITICAL: "bg-rose-100    text-rose-800    border-rose-300",
-};
 
 // ── Stat tile ─────────────────────────────────────────────────────────────────
 function StatTile({ label, value, bg }: { label: string; value: number; bg: string }) {
