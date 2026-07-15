@@ -6,7 +6,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { listProjects } from "../../services/projectService";
+import { getKpiPlan } from "../../services/qpmService";
 import type { Project } from "../../types/project";
+import type { KpiPlan } from "../../types/qpm";
+import { PROJECT_TYPES, PROJECT_CATEGORIES } from "../../types/qpm";
+
+interface ProjectWithPlan extends Project {
+  kpiPlan?: KpiPlan;
+}
 
 /* ── Design tokens ── */
 const RAG_COLOR: Record<string, string> = {
@@ -119,43 +126,84 @@ function BUHealthChart({ projects }: { projects: Project[] }) {
 
 /* ── SVG Donut chart — RAG breakdown ── */
 function RagDonut({ green, amber, red, total }: { green: number; amber: number; red: number; total: number }) {
-  const R = 60; const cx = 80; const cy = 80; const circ = 2 * Math.PI * R;
+  const R = 56; const cx = 80; const cy = 80;
+  const strokeW = 22;
+
+  // Build slices in display order: Green → Amber → Red → No data
   const noData = total - green - amber - red;
-  const slices = [
-    { val: green,  color: "#22c55e", label: "Green"  },
-    { val: amber,  color: "#f59e0b", label: "Amber"  },
-    { val: red,    color: "#ef4444", label: "Red"    },
-    { val: noData, color: "#e5e7eb", label: "No data"},
+  const rawSlices = [
+    { val: green,  color: "#22c55e", label: "Green"   },
+    { val: amber,  color: "#f59e0b", label: "Amber"   },
+    { val: red,    color: "#ef4444", label: "Red"     },
+    { val: noData, color: "#d1d5db", label: "No data" },
   ];
-  let offset = 0;
-  const arcs = slices.map(s => {
-    const dash = total > 0 ? (s.val / total) * circ : 0;
-    const arc = { ...s, dash, offset };
-    offset += dash;
-    return arc;
+
+  // Compute arc for each slice (gap = 2px between slices)
+  const GAP = total > 0 ? 2 : 0;
+  let cumulativeAngle = -90; // start at 12 o'clock
+
+  const arcs = rawSlices.map(s => {
+    const fraction = total > 0 ? s.val / total : 0;
+    const angleDeg = fraction * 360;
+    const startAngle = cumulativeAngle;
+    cumulativeAngle += angleDeg;
+    return { ...s, fraction, startAngle, angleDeg };
   });
+
+  // Convert angle to x,y on circle
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const pt = (angle: number) => ({
+    x: cx + R * Math.cos(toRad(angle)),
+    y: cy + R * Math.sin(toRad(angle)),
+  });
+
+  // Build SVG arc path
+  const arcPath = (startDeg: number, angleDeg: number) => {
+    if (angleDeg <= 0) return null;
+    if (angleDeg >= 360) {
+      // Full circle — use two half arcs
+      const mid = startDeg + 180;
+      const s = pt(startDeg);
+      const m = pt(mid);
+      return `M ${s.x} ${s.y} A ${R} ${R} 0 1 1 ${m.x} ${m.y} A ${R} ${R} 0 1 1 ${s.x} ${s.y}`;
+    }
+    const start = pt(startDeg + GAP / 2);
+    const end   = pt(startDeg + angleDeg - GAP / 2);
+    const large = angleDeg - GAP > 180 ? 1 : 0;
+    return `M ${start.x} ${start.y} A ${R} ${R} 0 ${large} 1 ${end.x} ${end.y}`;
+  };
+
   const pct = total > 0 ? Math.round((green / total) * 100) : 0;
+  const legendItems = rawSlices.filter(s => s.val > 0);
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-      <svg viewBox="0 0 160 160" style={{ width: 160, height: 160, flexShrink: 0 }}>
-        <circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--border)" strokeWidth={20} />
-        {arcs.map((a, i) => (
-          <circle key={i} cx={cx} cy={cy} r={R} fill="none"
-            stroke={a.color} strokeWidth={20} strokeLinecap="butt"
-            strokeDasharray={`${Math.max(a.dash - 1.5, 0)} ${circ}`}
-            strokeDashoffset={-a.offset + circ / 4}
-          />
-        ))}
+      <svg viewBox="0 0 160 160" style={{ width: 160, height: 160, flexShrink: 0, overflow: "visible" }}>
+        {/* Track */}
+        <circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--border)" strokeWidth={strokeW} />
+        {/* Slices */}
+        {arcs.map((a, i) => {
+          const d = arcPath(a.startAngle, a.angleDeg);
+          if (!d) return null;
+          return (
+            <path key={i} d={d} fill="none"
+              stroke={a.color} strokeWidth={strokeW}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        {/* Center text */}
         <text x={cx} y={cy - 6} textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--text)">{pct}%</text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10" fill="var(--muted)">Green health</text>
+        <text x={cx} y={cy + 12} textAnchor="middle" fontSize="10" fill="var(--muted)">Green health</text>
       </svg>
+
+      {/* Legend */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {arcs.filter(a => a.val > 0).map(a => (
+        {legendItems.map(a => (
           <div key={a.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: a.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600, minWidth: 60 }}>{a.label}</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>{a.val}</span>
+            <span style={{ width: 12, height: 12, borderRadius: "50%", background: a.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 600, minWidth: 64 }}>{a.label}</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{a.val}</span>
           </div>
         ))}
       </div>
@@ -204,14 +252,28 @@ export function PortfolioDashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithPlan[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
   const [showAllAtRisk, setShowAllAtRisk] = useState(false);
+  const [buFilter, setBuFilter]             = useState("All");
+  const [accountFilter, setAccountFilter]   = useState("All");
+  const [typeFilter, setTypeFilter]         = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
 
   useEffect(() => {
     listProjects()
-      .then(list => setProjects(list.sort((a, b) => a.project_name.localeCompare(b.project_name))))
+      .then(async list => {
+        const sorted = list.sort((a, b) => a.project_name.localeCompare(b.project_name));
+        setProjects(sorted); // show table immediately
+        setLoading(false);
+        // Load KPI plans in background (non-blocking)
+        const withPlans = await Promise.all(sorted.map(async p => {
+          try { return { ...p, kpiPlan: await getKpiPlan(p.id) }; }
+          catch { return { ...p, kpiPlan: undefined }; }
+        }));
+        setProjects(withPlans);
+      })
       .catch(() => setError("Failed to load projects"))
       .finally(() => setLoading(false));
   }, []);
@@ -236,6 +298,28 @@ export function PortfolioDashboardPage() {
     : "/platform";
 
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+  // Filter options derived from loaded projects
+  const buOptions = useMemo(() =>
+    ["All", ...Array.from(new Set(projects.map(p => p.business_unit_name).filter(Boolean))).sort()],
+    [projects]);
+  const accountOptions = useMemo(() => {
+    const src = buFilter === "All" ? projects : projects.filter(p => p.business_unit_name === buFilter);
+    return ["All", ...Array.from(new Set(src.map(p => p.account_name).filter(Boolean))).sort()];
+  }, [projects, buFilter]);
+  const typeOptions     = ["All", ...PROJECT_TYPES];
+  const categoryOptions = ["All", ...PROJECT_CATEGORIES];
+
+  // Filtered project list for the table
+  const filtered = useMemo(() => projects.filter(p => {
+    if (buFilter !== "All"       && p.business_unit_name        !== buFilter)       return false;
+    if (accountFilter !== "All"  && p.account_name              !== accountFilter)  return false;
+    if (typeFilter !== "All"     && p.kpiPlan?.project_type     !== typeFilter)     return false;
+    if (categoryFilter !== "All" && p.kpiPlan?.project_category !== categoryFilter) return false;
+    return true;
+  }), [projects, buFilter, accountFilter, typeFilter, categoryFilter]);
+
+  const handleBuChange = (v: string) => { setBuFilter(v); setAccountFilter("All"); };
 
   if (loading) return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -330,38 +414,86 @@ export function PortfolioDashboardPage() {
         </div>
       </div>
 
+      {/* ── Filter bar ── */}
+      <div style={{
+        borderRadius: 16, background: "var(--surface)", border: "1.5px solid var(--border)",
+        boxShadow: "var(--shadow)", padding: "16px 24px",
+      }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
+          {[
+            { label: "Business Unit",    value: buFilter,       options: buOptions,       onChange: handleBuChange },
+            { label: "Account",          value: accountFilter,  options: accountOptions,  onChange: setAccountFilter },
+            { label: "Project Type",     value: typeFilter,     options: typeOptions,     onChange: setTypeFilter },
+            { label: "Project Category", value: categoryFilter, options: categoryOptions, onChange: setCategoryFilter },
+          ].map(f => (
+            <div key={f.label} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{f.label}</label>
+              <div style={{ position: "relative" }}>
+                <select value={f.value} onChange={e => f.onChange(e.target.value)} style={{
+                  width: "100%", appearance: "none", WebkitAppearance: "none",
+                  borderRadius: 10, border: "1.5px solid var(--border)",
+                  padding: "9px 34px 9px 12px", fontSize: 13, fontWeight: 600,
+                  color: "var(--text)", background: "var(--surface)",
+                  outline: "none", cursor: "pointer", fontFamily: "inherit",
+                  transition: "border-color 0.15s",
+                }}>
+                  {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <svg style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--muted)" }}
+                  width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          ))}
+          {/* Reset */}
+          {(buFilter !== "All" || accountFilter !== "All" || typeFilter !== "All" || categoryFilter !== "All") && (
+            <div style={{ display: "flex", alignItems: "flex-end" }}>
+              <button onClick={() => { setBuFilter("All"); setAccountFilter("All"); setTypeFilter("All"); setCategoryFilter("All"); }} style={{
+                borderRadius: 10, border: "1.5px solid var(--border)", padding: "9px 16px",
+                fontSize: 12, fontWeight: 700, color: "var(--muted)", background: "transparent",
+                cursor: "pointer", whiteSpace: "nowrap",
+              }}>✕ Reset filters</button>
+            </div>
+          )}
+        </div>
+        <p style={{ fontSize: 11, color: "var(--muted)", margin: "10px 0 0" }}>
+          Showing <strong style={{ color: "var(--text)" }}>{filtered.length}</strong> of <strong style={{ color: "var(--text)" }}>{projects.length}</strong> projects
+        </p>
+      </div>
+
       {/* ── Projects table ── */}
       <div style={{ borderRadius: 20, background: "var(--surface)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
         <div style={{ padding: "22px 24px 0" }}>
           <SectionHeader
             title="All Projects"
-            sub={`${projects.length} projects across all business units`}
+            sub={`${filtered.length} of ${projects.length} projects`}
           />
         </div>
 
         {/* Table header */}
         <div style={{
-          display: "grid", gridTemplateColumns: "2fr 1.2fr 1.2fr 1fr 1fr 110px",
+          display: "grid", gridTemplateColumns: "2fr 1.1fr 1.1fr 1.1fr 1.1fr 1fr 110px",
           padding: "10px 24px", borderBottom: "1.5px solid var(--border)",
           background: "rgba(108,99,255,0.04)",
         }}>
-          {["Project", "Business Unit", "Account", "Status", "PM", "Health"].map(h => (
+          {["Project", "Business Unit", "Account", "Type", "Category", "PM", "Health"].map(h => (
             <span key={h} style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>{h}</span>
           ))}
         </div>
 
         {/* Rows */}
-        {projects.length === 0 ? (
+        {filtered.length === 0 ? (
           <div style={{ padding: "48px 24px", textAlign: "center" }}>
-            <p style={{ color: "var(--muted)", fontSize: 14 }}>No projects found.</p>
+            <p style={{ color: "var(--muted)", fontSize: 14 }}>No projects match your selected filters.</p>
           </div>
-        ) : projects.map((p, idx) => (
+        ) : filtered.map((p, idx) => (
           <div key={p.id}
             onClick={() => navigate(`${basePath}/projects/${p.id}/summary`)}
             style={{
-              display: "grid", gridTemplateColumns: "2fr 1.2fr 1.2fr 1fr 1fr 110px",
+              display: "grid", gridTemplateColumns: "2fr 1.1fr 1.1fr 1.1fr 1.1fr 1fr 110px",
               padding: "13px 24px",
-              borderBottom: idx < projects.length - 1 ? "1px solid var(--border)" : "none",
+              borderBottom: idx < filtered.length - 1 ? "1px solid var(--border)" : "none",
               cursor: "pointer", alignItems: "center",
               transition: "background 0.12s",
               borderLeft: `3px solid ${p.current_rag ? RAG_COLOR[p.current_rag] ?? "transparent" : "transparent"}`,
@@ -375,9 +507,8 @@ export function PortfolioDashboardPage() {
             </div>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.business_unit_name || "—"}</span>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.account_name || "—"}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: p.status === "ACTIVE" ? "#16a34a" : "var(--muted)" }}>
-              {p.status.replace("_", " ")}
-            </span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.kpiPlan?.project_type || "—"}</span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.kpiPlan?.project_category || "—"}</span>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.project_manager_name || "—"}</span>
             <div><RagBadge rag={p.current_rag} /></div>
           </div>
