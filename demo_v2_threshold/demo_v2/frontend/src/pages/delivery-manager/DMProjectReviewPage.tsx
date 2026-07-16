@@ -69,7 +69,6 @@ export function DMProjectReviewPage() {
   const [loading, setLoading] = useState(true);
   const [periodLabel, setPeriodLabel] = useState("");
   const [dmComments, setDmComments] = useState("");
-  const [actionItems, setActionItems] = useState<string[]>([""]);
   const [editReviewId, setEditReviewId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
@@ -100,18 +99,13 @@ export function DMProjectReviewPage() {
     }
   }
 
-  const addAI = () => setActionItems(p => [...p, ""]);
-  const updAI = (i: number, v: string) => setActionItems(p => p.map((x, j) => j === i ? v : x));
-  const remAI = (i: number) => setActionItems(p => p.filter((_, j) => j !== i));
-
   const loadForEdit = (r: DMReview) => {
     setEditReviewId(r.id); setPeriodLabel(r.period_label); setDmComments(r.dm_comments || "");
-    setActionItems(r.action_items.length > 0 ? r.action_items : [""]);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const resetForm = () => {
-    setEditReviewId(null); setDmComments(""); setActionItems([""]);
+    setEditReviewId(null); setDmComments("");
     const today = new Date();
     const M = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     setPeriodLabel(`${M[today.getMonth()]} ${today.getFullYear()}`);
@@ -121,7 +115,7 @@ export function DMProjectReviewPage() {
     e.preventDefault();
     if (!periodLabel.trim()) { toast.error("Period label is required"); return; }
     if (!dmComments.trim()) { toast.error("Please add your commentary"); return; }
-    const items = actionItems.map(a => a.trim()).filter(Boolean);
+    const items: string[] = [];
     setSaving(true);
     try {
       if (editReviewId) {
@@ -282,25 +276,6 @@ export function DMProjectReviewPage() {
               placeholder="Summarise the project's KPI performance this period…"
               style={{ ...inputStyle, resize:"none" }} />
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Action items <span style={{ color: C.muted, fontWeight:400 }}>(optional)</span></label>
-              <button type="button" onClick={addAI} style={{ fontSize:12, color: C.primary, fontWeight:700, background:"transparent", border:"none", cursor:"pointer" }}>+ Add item</button>
-            </div>
-            {actionItems.map((item, idx) => (
-              <div key={idx} style={{ display:"flex", gap:8, alignItems:"center" }}>
-                <span style={{ fontSize:12, color: C.muted, width:20, textAlign:"right", flexShrink:0 }}>{idx + 1}.</span>
-                <input type="text" value={item} onChange={e => updAI(idx, e.target.value)} placeholder={`Action item ${idx + 1}…`} style={{ ...inputStyle }} />
-                {actionItems.length > 1 && (
-                  <button type="button" onClick={() => remAI(idx)} style={{ background:"transparent", border:"none", cursor:"pointer", color:"#d1d5db", flexShrink:0, padding:4 }}>
-                    <svg style={{ width:16, height:16 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
           <div style={{ display:"flex", alignItems:"center", gap:12, paddingTop:8, borderTop:`1px solid ${C.border}` }}>
             <button type="submit" disabled={saving} style={{
               borderRadius:12, background: C.primary, color:"var(--surface)", padding:"10px 24px", fontSize:14, fontWeight:800, border:"none", cursor:"pointer",
@@ -340,16 +315,6 @@ export function DMProjectReviewPage() {
                 </div>
                 {r.dm_comments && (
                   <p style={{ fontSize:14, color: C.text, borderLeft:`3px solid ${C.primary}44`, paddingLeft:14, margin:"0 0 10px", lineHeight:1.6 }}>{r.dm_comments}</p>
-                )}
-                {r.action_items.length > 0 && (
-                  <ul style={{ margin:0, padding:0, listStyle:"none", display:"flex", flexDirection:"column", gap:6 }}>
-                    {r.action_items.map((item, idx) => (
-                      <li key={idx} style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:13, color: C.muted }}>
-                        <span style={{ width:6, height:6, borderRadius:"50%", background: C.primary, flexShrink:0, marginTop:5 }} />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
                 )}
               </div>
             ))}

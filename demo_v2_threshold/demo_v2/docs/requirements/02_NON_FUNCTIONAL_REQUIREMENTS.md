@@ -158,3 +158,61 @@
 **Priority:** Medium  
 **Description:** Frequently queried foreign keys shall be indexed.  
 **Implementation:** `index=True` on `plan_metric_id`, `project_id`, `kpi_plan_id`, `delivery_manager_user_id` across all relevant tables.
+
+---
+
+## NFR-007 — Theme and Visual Consistency
+
+### NFR-007.1 — Light/Dark Theme Support
+**Priority:** High  
+**Description:** All pages shall render correctly in both light and dark theme without white content areas appearing on a dark background.  
+**Implementation:** CSS variables (`var(--bg)`, `var(--surface)`, etc.) used exclusively for all backgrounds, text, and borders in inline `style` props. `dark-theme.css` patches Tailwind classes.
+
+### NFR-007.2 — Theme Persistence
+**Priority:** Medium  
+**Description:** Theme preference shall persist across sessions.  
+**Implementation:** `ThemeContext` stores preference in `localStorage` and reads it on app initialisation.
+
+### NFR-007.3 — No White Flash
+**Priority:** Medium  
+**Description:** Switching themes shall not produce a visible flash of wrong content.  
+**Implementation:** `data-theme` attribute set on `<html>` immediately in `ThemeContext` before first paint.
+
+---
+
+## NFR-008 — Modal Overlay Behaviour
+
+### NFR-008.1 — Backdrop Click to Dismiss
+**Priority:** Medium  
+**Description:** All modal overlays shall be dismissable by clicking the backdrop area outside the modal card.  
+**Implementation:** `onClick={onClose}` on the backdrop div; `onClick={e => e.stopPropagation()}` on the modal card.
+
+### NFR-008.2 — Animation
+**Priority:** Low  
+**Description:** Modals shall animate on open (slide-up + fade-in) for a polished user experience.  
+**Implementation:** CSS keyframe animations `fadeIn` and `slideUp` applied via `animation` style prop.
+
+### NFR-008.3 — Scroll in Modal
+**Priority:** Medium  
+**Description:** Modals containing long project lists shall be scrollable without the page behind scrolling.  
+**Implementation:** Modal card uses `maxHeight: "85vh"` with `overflowY: "auto"` on the content area.
+
+---
+
+## NFR-009 — Notification System
+
+### NFR-009.1 — Polling Interval
+**Priority:** Medium  
+**Description:** Notification count shall be refreshed automatically without requiring user action.  
+**Target:** Poll every 30 seconds. Must not degrade page performance.  
+**Implementation:** `setInterval` in `Header.tsx` `useEffect`.
+
+### NFR-009.2 — Non-Blocking Notification Creation
+**Priority:** High  
+**Description:** Notification creation failures shall never block or roll back the primary business operation.  
+**Implementation:** `try/except` with `logger.error` and `session.rollback()` in `ActionItemService.create()`.
+
+### NFR-009.3 — Notification Deep-Link Accuracy
+**Priority:** High  
+**Description:** Clicking a notification shall navigate to the exact relevant page for the notification type.  
+**Implementation:** `handleNotificationClick` in `Header.tsx` routes by `notif.type` and `notif.related_project_id`.

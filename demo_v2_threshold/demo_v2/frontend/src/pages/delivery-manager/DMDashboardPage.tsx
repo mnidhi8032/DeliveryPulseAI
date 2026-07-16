@@ -2,7 +2,7 @@
  * Delivery Manager Dashboard — light purple theme matching PM dashboard.
  */
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { listProjects } from "../../services/projectService";
 import { getProjectReviewStatuses } from "../../services/dmReviewService";
 import type { Project } from "../../types/project";
@@ -20,14 +20,21 @@ const C = {
 };
 
 // ── Stat card (matches PM style exactly) ─────────────────────────────────────
-function StatCard({ label, value, sub, color }: {
-  label: string; value: number | string; sub?: string; color: string;
+function StatCard({ label, value, sub, color, onClick }: {
+  label: string; value: number | string; sub?: string; color: string; onClick?: () => void;
 }) {
   return (
-    <div style={{
-      borderRadius: 20, padding: "22px 22px 18px", background: color,
-      boxShadow: `0 4px 20px ${color}55`, position: "relative", overflow: "hidden",
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        borderRadius: 20, padding: "22px 22px 18px", background: color,
+        boxShadow: `0 4px 20px ${color}55`, position: "relative", overflow: "hidden",
+        cursor: onClick ? "pointer" : "default",
+        transition: "transform 0.18s, box-shadow 0.18s",
+      }}
+      onMouseEnter={e => { if (onClick) { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; } }}
+      onMouseLeave={e => { if (onClick) { (e.currentTarget as HTMLDivElement).style.transform = ""; } }}
+    >
       <div style={{ position:"absolute", top:-18, right:-18, width:72, height:72, borderRadius:"50%", background:"rgba(255,255,255,0.15)" }} />
       <p style={{ fontSize: 38, fontWeight: 900, color: "var(--surface)", margin: 0, lineHeight: 1 }}>{value}</p>
       <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.80)", margin: "7px 0 0", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
@@ -110,11 +117,152 @@ function DonutChart({ needsReview, upToDate }: { needsReview: number; upToDate: 
   );
 }
 
+// ── DM Projects Modal ─────────────────────────────────────────────────────────
+const DM_MODAL_CONFIG: Record<string, { title: string; color: string }> = {
+  ALL:          { title: "All Projects",        color: "#6c63ff" },
+  NEEDS_REVIEW: { title: "Needs Review",         color: "#f97316" },
+  GREEN:        { title: "Green Health Projects",color: "#22c55e" },
+  AT_RISK:      { title: "At Risk Projects",     color: "#f59e0b" },
+};
+
+const DM_RAG_PILL: Record<string, { bg: string; border: string; text: string; label: string }> = {
+  GREEN:    { bg: "rgba(34,197,94,0.12)",  border: "rgba(34,197,94,0.30)",  text: "#15803d", label: "Green"    },
+  AMBER:    { bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.30)", text: "#b45309", label: "Amber"    },
+  RED:      { bg: "rgba(239,68,68,0.12)",  border: "rgba(239,68,68,0.30)",  text: "#b91c1c", label: "Red"      },
+  CRITICAL: { bg: "rgba(190,18,60,0.12)",  border: "rgba(190,18,60,0.30)",  text: "#9f1239", label: "Critical" },
+};
+
+function DMModalRagPill({ rag }: { rag: string | null }) {
+  if (!rag) return (
+    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 10px",
+      background: "rgba(100,116,139,0.10)", border: "1px solid rgba(100,116,139,0.25)", color: "var(--muted)" }}>
+      No Score
+    </span>
+  );
+  const c = DM_RAG_PILL[rag];
+  if (!c) return null;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 10px",
+      background: c.bg, border: `1px solid ${c.border}`, color: c.text }}>
+      {c.label}
+    </span>
+  );
+}
+
+function DMProjectsModal({ filter, projects, onClose }: {
+  filter: string;
+  projects: Project[];
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const cfg = DM_MODAL_CONFIG[filter] ?? DM_MODAL_CONFIG["ALL"];
+
+  const filtered = projects.filter(p => {
+    if (filter === "ALL")          return true;
+    if (filter === "NEEDS_REVIEW") return p.current_rag === "AMBER" || p.current_rag === "RED" || p.current_rag === "CRITICAL";
+    if (filter === "GREEN")        return p.current_rag === "GREEN";
+    if (filter === "AT_RISK")      return p.current_rag === "AMBER" || p.current_rag === "RED" || p.current_rag === "CRITICAL";
+    return true;
+  });
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "24px 16px",
+        animation: "dmFadeIn 0.15s ease",
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 640,
+          borderRadius: 24, background: "var(--surface)",
+          padding: 0, overflow: "hidden",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.25)",
+          animation: "dmSlideUp 0.2s ease",
+          maxHeight: "85vh", display: "flex", flexDirection: "column",
+        }}
+      >
+        {/* Header */}
+        <div style={{ background: cfg.color, padding: "18px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ background: "rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 800,
+            borderRadius: 999, padding: "3px 10px", minWidth: 28, textAlign: "center" }}>
+            {filtered.length}
+          </span>
+          <h2 style={{ flex: 1, fontSize: 17, fontWeight: 800, color: "#fff", margin: 0 }}>{cfg.title}</h2>
+          <button
+            onClick={onClose}
+            style={{ background: "rgba(255,255,255,0.20)", border: "none", borderRadius: 8,
+              width: 32, height: 32, cursor: "pointer", fontSize: 18, color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+          >×</button>
+        </div>
+
+        {/* Rows */}
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: "48px 24px", textAlign: "center" }}>
+              <p style={{ color: "var(--muted)", fontSize: 14 }}>No projects in this category</p>
+            </div>
+          ) : filtered.map((p, idx) => (
+            <div
+              key={p.id}
+              onClick={() => { navigate(`/delivery-manager/projects/${p.id}/review`); onClose(); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 14,
+                padding: "14px 24px",
+                borderBottom: idx < filtered.length - 1 ? "1px solid var(--border)" : "none",
+                cursor: "pointer", transition: "background 0.12s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = "rgba(108,99,255,0.04)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontWeight: 700, color: "var(--primary)", margin: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p.project_name}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                  <span style={{ fontSize: 10, fontFamily: "monospace", color: "var(--muted)", fontWeight: 600 }}>{p.project_code}</span>
+                  {p.account_name && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {p.account_name}</span>}
+                  {p.business_unit_name && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {p.business_unit_name}</span>}
+                </div>
+              </div>
+              <DMModalRagPill rag={p.current_rag} />
+              {/* Review KPIs button */}
+              <div onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={() => { navigate(`/delivery-manager/projects/${p.id}/review`); onClose(); }}
+                  style={{
+                    borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 700,
+                    cursor: "pointer", border: "none",
+                    background: "#6c63ff", color: "#fff",
+                    boxShadow: "0 2px 8px rgba(108,99,255,0.30)",
+                    whiteSpace: "nowrap",
+                  }}
+                >Review KPIs</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{`
+        @keyframes dmFadeIn  { from { opacity:0 } to { opacity:1 } }
+        @keyframes dmSlideUp { from { transform:translateY(32px); opacity:0 } to { transform:translateY(0); opacity:1 } }
+      `}</style>
+    </div>
+  );
+}
+
 export function DMDashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [reviewStatuses, setReviewStatuses] = useState<Map<string, ProjectReviewStatus>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modalFilter, setModalFilter] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([listProjects(), getProjectReviewStatuses()])
@@ -163,10 +311,10 @@ export function DMDashboardPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total Projects"  value={projects.length}  sub="across all accounts" color="#6c63ff" />
-        <StatCard label="Needs Review"    value={needsReviewCount} sub={needsReviewCount > 0 ? "action required" : "all reviewed"} color="#f97316" />
-        <StatCard label="Green Health"    value={greenCount}       sub={`${projects.length ? Math.round((greenCount / projects.length) * 100) : 0}% of projects`} color="#22c55e" />
-        <StatCard label="At Risk"         value={amberCount + redCount} sub="amber + red"    color="#f59e0b" />
+        <StatCard label="Total Projects"  value={projects.length}  sub="across all accounts" color="#6c63ff" onClick={() => setModalFilter("ALL")} />
+        <StatCard label="Needs Review"    value={needsReviewCount} sub={needsReviewCount > 0 ? "action required" : "all reviewed"} color="#f97316" onClick={() => setModalFilter("NEEDS_REVIEW")} />
+        <StatCard label="Green Health"    value={greenCount}       sub={`${projects.length ? Math.round((greenCount / projects.length) * 100) : 0}% of projects`} color="#22c55e" onClick={() => setModalFilter("GREEN")} />
+        <StatCard label="At Risk"         value={amberCount + redCount} sub="amber + red" color="#f59e0b" onClick={() => setModalFilter("AT_RISK")} />
       </div>
 
       {/* Charts row */}
@@ -289,6 +437,15 @@ export function DMDashboardPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* ── DM Projects Modal ── */}
+      {modalFilter !== null && (
+        <DMProjectsModal
+          filter={modalFilter}
+          projects={projects}
+          onClose={() => setModalFilter(null)}
+        />
       )}
     </div>
   );

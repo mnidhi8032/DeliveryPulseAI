@@ -22,18 +22,19 @@ const C = {
 };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, icon, color, to }: {
+function StatCard({ label, value, sub, icon, color, to, onClick }: {
   label: string; value: string | number; sub?: string;
-  icon: React.ReactNode; color: string; to?: string;
+  icon: React.ReactNode; color: string; to?: string; onClick?: () => void;
 }) {
   const inner = (
     <div style={{
       borderRadius: 20, padding: "22px 22px 18px", background: color,
       boxShadow: `0 4px 20px ${color}55`,
-      cursor: to ? "pointer" : "default", position: "relative", overflow: "hidden",
+      cursor: (to || onClick) ? "pointer" : "default", position: "relative", overflow: "hidden",
       transition: "transform 0.2s, box-shadow 0.2s",
     }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)"; }}
+      onClick={!to ? onClick : undefined}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ""; }}
     >
       <div style={{ position:"absolute", top:-18, right:-18, width:72, height:72, borderRadius:"50%", background:"rgba(255,255,255,0.15)" }} />
@@ -49,7 +50,7 @@ function StatCard({ label, value, sub, icon, color, to }: {
 }
 
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
-function DashboardStats({ projects }: { projects: Project[] }) {
+function DashboardStats({ projects, onCardClick }: { projects: Project[]; onCardClick: (filter: string) => void }) {
   const total   = projects.length;
   const green   = projects.filter(p => p.current_rag === "GREEN").length;
   const amber   = projects.filter(p => p.current_rag === "AMBER").length;
@@ -58,18 +59,167 @@ function DashboardStats({ projects }: { projects: Project[] }) {
   const healthPct = total > 0 ? Math.round((green / total) * 100) : 0;
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      <StatCard label="Total Projects" value={total} sub="Assigned to you" to="/pm/projects" color="#6c63ff"
+      <StatCard label="Total Projects" value={total} sub="Assigned to you" to="/pm/projects" color="#6c63ff" onClick={() => onCardClick("ALL")}
         icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
       />
-      <StatCard label="Green Health" value={`${healthPct}%`} sub={`${green} of ${total} healthy`} color="#22c55e"
+      <StatCard label="Green Health" value={`${healthPct}%`} sub={`${green} of ${total} healthy`} color="#22c55e" onClick={() => onCardClick("GREEN")}
         icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
       />
-      <StatCard label="Needs Attention" value={amber + red} sub={`${amber} amber · ${red} red`} color={amber + red > 0 ? "#f97316" : "#94a3b8"}
+      <StatCard label="Needs Attention" value={amber + red} sub={`${amber} amber · ${red} red`} color={amber + red > 0 ? "#f97316" : "#94a3b8"} onClick={() => onCardClick("ATTENTION")}
         icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>}
       />
-      <StatCard label="Awaiting Score" value={noScore} sub="No metrics yet" to="/pm/projects" color="#3b82f6"
+      <StatCard label="Awaiting Score" value={noScore} sub="No metrics yet" to="/pm/projects" color="#3b82f6" onClick={() => onCardClick("NO_SCORE")}
         icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
       />
+    </div>
+  );
+}
+
+// ─── PM Projects Modal ────────────────────────────────────────────────────────
+const PM_MODAL_CONFIG: Record<string, { title: string; color: string }> = {
+  ALL:       { title: "All Projects",                 color: "#6c63ff" },
+  GREEN:     { title: "Green Projects",               color: "#22c55e" },
+  ATTENTION: { title: "Projects Needing Attention",   color: "#f97316" },
+  NO_SCORE:  { title: "Awaiting Score",               color: "#3b82f6" },
+};
+
+const PM_RAG_PILL: Record<string, { bg: string; border: string; text: string; label: string }> = {
+  GREEN:    { bg: "rgba(34,197,94,0.12)",  border: "rgba(34,197,94,0.30)",  text: "#15803d", label: "Green"    },
+  AMBER:    { bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.30)", text: "#b45309", label: "Amber"    },
+  RED:      { bg: "rgba(239,68,68,0.12)",  border: "rgba(239,68,68,0.30)",  text: "#b91c1c", label: "Red"      },
+  CRITICAL: { bg: "rgba(190,18,60,0.12)",  border: "rgba(190,18,60,0.30)",  text: "#9f1239", label: "Critical" },
+};
+
+function PMModalRagPill({ rag }: { rag: string | null }) {
+  if (!rag) return (
+    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 10px",
+      background: "rgba(100,116,139,0.10)", border: "1px solid rgba(100,116,139,0.25)", color: "var(--muted)" }}>
+      No Score
+    </span>
+  );
+  const c = PM_RAG_PILL[rag];
+  if (!c) return null;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 10px",
+      background: c.bg, border: `1px solid ${c.border}`, color: c.text }}>
+      {c.label}
+    </span>
+  );
+}
+
+function PMProjectsModal({ filter, projects, onClose }: {
+  filter: string;
+  projects: Project[];
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const cfg = PM_MODAL_CONFIG[filter] ?? PM_MODAL_CONFIG["ALL"];
+
+  const filtered = projects.filter(p => {
+    if (filter === "ALL")       return true;
+    if (filter === "GREEN")     return p.current_rag === "GREEN";
+    if (filter === "ATTENTION") return p.current_rag === "AMBER" || p.current_rag === "RED" || p.current_rag === "CRITICAL";
+    if (filter === "NO_SCORE")  return !p.current_rag;
+    return true;
+  });
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "24px 16px",
+        animation: "pmFadeIn 0.15s ease",
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 640,
+          borderRadius: 24, background: "var(--surface)",
+          padding: 0, overflow: "hidden",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.25)",
+          animation: "pmSlideUp 0.2s ease",
+          maxHeight: "85vh", display: "flex", flexDirection: "column",
+        }}
+      >
+        {/* Header */}
+        <div style={{ background: cfg.color, padding: "18px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ background: "rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 800,
+            borderRadius: 999, padding: "3px 10px", minWidth: 28, textAlign: "center" }}>
+            {filtered.length}
+          </span>
+          <h2 style={{ flex: 1, fontSize: 17, fontWeight: 800, color: "#fff", margin: 0 }}>{cfg.title}</h2>
+          <button
+            onClick={onClose}
+            style={{ background: "rgba(255,255,255,0.20)", border: "none", borderRadius: 8,
+              width: 32, height: 32, cursor: "pointer", fontSize: 18, color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+          >×</button>
+        </div>
+
+        {/* Rows */}
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: "48px 24px", textAlign: "center" }}>
+              <p style={{ color: "var(--muted)", fontSize: 14 }}>No projects in this category</p>
+            </div>
+          ) : filtered.map((p, idx) => (
+            <div
+              key={p.id}
+              onClick={() => { navigate(`/pm/projects/${p.id}/qpm/summary`); onClose(); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 14,
+                padding: "14px 24px",
+                borderBottom: idx < filtered.length - 1 ? "1px solid var(--border)" : "none",
+                cursor: "pointer", transition: "background 0.12s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = "rgba(108,99,255,0.04)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontWeight: 700, color: "var(--primary)", margin: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p.project_name}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                  <span style={{ fontSize: 10, fontFamily: "monospace", color: "var(--muted)", fontWeight: 600 }}>{p.project_code}</span>
+                  {p.account_name && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {p.account_name}</span>}
+                  {p.business_unit_name && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {p.business_unit_name}</span>}
+                </div>
+              </div>
+              <PMModalRagPill rag={p.current_rag} />
+              {/* PM action buttons */}
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={() => { navigate(`/pm/projects/${p.id}/qpm/summary`); onClose(); }}
+                  style={{
+                    borderRadius: 8, padding: "6px 12px", fontSize: 11, fontWeight: 700,
+                    cursor: "pointer", border: "1.5px solid var(--border)",
+                    background: "transparent", color: "var(--primary)",
+                    transition: "background 0.12s",
+                  }}
+                >Summary</button>
+                <button
+                  onClick={() => { navigate(`/pm/projects/${p.id}/qpm/entry`); onClose(); }}
+                  style={{
+                    borderRadius: 8, padding: "6px 12px", fontSize: 11, fontWeight: 700,
+                    cursor: "pointer", border: "none",
+                    background: "#6c63ff", color: "#fff",
+                    boxShadow: "0 2px 8px rgba(108,99,255,0.30)",
+                    transition: "opacity 0.12s",
+                  }}
+                >Data Entry</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{`
+        @keyframes pmFadeIn  { from { opacity:0 } to { opacity:1 } }
+        @keyframes pmSlideUp { from { transform:translateY(32px); opacity:0 } to { transform:translateY(0); opacity:1 } }
+      `}</style>
     </div>
   );
 }
@@ -186,6 +336,7 @@ export function DashboardShellPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(false);
+  const [modalFilter, setModalFilter] = useState<string | null>(null);
 
   useEffect(() => {
     listProjects()
@@ -236,7 +387,7 @@ export function DashboardShellPage() {
       </div>
 
       {/* ── Stats ── */}
-      {!loading && !error && <DashboardStats projects={projects} />}
+      {!loading && !error && <DashboardStats projects={projects} onCardClick={setModalFilter} />}
       {loading && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[1,2,3,4].map(i => <div key={i} style={{ borderRadius:20, height:120, background:"#fff", border:`1.5px solid ${C.border}`, boxShadow:C.shadow }} className="animate-pulse" />)}
@@ -357,6 +508,15 @@ export function DashboardShellPage() {
           </div>
         )}
       </div>
+
+      {/* ── PM Projects Modal ── */}
+      {modalFilter !== null && (
+        <PMProjectsModal
+          filter={modalFilter}
+          projects={projects}
+          onClose={() => setModalFilter(null)}
+        />
+      )}
     </div>
   );
 }

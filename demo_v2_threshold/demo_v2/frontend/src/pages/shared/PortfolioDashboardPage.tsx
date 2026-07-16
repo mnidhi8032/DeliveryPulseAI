@@ -21,16 +21,22 @@ const RAG_COLOR: Record<string, string> = {
 };
 
 /* ── Stat card (colored box style like PM dashboard) ── */
-function StatCard({ label, value, color, icon, sub, trend, trendUp }: {
+function StatCard({ label, value, color, icon, sub, trend, trendUp, onClick }: {
   label: string; value: string | number; color: string; icon: React.ReactNode;
-  sub?: string; trend?: string; trendUp?: boolean;
+  sub?: string; trend?: string; trendUp?: boolean; onClick?: () => void;
 }) {
   return (
-    <div style={{
-      borderRadius: 20, padding: "22px 22px 18px", background: color,
-      boxShadow: `0 4px 20px ${color}55`,
-      cursor: "default", position: "relative", overflow: "hidden",
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        borderRadius: 20, padding: "22px 22px 18px", background: color,
+        boxShadow: `0 4px 20px ${color}55`,
+        cursor: onClick ? "pointer" : "default", position: "relative", overflow: "hidden",
+        transition: "transform 0.18s, box-shadow 0.18s",
+      }}
+      onMouseEnter={e => { if (onClick) { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 28px ${color}77`; } }}
+      onMouseLeave={e => { if (onClick) { (e.currentTarget as HTMLDivElement).style.transform = ""; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 20px ${color}55`; } }}
+    >
       {/* Decorative circle */}
       <div style={{ position: "absolute", top: -18, right: -18, width: 72, height: 72, borderRadius: "50%", background: "rgba(255,255,255,0.15)", pointerEvents: "none" }} />
       {/* Icon top-right */}
@@ -51,6 +57,136 @@ function StatCard({ label, value, color, icon, sub, trend, trendUp }: {
       <p style={{ fontSize: 38, fontWeight: 900, color: "#fff", margin: 0, lineHeight: 1 }}>{value}</p>
       <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.80)", margin: "7px 0 0", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
       {sub && <p style={{ fontSize: 11, color: "rgba(255,255,255,0.60)", margin: "3px 0 0" }}>{sub}</p>}
+    </div>
+  );
+}
+
+/* ── Projects Modal ── */
+const MODAL_CONFIG: Record<string, { title: string; color: string; headerBg: string }> = {
+  ALL:      { title: "All Projects",      color: "#6c63ff", headerBg: "#6c63ff" },
+  GREEN:    { title: "Green Projects",    color: "#22c55e", headerBg: "#22c55e" },
+  AMBER:    { title: "Amber Projects",    color: "#f59e0b", headerBg: "#f59e0b" },
+  RED:      { title: "Red / Critical Projects", color: "#ef4444", headerBg: "#ef4444" },
+  NO_SCORE: { title: "No Score Projects", color: "#3b82f6", headerBg: "#3b82f6" },
+};
+
+const RAG_PILL: Record<string, { bg: string; border: string; text: string; label: string }> = {
+  GREEN:    { bg: "rgba(34,197,94,0.12)",  border: "rgba(34,197,94,0.30)",  text: "#15803d", label: "Green"    },
+  AMBER:    { bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.30)", text: "#b45309", label: "Amber"    },
+  RED:      { bg: "rgba(239,68,68,0.12)",  border: "rgba(239,68,68,0.30)",  text: "#b91c1c", label: "Red"      },
+  CRITICAL: { bg: "rgba(190,18,60,0.12)",  border: "rgba(190,18,60,0.30)",  text: "#9f1239", label: "Critical" },
+};
+
+function ModalRagPill({ rag }: { rag: string | null }) {
+  if (!rag) return (
+    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 10px",
+      background: "rgba(100,116,139,0.10)", border: "1px solid rgba(100,116,139,0.25)", color: "var(--muted)" }}>
+      No Score
+    </span>
+  );
+  const c = RAG_PILL[rag];
+  if (!c) return null;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 10px",
+      background: c.bg, border: `1px solid ${c.border}`, color: c.text }}>
+      {c.label}
+    </span>
+  );
+}
+
+function ProjectsModal({ filter, projects, onClose, basePath }: {
+  filter: string;
+  projects: Project[];
+  onClose: () => void;
+  basePath: string;
+}) {
+  const navigate = useNavigate();
+  const cfg = MODAL_CONFIG[filter] ?? MODAL_CONFIG["ALL"];
+
+  const filtered = projects.filter(p => {
+    if (filter === "ALL")      return true;
+    if (filter === "GREEN")    return p.current_rag === "GREEN";
+    if (filter === "AMBER")    return p.current_rag === "AMBER";
+    if (filter === "RED")      return p.current_rag === "RED" || p.current_rag === "CRITICAL";
+    if (filter === "NO_SCORE") return !p.current_rag;
+    return true;
+  });
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "24px 16px",
+        animation: "fadeIn 0.15s ease",
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 640,
+          borderRadius: 24, background: "var(--surface)",
+          padding: 0, overflow: "hidden",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.25)",
+          animation: "slideUp 0.2s ease",
+          maxHeight: "85vh", display: "flex", flexDirection: "column",
+        }}
+      >
+        {/* Header */}
+        <div style={{ background: cfg.headerBg, padding: "18px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ background: "rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 800,
+            borderRadius: 999, padding: "3px 10px", minWidth: 28, textAlign: "center" }}>
+            {filtered.length}
+          </span>
+          <h2 style={{ flex: 1, fontSize: 17, fontWeight: 800, color: "#fff", margin: 0 }}>{cfg.title}</h2>
+          <button
+            onClick={onClose}
+            style={{ background: "rgba(255,255,255,0.20)", border: "none", borderRadius: 8,
+              width: 32, height: 32, cursor: "pointer", fontSize: 18, color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+          >×</button>
+        </div>
+
+        {/* Rows */}
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: "48px 24px", textAlign: "center" }}>
+              <p style={{ color: "var(--muted)", fontSize: 14 }}>No projects in this category</p>
+            </div>
+          ) : filtered.map((p, idx) => (
+            <div
+              key={p.id}
+              onClick={() => { navigate(`${basePath}/projects/${p.id}/summary`); onClose(); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 14,
+                padding: "14px 24px",
+                borderBottom: idx < filtered.length - 1 ? "1px solid var(--border)" : "none",
+                cursor: "pointer", transition: "background 0.12s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = "rgba(108,99,255,0.04)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontWeight: 700, color: "var(--primary)", margin: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p.project_name}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                  <span style={{ fontSize: 10, fontFamily: "monospace", color: "var(--muted)", fontWeight: 600 }}>{p.project_code}</span>
+                  {p.account_name && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {p.account_name}</span>}
+                  {p.business_unit_name && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {p.business_unit_name}</span>}
+                </div>
+              </div>
+              <ModalRagPill rag={p.current_rag} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{`
+        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes slideUp { from { transform:translateY(32px); opacity:0 } to { transform:translateY(0); opacity:1 } }
+      `}</style>
     </div>
   );
 }
@@ -256,6 +392,7 @@ export function PortfolioDashboardPage() {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
   const [showAllAtRisk, setShowAllAtRisk] = useState(false);
+  const [modalFilter, setModalFilter]     = useState<string | null>(null);
   const [buFilter, setBuFilter]             = useState("All");
   const [accountFilter, setAccountFilter]   = useState("All");
   const [typeFilter, setTypeFilter]         = useState("All");
@@ -357,19 +494,19 @@ export function PortfolioDashboardPage() {
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <StatCard label="Total Projects" value={projects.length} color="#6c63ff" trend="All" trendUp
+        <StatCard label="Total Projects" value={projects.length} color="#6c63ff" trend="All" trendUp onClick={() => setModalFilter("ALL")}
           icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
         />
-        <StatCard label="Green Health" value={green} color="#22c55e" trend={`${healthPct}%`} trendUp={healthPct >= 50} sub="On track"
+        <StatCard label="Green Health" value={green} color="#22c55e" trend={`${healthPct}%`} trendUp={healthPct >= 50} sub="On track" onClick={() => setModalFilter("GREEN")}
           icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
         />
-        <StatCard label="Amber" value={amber} color="#f59e0b" sub="Monitor closely"
+        <StatCard label="Amber" value={amber} color="#f59e0b" sub="Monitor closely" onClick={() => setModalFilter("AMBER")}
           icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>}
         />
-        <StatCard label="Red / Critical" value={red} color={red > 0 ? "#ef4444" : "#94a3b8"} trend={red > 0 ? `${red} at risk` : undefined} trendUp={false} sub="Needs action"
+        <StatCard label="Red / Critical" value={red} color={red > 0 ? "#ef4444" : "#94a3b8"} trend={red > 0 ? `${red} at risk` : undefined} trendUp={false} sub="Needs action" onClick={() => setModalFilter("RED")}
           icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
         />
-        <StatCard label="No Score" value={noScore} color="#3b82f6" sub="Awaiting entry"
+        <StatCard label="No Score" value={noScore} color="#3b82f6" sub="Awaiting entry" onClick={() => setModalFilter("NO_SCORE")}
           icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
         />
       </div>
@@ -572,6 +709,16 @@ export function PortfolioDashboardPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Projects Modal ── */}
+      {modalFilter !== null && (
+        <ProjectsModal
+          filter={modalFilter}
+          projects={projects}
+          onClose={() => setModalFilter(null)}
+          basePath={basePath}
+        />
       )}
     </div>
   );

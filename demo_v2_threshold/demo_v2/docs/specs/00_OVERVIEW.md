@@ -1,6 +1,6 @@
 # DeliveryPulse AI — Project Specification Overview
 
-**Version:** 2.0  
+**Version:** 2.1  
 **Status:** Active  
 **Last Updated:** July 2026
 
@@ -24,9 +24,15 @@ The platform replaces manual spreadsheet-based QPM (Quality Performance Measurem
 
 4. **Role-Based Access** — Six roles with strict data isolation. PMs see only their projects. Delivery Managers see only their assigned accounts. Leadership sees the full portfolio.
 
-5. **Portfolio Dashboard** — Executive view showing all projects across all BUs with filters, metric tables, and RAG summaries.
+5. **Executive Portfolio Dashboard** — Platform Admin, CEO, and Delivery Excellence see a rich dashboard with stat cards, BU health bar chart, RAG donut, filter bar, and full project table. Clicking any stat card shows a filtered project modal.
 
-6. **DM Review Cycle** — Delivery Managers review KPI data per project, add commentary, and create action items — creating an audit trail of delivery oversight.
+6. **PM Dashboard** — Project Managers see a personalised workspace with stat cards, quick actions, portfolio health panel, and project cards. Clicking stat cards shows a filtered project modal with Summary and Data Entry shortcuts.
+
+7. **DM Review Cycle** — Delivery Managers review KPI data per project, add commentary — creating an audit trail of delivery oversight. Action items are managed on a dedicated page.
+
+8. **DM → PM Notification** — When a Delivery Manager creates an action item for a project, the assigned PM is automatically notified in-app with a deep-link to the action items page.
+
+9. **Dark / Light Theme** — All pages support a togglable dark/light theme using CSS variables (`var(--bg)`, `var(--surface)`, `var(--text)`, `var(--muted)`, `var(--border)`, `var(--primary)`).
 
 ---
 
@@ -46,13 +52,16 @@ The platform replaces manual spreadsheet-based QPM (Quality Performance Measurem
 
 | File | Contents |
 |---|---|
-| `01_ROLES_AND_ACCESS.md` | All six roles, permissions, data scoping |
+| `01_ROLES_AND_ACCESS.md` | All six roles, permissions, data scoping, dashboard routes |
 | `02_ORGANISATION_STRUCTURE.md` | BU → Account → Project hierarchy |
 | `03_KPI_PLAN.md` | Metric catalog, plan setup, engagement model |
 | `04_DATA_ENTRY.md` | Unified parameter entry, shared measures, computation |
 | `05_RAG_COMPUTATION.md` | Thresholds, RAG logic, per-metric and project RAG |
 | `06_SUMMARY_AND_TRENDS.md` | KPI Summary page, threshold chart, trend history |
-| `07_PORTFOLIO_DASHBOARD.md` | Executive portfolio view, filters, metric cards |
-| `08_DM_REVIEW_CYCLE.md` | DM review workflow, commentary, action items |
+| `07_PORTFOLIO_DASHBOARD.md` | Executive portfolio view, stat cards, charts, modal drill-down |
+| `08_DM_REVIEW_CYCLE.md` | DM review workflow, commentary, action items page |
 | `09_DATA_MODEL.md` | All database tables and relationships |
 | `10_API_ENDPOINTS.md` | All REST API endpoints grouped by feature |
+| `11_DM_ACTION_ITEM_PM_NOTIFICATION.md` | DM action item → PM in-app notification flow |
+| `12_PM_DASHBOARD.md` | PM workspace dashboard, stat cards, project cards, modal |
+| `13_THEME_SYSTEM.md` | Light/dark theme architecture and CSS variable usage |
