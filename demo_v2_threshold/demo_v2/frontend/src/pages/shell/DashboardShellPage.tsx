@@ -68,7 +68,7 @@ function DashboardStats({ projects, onCardClick }: { projects: Project[]; onCard
       <StatCard label="Needs Attention" value={amber + red} sub={`${amber} amber · ${red} red`} color={amber + red > 0 ? "#f97316" : "#94a3b8"} onClick={() => onCardClick("ATTENTION")}
         icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>}
       />
-      <StatCard label="Awaiting Score" value={noScore} sub="No metrics yet" to="/pm/projects" color="#3b82f6" onClick={() => onCardClick("NO_SCORE")}
+      <StatCard label="Awaiting Score" value={noScore} sub="No metrics yet" color="#3b82f6" onClick={() => onCardClick("NO_SCORE")}
         icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
       />
     </div>
