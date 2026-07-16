@@ -69,6 +69,7 @@ export function DMProjectReviewPage() {
   const [loading, setLoading] = useState(true);
   const [periodLabel, setPeriodLabel] = useState("");
   const [dmComments, setDmComments] = useState("");
+  const [pmComment, setPmComment] = useState<string | null>(null);
   const [editReviewId, setEditReviewId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
@@ -80,6 +81,7 @@ export function DMProjectReviewPage() {
       setProject(proj); setPlanId(plan.id);
       const s = await getKpiSummary(plan.id);
       setSummary(s); setPastReviews(reviews);
+      setPmComment(plan.pm_rag_comments ?? null);
       setExpandedCats(new Set(s.metrics.map(m => m.metric_category || "Uncategorized")));
       const today = new Date();
       const M = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -265,6 +267,20 @@ export function DMProjectReviewPage() {
             <p style={{ fontSize:12, color: C.muted, margin:"2px 0 0" }}>Add commentary for this reporting period.</p>
           </div>
         </div>
+
+        {/* PM's comment — shown to DM as context */}
+        {pmComment && (
+          <div style={{ margin:"16px 24px 0", borderRadius:12, background:"rgba(108,99,255,0.06)", border:`1.5px solid ${C.border}`, padding:"14px 16px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+              <svg style={{ width:14, height:14, color: C.primary, flexShrink:0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-6 4h10M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span style={{ fontSize:11, fontWeight:700, color: C.primary, textTransform:"uppercase", letterSpacing:"0.06em" }}>PM's Comment</span>
+            </div>
+            <p style={{ fontSize:13, color: C.text, margin:0, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{pmComment}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} style={{ padding:"24px", display:"flex", flexDirection:"column", gap:18 }}>
           <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
             <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Reporting period <span style={{ color:"#ef4444" }}>*</span></label>

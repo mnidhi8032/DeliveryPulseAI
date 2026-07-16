@@ -9,8 +9,8 @@ export function LoginPage() {
   const location = useLocation();
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
 
-  const [email, setEmail] = useState("buhead1@deliverypulse.ai");
-  const [password, setPassword] = useState("Demo@12345");
+  const [email, setEmail] = useState("admin@deliverypulse.ai");
+  const [password, setPassword] = useState("Admin@123");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
@@ -193,21 +193,41 @@ export function LoginPage() {
               {showCredentials && (
                 <div className="mt-3 space-y-2 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-3">
                   {[
-                    { role: "Platform Admin",       email: "admin@deliverypulse.ai",   color: "purple" },
-                    { role: "CEO",                  email: "ceo@deliverypulse.ai",     color: "rose"   },
-                    { role: "Delivery Head (BU 1)", email: "buhead1@deliverypulse.ai", color: "sky"    },
-                    { role: "Delivery Head (BU 2)", email: "buhead2@deliverypulse.ai", color: "sky"    },
-                    { role: "Delivery Head (BU 3)", email: "buhead3@deliverypulse.ai", color: "sky"    },
-                    { role: "Delivery Manager 1",   email: "dm1@deliverypulse.ai",     color: "teal"   },
-                    { role: "Project Manager 1",    email: "pm1@deliverypulse.ai",     color: "indigo" },
-                    { role: "Project Manager 2",    email: "pm2@deliverypulse.ai",     color: "indigo" },
-                    { role: "Project Manager 3",    email: "pm3@deliverypulse.ai",     color: "indigo" },
-                    { role: "Delivery Excellence",  email: "de@deliverypulse.ai",      color: "amber"  },
-                  ].map((account) => (
+                    // ── Global ──────────────────────────────────────────────
+                    { role: "Platform Admin",                          email: "admin@deliverypulse.ai",        pw: "Admin@123"   },
+                    { role: "CEO",                                     email: "ceo@deliverypulse.ai",          pw: "Demo@12345"  },
+                    { role: "Delivery Excellence",                     email: "de@deliverypulse.ai",           pw: "Demo@12345"  },
+                    // ── BFSI ────────────────────────────────────────────────
+                    { role: "── Banking & Financial Services ──",      email: "",                              pw: "",           divider: true },
+                    { role: "DH — Banking & Financial Services",       email: "dh.bfsi@deliverypulse.ai",     pw: "Demo@12345"  },
+                    { role: "PM — Banking & Financial Services",       email: "pm.bfsi@deliverypulse.ai",     pw: "Demo@12345"  },
+                    { role: "DM — Apex Bank",                         email: "dm.apex@deliverypulse.ai",     pw: "Demo@12345"  },
+                    { role: "DM — Sterling Finance",                   email: "dm.sterling@deliverypulse.ai", pw: "Demo@12345"  },
+                    // ── Cloud Infra ──────────────────────────────────────────
+                    { role: "── Cloud Infrastructure ──",              email: "",                              pw: "",           divider: true },
+                    { role: "DH — Cloud Infrastructure",               email: "dh.cloud@deliverypulse.ai",    pw: "Demo@12345"  },
+                    { role: "PM — Cloud Infrastructure",               email: "pm.cloud@deliverypulse.ai",    pw: "Demo@12345"  },
+                    { role: "DM — Globex",                             email: "dm.globex@deliverypulse.ai",   pw: "Demo@12345"  },
+                    { role: "DM — Nexus Cloud",                        email: "dm.nexus@deliverypulse.ai",    pw: "Demo@12345"  },
+                    // ── Digital Services ─────────────────────────────────────
+                    { role: "── Digital Services ──",                  email: "",                              pw: "",           divider: true },
+                    { role: "DH — Digital Services",                   email: "dh.digital@deliverypulse.ai",  pw: "Demo@12345"  },
+                    { role: "PM — Digital Services",                   email: "pm.digital@deliverypulse.ai",  pw: "Demo@12345"  },
+                    { role: "DM — Acme Corp",                          email: "dm.acme@deliverypulse.ai",     pw: "Demo@12345"  },
+                    { role: "DM — Tech Nova",                          email: "dm.technova@deliverypulse.ai", pw: "Demo@12345"  },
+                  ].map((account, idx) => {
+                    if ((account as any).divider) {
+                      return (
+                        <div key={idx} className="px-2 pt-2 pb-1">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-indigo-400">{account.role}</p>
+                        </div>
+                      );
+                    }
+                    return (
                     <button
                       key={account.email}
                       type="button"
-                      onClick={() => quickLogin(account.email, account.email === "admin@deliverypulse.ai" ? "Admin@123" : "Demo@12345")}
+                      onClick={() => quickLogin(account.email, account.pw)}
                       className="w-full text-left px-3 py-2.5 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 transition-all group"
                     >
                       <div className="flex items-center justify-between">
@@ -220,7 +240,8 @@ export function LoginPage() {
                         </svg>
                       </div>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

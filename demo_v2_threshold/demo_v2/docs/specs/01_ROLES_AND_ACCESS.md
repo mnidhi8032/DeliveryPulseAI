@@ -118,6 +118,45 @@ PM (Project Manager)
 
 ---
 
+## Demo User Accounts
+
+All accounts use password `Demo@12345` except Platform Admin (`Admin@123`).
+
+**Email naming pattern:** `role.context@deliverypulse.ai` — reading the email tells you exactly which BU or account you're logging into.
+
+### Global Roles
+| Display Name | Email | Role |
+|---|---|---|
+| Platform Admin | admin@deliverypulse.ai | PLATFORM_ADMIN |
+| CEO | ceo@deliverypulse.ai | CEO |
+| Delivery Excellence | de@deliverypulse.ai | DELIVERY_EXCELLENCE |
+
+### Delivery Heads  (`dh.<bu>@deliverypulse.ai`)
+| Display Name | Email | Business Unit |
+|---|---|---|
+| DH - Banking & Financial Services | dh.bfsi@deliverypulse.ai | Banking & Financial Services |
+| DH - Cloud Infrastructure | dh.cloud@deliverypulse.ai | Cloud Infrastructure |
+| DH - Digital Services | dh.digital@deliverypulse.ai | Digital Services |
+
+### Project Managers  (`pm.<bu>@deliverypulse.ai`)
+| Display Name | Email | Business Unit |
+|---|---|---|
+| PM - Banking & Financial Services | pm.bfsi@deliverypulse.ai | Banking & Financial Services |
+| PM - Cloud Infrastructure | pm.cloud@deliverypulse.ai | Cloud Infrastructure |
+| PM - Digital Services | pm.digital@deliverypulse.ai | Digital Services |
+
+### Delivery Managers  (`dm.<account>@deliverypulse.ai`)
+| Display Name | Email | Assigned Account |
+|---|---|---|
+| DM - Acme Corp | dm.acme@deliverypulse.ai | Acme Corp |
+| DM - Tech Nova | dm.technova@deliverypulse.ai | Tech Nova |
+| DM - Globex | dm.globex@deliverypulse.ai | Globex |
+| DM - Nexus Cloud | dm.nexus@deliverypulse.ai | Nexus Cloud |
+| DM - Apex Bank | dm.apex@deliverypulse.ai | Apex Bank |
+| DM - Sterling Finance | dm.sterling@deliverypulse.ai | Sterling Finance |
+
+---
+
 ## Shared Dashboard Component (Portfolio)
 
 Platform Admin, CEO, and Delivery Excellence all use the **same** `PortfolioDashboardPage` component routed at their respective home paths. Navigation from the portfolio project list to the KPI summary uses a role-aware base path:

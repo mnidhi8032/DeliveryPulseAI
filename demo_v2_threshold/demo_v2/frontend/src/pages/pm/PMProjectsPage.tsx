@@ -435,101 +435,133 @@ export function PMProjectsPage() {
 
       {/* Create Project Modal */}
       {modalOpen && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,26,46,0.45)", padding: 16, backdropFilter: "blur(6px)" }}>
-          <div style={{ width: "100%", maxWidth: 560, borderRadius: 24, border: "1.5px solid #e8e6ff", background: "var(--surface)", padding: 28, boxShadow: "0 16px 64px rgba(108,99,255,0.18)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", borderBottom: "1.5px solid #e8e6ff", paddingBottom: 16, marginBottom: 20 }}>
+        <div onClick={() => setModalOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: 16, backdropFilter: "blur(6px)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, borderRadius: 24, border: "1px solid var(--border)", background: "var(--surface)", boxShadow: "0 24px 64px rgba(0,0,0,0.20)", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+            {/* Header */}
+            <div style={{ padding: "22px 28px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
               <div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Create New Project</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", margin: 0, letterSpacing: "-0.01em" }}>Create New Project</h3>
                 <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Mandatory metrics will be auto-selected on creation.</p>
               </div>
-              <button onClick={() => setModalOpen(false)} style={{ background: "none", border: "none", fontSize: 22, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}>&times;</button>
+              <button onClick={() => setModalOpen(false)} style={{ background: "rgba(107,114,128,0.10)", border: "none", borderRadius: 8, width: 30, height: 30, fontSize: 18, color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, lineHeight: 1 }}>×</button>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* Project Details */}
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 800, color: "#6c63ff", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 12px" }}>Project Details</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Business Unit</label>
-                    <div style={{ borderRadius: 10, border: "1.5px solid #e8e6ff", background: "var(--bg)", padding: "9px 14px", fontSize: 13, color: "var(--text)", fontWeight: 500 }}>
-                      {pmBusinessUnit ? pmBusinessUnit.name : "No Business Unit assigned"}
-                    </div>
-                    {!pmBusinessUnit && <p style={{ fontSize: 10, color: "#d97706" }}>Not assigned to any BU. Contact an administrator.</p>}
+            {/* Scrollable form body */}
+            <form onSubmit={handleSubmit} style={{ padding: "24px 28px 28px", display: "flex", flexDirection: "column", gap: 22, overflowY: "auto" }}>
+
+              {/* ── Project Details ── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "var(--primary)", textTransform: "uppercase" as const, letterSpacing: "0.12em", whiteSpace: "nowrap" as const }}>Project Details</span>
+                  <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                </div>
+
+                {/* BU read-only */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Business Unit</label>
+                  <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "rgba(108,99,255,0.06)", padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="var(--primary)" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                    {pmBusinessUnit ? pmBusinessUnit.name : "No Business Unit assigned"}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Account / Client *</label>
+                  {!pmBusinessUnit && <p style={{ fontSize: 11, color: "#d97706", margin: 0 }}>Not assigned to any BU. Contact an administrator.</p>}
+                </div>
+
+                {/* Account */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Account / Client <span style={{ color: "#ef4444" }}>*</span></label>
+                  <div style={{ position: "relative" as const }}>
                     <select required value={form.account_id} onChange={e => setForm(f => ({ ...f, account_id: e.target.value }))}
                       disabled={accounts.length === 0}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:opacity-50">
-                      <option value="">Select Account...</option>
+                      style={{ width: "100%", appearance: "none" as any, WebkitAppearance: "none", borderRadius: 10, border: "1.5px solid var(--border)", padding: "10px 36px 10px 14px", fontSize: 13, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit", cursor: "pointer", boxSizing: "border-box" as const }}>
+                      <option value="">Select account…</option>
                       {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Project Code *</label>
-                      <input type="text" required placeholder="E.g. PROJ-001" value={form.project_code}
-                        onChange={e => setForm(f => ({ ...f, project_code: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Project Name *</label>
-                      <input type="text" required placeholder="E.g. Banking Portal" value={form.project_name}
-                        onChange={e => setForm(f => ({ ...f, project_name: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Start Date</label>
-                      <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Target End Date</label>
-                      <input type="date" value={form.target_end_date} onChange={e => setForm(f => ({ ...f, target_end_date: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                    </div>
+                    <svg style={{ position: "absolute" as const, right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" as const, color: "var(--muted)" }} width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                   </div>
                 </div>
-              </div>
 
-              {/* Engagement Model */}
-              <div style={{ borderRadius: 14, border: "1.5px solid #d5d0ff", background: "var(--bg)", padding: 16 }}>
-                <p style={{ fontSize: 10, fontWeight: 800, color: "#6c63ff", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 4px" }}>Engagement Model *</p>
-                <p style={{ fontSize: 11, color: "#818cf8", margin: "0 0 12px" }}>Mandatory metrics will be auto-selected based on these values.</p>
+                {/* Code + Name */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   {[
-                    { label: "Project Type *", key: "project_type" as const, opts: PROJECT_TYPES, required: true },
-                    { label: "Delivery Model *", key: "delivery_process_model" as const, opts: DELIVERY_MODELS, required: true },
-                    { label: "Project Category", key: "project_category" as const, opts: PROJECT_CATEGORIES, required: false },
-                    { label: "Work Size Unit", key: "work_size_unit" as const, opts: WORK_SIZE_UNITS, required: false },
+                    { label: "Project Code", key: "project_code" as const, placeholder: "E.g. PROJ-001", type: "text" },
+                    { label: "Project Name", key: "project_name" as const, placeholder: "E.g. Banking Portal", type: "text" },
                   ].map(f2 => (
-                    <div key={f2.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{f2.label}</label>
-                      <select required={f2.required} value={form[f2.key]} onChange={e => setForm(f => ({ ...f, [f2.key]: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
-                        <option value="">Select...</option>
-                        {f2.opts.map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
+                    <div key={f2.key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{f2.label} <span style={{ color: "#ef4444" }}>*</span></label>
+                      <input type={f2.type} required placeholder={f2.placeholder} value={form[f2.key]}
+                        onChange={e => setForm(f => ({ ...f, [f2.key]: e.target.value }))}
+                        style={{ borderRadius: 10, border: "1.5px solid var(--border)", padding: "10px 14px", fontSize: 13, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" as const }} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Dates */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  {[
+                    { label: "Start Date", key: "start_date" as const },
+                    { label: "Target End Date", key: "target_end_date" as const },
+                  ].map(f2 => (
+                    <div key={f2.key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{f2.label}</label>
+                      <input type="date" value={form[f2.key]} onChange={e => setForm(f => ({ ...f, [f2.key]: e.target.value }))}
+                        style={{ borderRadius: 10, border: "1.5px solid var(--border)", padding: "10px 14px", fontSize: 13, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" as const }} />
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 4, borderTop: "1.5px solid #e8e6ff" }}>
+              {/* ── Engagement Model ── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "var(--primary)", textTransform: "uppercase" as const, letterSpacing: "0.12em", whiteSpace: "nowrap" as const }}>Engagement Model <span style={{ color: "#ef4444" }}>*</span></span>
+                  <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                </div>
+                <p style={{ fontSize: 12, color: "var(--muted)", margin: "-6px 0 0", display: "flex", alignItems: "center", gap: 6 }}>
+                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="var(--primary)" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  Mandatory metrics are auto-selected based on these values.
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  {[
+                    { label: "Project Type", key: "project_type" as const, opts: PROJECT_TYPES, required: true },
+                    { label: "Delivery Model", key: "delivery_process_model" as const, opts: DELIVERY_MODELS, required: true },
+                    { label: "Project Category", key: "project_category" as const, opts: PROJECT_CATEGORIES, required: false },
+                    { label: "Work Size Unit", key: "work_size_unit" as const, opts: WORK_SIZE_UNITS, required: false },
+                  ].map(f2 => (
+                    <div key={f2.key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>
+                        {f2.label} {f2.required && <span style={{ color: "#ef4444" }}>*</span>}
+                      </label>
+                      <div style={{ position: "relative" as const }}>
+                        <select required={f2.required} value={form[f2.key]} onChange={e => setForm(f => ({ ...f, [f2.key]: e.target.value }))}
+                          style={{ width: "100%", appearance: "none" as any, WebkitAppearance: "none", borderRadius: 10, border: "1.5px solid var(--border)", padding: "10px 36px 10px 14px", fontSize: 13, color: form[f2.key] ? "var(--text)" : "var(--muted)", background: "var(--surface)", outline: "none", fontFamily: "inherit", cursor: "pointer", boxSizing: "border-box" as const }}>
+                          <option value="">Select…</option>
+                          {f2.opts.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                        <svg style={{ position: "absolute" as const, right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" as const, color: "var(--muted)" }} width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Action buttons ── */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
                 <button type="button" onClick={() => setModalOpen(false)} style={{
-                  borderRadius: 10, border: "1.5px solid #e8e6ff", padding: "9px 18px",
-                  fontSize: 12, fontWeight: 700, color: "var(--text)", background: "var(--surface)", cursor: "pointer",
+                  borderRadius: 10, border: "1.5px solid var(--border)", padding: "10px 20px",
+                  fontSize: 13, fontWeight: 700, color: "var(--muted)", background: "transparent", cursor: "pointer",
                 }}>Cancel</button>
                 <button type="submit" disabled={saving} style={{
-                  borderRadius: 10, padding: "9px 22px",
-                  fontSize: 12, fontWeight: 700, color: "var(--surface)",
-                  background: saving ? "#a5b4fc" : "#6c63ff", border: "none", cursor: saving ? "not-allowed" : "pointer",
-                  boxShadow: "0 4px 14px rgba(108,99,255,0.35)",
-                }}>{saving ? "Creating..." : "Create Project"}</button>
+                  borderRadius: 10, padding: "10px 24px", fontSize: 13, fontWeight: 700,
+                  color: "#fff", background: saving ? "#a5b4fc" : "var(--primary)",
+                  border: "none", cursor: saving ? "not-allowed" : "pointer",
+                  boxShadow: saving ? "none" : "0 4px 14px rgba(108,99,255,0.35)",
+                  display: "flex", alignItems: "center", gap: 8,
+                }}>
+                  {saving ? "Creating…" : "Create Project"}
+                </button>
               </div>
+
             </form>
           </div>
         </div>
