@@ -1,6 +1,6 @@
 # DeliveryPulse AI — Requirements Index
 
-**Version:** 2.0  
+**Version:** 2.1  
 **Status:** Implemented  
 **Last Updated:** July 2026
 
@@ -10,7 +10,7 @@
 
 | File | Contents |
 |---|---|
-| `01_FUNCTIONAL_REQUIREMENTS.md` | All functional requirements (FR-001 to FR-060) |
+| `01_FUNCTIONAL_REQUIREMENTS.md` | All functional requirements (FR-001 to FR-080) |
 | `02_NON_FUNCTIONAL_REQUIREMENTS.md` | Performance, security, usability, scalability |
 | `03_USER_STORIES.md` | User stories per role with acceptance criteria |
 | `04_BUSINESS_RULES.md` | Business logic rules and constraints |
@@ -20,17 +20,21 @@
 
 ## Summary of Requirement Areas
 
-| Area | FR Count | Priority |
+| Area | FR Range | Status |
 |---|---|---|
-| Authentication & Role Access | FR-001 – FR-007 | High |
-| Organisation Setup | FR-008 – FR-015 | High |
-| Project Management | FR-016 – FR-022 | High |
-| KPI Plan Setup | FR-023 – FR-030 | High |
-| KPI Data Entry | FR-031 – FR-040 | Critical |
-| RAG Computation | FR-041 – FR-046 | Critical |
-| KPI Summary & Trends | FR-047 – FR-052 | High |
-| Portfolio Dashboard | FR-053 – FR-056 | High |
-| DM Review Cycle | FR-057 – FR-060 | Medium |
+| Authentication & Role Access | FR-001 – FR-007 | ✅ Implemented |
+| Organisation Setup | FR-008 – FR-015 | ✅ Implemented |
+| Project Management | FR-016 – FR-022 | ✅ Implemented |
+| KPI Plan Setup | FR-023 – FR-030 | ✅ Implemented |
+| KPI Data Entry | FR-031 – FR-040 | ✅ Implemented |
+| RAG Computation | FR-041 – FR-046 | ✅ Implemented |
+| KPI Summary & Trends | FR-047 – FR-052 | ✅ Implemented |
+| Portfolio Dashboard (Exec) | FR-053 – FR-060 | ✅ Implemented |
+| DM Review Cycle | FR-061 – FR-066 | ✅ Implemented |
+| PM Dashboard | FR-067 – FR-070 | ✅ Implemented |
+| DM Action Items & PM Notification | FR-071 – FR-075 | ✅ Implemented |
+| Theme System | FR-076 – FR-078 | ✅ Implemented |
+| Delivery Head Dashboard | FR-079 – FR-080 | ✅ Implemented |
 
 ---
 

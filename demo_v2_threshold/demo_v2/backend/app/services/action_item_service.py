@@ -1,11 +1,14 @@
 """Action Item service — BRD §8: Action & Improvement tracking."""
 
+import logging
 import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.models.action_item import ActionItem
 from app.models.notification import Notification
@@ -99,9 +102,14 @@ class ActionItemService:
                 )
                 self._session.add(notif)
                 self._session.commit()
-        except Exception:
-            # Notification failure must never break the action item creation
-            pass
+        except Exception as exc:
+            # Notification failure must never break the action item creation,
+            # but log it so it doesn't go silently unnoticed.
+            logger.error(
+                "Failed to create PM notification for action item on project %s: %s",
+                project.id, exc, exc_info=True,
+            )
+            self._session.rollback()
 
         return item
 

@@ -233,3 +233,180 @@
 - Can navigate to project details and KPI summary
 
 ---
+
+---
+
+## Updated / New Executive (Portfolio) Stories
+
+### US-CEO-04 — Clickable Stat Cards
+**As a** CEO (or Platform Admin or Delivery Excellence),  
+**I want to** click a stat card (e.g. "Red / Critical") and immediately see a list of all projects in that category,  
+**So that** I can quickly drill into problem areas without scrolling through the full project table.
+
+**Acceptance Criteria:**
+- Clicking any of the 5 stat cards opens a modal overlay
+- Modal header is colour-matched to the card (green, amber, red, blue, purple)
+- Modal lists only the projects matching that card's filter with name, code, account, BU, and RAG pill
+- Clicking a project row navigates to its read-only KPI summary
+- Modal closes on ✕ click or backdrop click
+- **Implemented:** ✅
+
+---
+
+### US-CEO-05 — Read-Only Project KPI Summary
+**As a** CEO (or Platform Admin or Delivery Excellence),  
+**I want to** click a project and see all its KPI metrics in a full-page read-only view,  
+**So that** I can review project health without accessing the PM's data entry flow.
+
+**Acceptance Criteria:**
+- Project click → navigates to `{role_base}/projects/{id}/summary`
+- Page shows: project name, BU, account, overall RAG, Green/Amber/Red/No Data count tiles
+- Category filter buttons to narrow the metric list
+- Full metric table: Metric, Current Value, Target, LSL, USL, RAG Status, Last Updated
+- "← Portfolio Dashboard" back button returns to correct role home
+- **Implemented:** ✅
+
+---
+
+### US-CEO-06 — Portfolio Charts
+**As a** CEO,  
+**I want to** see a bar chart of project health per Business Unit and a RAG donut chart,  
+**So that** I can understand the portfolio health distribution at a glance without needing to read every row.
+
+**Acceptance Criteria:**
+- Bar chart: grouped Green / Amber / Red bars per BU
+- Donut: RAG proportions with center showing % green health
+- Summary below donut: projects on track / need attention / awaiting entry counts
+- **Implemented:** ✅
+
+---
+
+## Updated PM Stories
+
+### US-PM-07 — Create Project from Dashboard
+**As a** Project Manager,  
+**I want to** create a new project directly from my dashboard,  
+**So that** I don't need to navigate to the My Projects page first.
+
+**Acceptance Criteria:**
+- "+ New Project" button in the dashboard hero banner → opens project creation form
+- "Create Project" quick action card → same destination
+- **Implemented:** ✅
+
+---
+
+### US-PM-08 — Click Stat Card to See Filtered Projects
+**As a** Project Manager,  
+**I want to** click a dashboard stat card (e.g. "Needs Attention") and see a list of those specific projects,  
+**So that** I can quickly jump to the projects that need my focus.
+
+**Acceptance Criteria:**
+- Clicking "Needs Attention" shows all AMBER + RED projects
+- Clicking "Green Health" shows all GREEN projects
+- Clicking "Awaiting Score" shows all projects with no RAG
+- Each project row in the modal has two buttons: "Summary" and "Data Entry"
+- **Implemented:** ✅
+
+---
+
+### US-PM-09 — View PM Summary Page
+**As a** Project Manager,  
+**I want to** click any project from my dashboard and go directly to its KPI summary,  
+**So that** I get an immediate health overview without going to data entry first.
+
+**Acceptance Criteria:**
+- Clicking a project card on the PM dashboard → navigates to `/pm/projects/{id}/qpm/summary`
+- Dashboard project cards show RAG badge, project name, account, BU, dates
+- **Implemented:** ✅
+
+---
+
+### US-PM-10 — Receive Notification When DM Raises Action Item
+**As a** Project Manager,  
+**I want to** receive an in-app notification when my Delivery Manager raises an action item for one of my projects,  
+**So that** I know what corrective actions are expected and from which DM.
+
+**Acceptance Criteria:**
+- Notification appears in the bell within 30 seconds of DM creating the action item
+- Notification title: "Action item raised — {project name}"
+- Message: "{DM name} raised: {root cause}"
+- Clicking notification → navigates to `/pm/actions?project={id}`
+- Action items list shows DM's name in "created by" context
+- **Implemented:** ✅
+
+---
+
+## Updated DM Stories
+
+### US-DM-04 — Click Stat Card to See Filtered Projects
+**As a** Delivery Manager,  
+**I want to** click a stat card (e.g. "At Risk") to see just those projects,  
+**So that** I can immediately start reviewing the most critical projects.
+
+**Acceptance Criteria:**
+- Clicking "Needs Review" shows projects with new measurements
+- Clicking "Green Health" shows healthy projects
+- Clicking "At Risk" shows amber + red projects
+- Modal rows have "Review KPIs" button navigating to the review page
+- **Implemented:** ✅
+
+---
+
+### US-DM-05 — Manage Action Items on Dedicated Page
+**As a** Delivery Manager,  
+**I want to** manage all action items for my projects on a single dedicated page (separate from project reviews),  
+**So that** my review commentary and action item tracking remain cleanly separated.
+
+**Acceptance Criteria:**
+- `/delivery-manager/actions` is the dedicated action items page
+- Project selector to switch between projects
+- Stat tiles: Total / Open / In Progress
+- Create form: metric name, owner, due date, root cause, corrective action
+- Creating an action item automatically notifies the project's PM
+- **Implemented:** ✅
+
+---
+
+### US-DM-06 — Review Without Action Items in Form
+**As a** Delivery Manager,  
+**I want to** submit my project review with just my commentary (no action items in the review form),  
+**So that** reviews are focused on observations, while action items remain in their dedicated page.
+
+**Acceptance Criteria:**
+- DM Review form has only: Reporting Period + Commentary + Submit
+- No action items section in the review form
+- Previous reviews show only period + commentary in history
+- **Implemented:** ✅
+
+---
+
+## Updated Delivery Head Stories
+
+### US-DH-02 — Click Stat Tile to See Filtered Projects
+**As a** Delivery Head,  
+**I want to** click a stat tile (e.g. "At risk") to see just those projects,  
+**So that** I can quickly identify which projects in my BU need governance attention.
+
+**Acceptance Criteria:**
+- Clicking "Total projects" shows all projects
+- Clicking "Needs attention" shows RED + CRITICAL projects
+- Clicking "Green health" shows GREEN projects
+- Clicking "At risk" shows AMBER + RED + CRITICAL projects
+- Modal rows navigate to `/delivery-head/projects/{id}/summary`
+- **Implemented:** ✅
+
+---
+
+## Theme Stories
+
+### US-SYS-01 — Switch Between Light and Dark Theme
+**As any** user,  
+**I want to** toggle between a light and dark colour scheme,  
+**So that** I can use the platform comfortably in different lighting conditions.
+
+**Acceptance Criteria:**
+- Toggle pill switch in every page's header bar
+- Theme persists after page refresh (stored in localStorage)
+- All page backgrounds, cards, text, and borders adapt correctly in both themes
+- Coloured stat tiles and RAG badges retain their semantic colours in both themes
+- **Implemented:** ✅

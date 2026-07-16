@@ -585,3 +585,289 @@
 - Shows: metric name, latest value, target, RAG badge, trend, last updated
 - RED metrics subtly highlighted
 - **Implemented:** ✅
+
+---
+
+## FR-053 to FR-060 — Portfolio Dashboard (Executive)
+
+### FR-053 — Portfolio Dashboard Access
+**Priority:** High  
+**Description:** Platform Admin, CEO, and Delivery Excellence shall see a Portfolio Dashboard as their home page.  
+**Acceptance Criteria:**
+- All three roles land on `PortfolioDashboardPage` at their respective home routes
+- All three see all projects (no scoping restriction for these roles)
+- Same component (`PortfolioDashboardPage`) rendered for all three roles
+- **Implemented:** ✅
+
+### FR-054 — Portfolio Stat Cards (Clickable)
+**Priority:** High  
+**Description:** The dashboard shall show five colored stat cards that are individually clickable to show filtered project lists.  
+**Acceptance Criteria:**
+- Five cards: Total Projects, Green Health, Amber, Red/Critical, No Score
+- Each card shows count, label, sub-label, trend badge, and SVG icon
+- Clicking any card opens a modal overlay listing the filtered projects
+- Hover: card lifts `translateY(-2px)` with deeper shadow
+- **Implemented:** ✅
+
+### FR-055 — Portfolio Charts
+**Priority:** High  
+**Description:** The dashboard shall show a BU health bar chart and a RAG donut chart.  
+**Acceptance Criteria:**
+- Bar chart: grouped bars per BU showing Green / Amber / Red counts (SVG, no external library)
+- Donut chart: RAG proportions with center showing "X% Green health" and legend
+- Summary rows below donut: Projects on track / Need attention / Awaiting first entry
+- **Implemented:** ✅
+
+### FR-056 — Portfolio Filter Bar
+**Priority:** High  
+**Description:** The dashboard shall have a sticky filter bar with four cascading filters.  
+**Acceptance Criteria:**
+- Filters: Business Unit, Account (cascades from BU), Project Type, Project Category
+- "✕ Reset filters" button appears when any filter is non-default
+- Filter bar stays sticky while scrolling the project table
+- Shows "Showing X of Y projects" count below filters
+- **Implemented:** ✅
+
+### FR-057 — Portfolio Project Table
+**Priority:** High  
+**Description:** All matching projects shall be shown in a single scrollable table (not individual cards).  
+**Acceptance Criteria:**
+- Columns: Project, Business Unit, Account, Type, Category, PM, Health
+- RAG-colored left border (3px) on each row
+- Clicking any row navigates to the project's read-only KPI summary
+- **Implemented:** ✅
+
+### FR-058 — At-Risk Projects Panel
+**Priority:** Medium  
+**Description:** The dashboard shall display a separate panel listing all AMBER and RED projects.  
+**Acceptance Criteria:**
+- Panel shows first 5 at-risk projects with expand/collapse for more
+- Each row: project name, account, BU, RAG badge — clickable to project summary
+- **Implemented:** ✅
+
+### FR-059 — Read-Only Project KPI Summary (Executive)
+**Priority:** High  
+**Description:** Clicking a project from the Portfolio Dashboard shall open a full read-only KPI metrics page.  
+**Acceptance Criteria:**
+- Route: `{basePath}/projects/:id/summary` (role-aware: `/platform`, `/ceo`, `/delivery-excellence`)
+- Page shows: project name, BU, account, overall RAG, 4 metric count tiles, category filter, full metric table
+- Metric table: Metric, Current Value, Target, LSL, USL, RAG Status, Last Updated
+- "← Portfolio Dashboard" back button navigates to the correct role home
+- **Implemented:** ✅
+
+### FR-060 — Stat Card Filtered Project Modal (Executive)
+**Priority:** High  
+**Description:** Clicking a stat card shall open a modal showing only the projects matching that card's filter.  
+**Acceptance Criteria:**
+- Modal: colored header bar (matching card), project count, title, ✕ close button
+- Project rows: name, code, account, BU, RAG pill — click navigates to project summary
+- Backdrop click closes modal
+- Slide-up + fade-in animation
+- Empty state: "No projects in this category"
+- **Implemented:** ✅
+
+---
+
+## FR-061 to FR-066 — DM Review Cycle
+
+### FR-061 — DM Dashboard Stat Cards (Clickable)
+**Priority:** High  
+**Description:** DM dashboard shall have four clickable stat cards.  
+**Acceptance Criteria:**
+- Cards: Total Projects, Needs Review, Green Health, At Risk
+- Clicking each opens a filtered project modal
+- Modal rows have "Review KPIs" button navigating to project review page
+- **Implemented:** ✅
+
+### FR-062 — Needs-Review Detection
+**Priority:** High  
+**Description:** The system shall detect when a project has new metric data since the DM's last review.  
+**Acceptance Criteria:**
+- `needs_review = true` when latest `KpiMeasurement.updated_at` > `dm_reviews.reviewed_at`
+- `needs_review = true` when no DM review exists but measurements exist
+- "Needs Review" badge shown; alert banner shows count
+- **Implemented:** ✅
+
+### FR-063 — DM Review Submission (Commentary Only)
+**Priority:** High  
+**Description:** DM shall be able to submit a review with commentary for a project. Action items are managed separately.  
+**Acceptance Criteria:**
+- Review form: period label (required, pre-filled), commentary textarea (required)
+- Action items section has been removed from the review form
+- Submit creates a `dm_reviews` record
+- Past reviews shown in review history with Edit button
+- **Implemented:** ✅
+
+### FR-064 — DM KPI View on Review Page
+**Priority:** High  
+**Description:** DM Review page shall show the full KPI summary grouped by category.  
+**Acceptance Criteria:**
+- Categories expandable/collapsible (all open by default)
+- Per metric: name, UOM, latest value, target, RAG dot+text, trend label, last updated
+- **Implemented:** ✅
+
+### FR-065 — DM Action Items Page (Dedicated)
+**Priority:** High  
+**Description:** DM shall have a dedicated Action Items page separate from the project review.  
+**Acceptance Criteria:**
+- Route: `/delivery-manager/actions`
+- Project selector dropdown pre-selects first project
+- Stat tiles: Total / Open / In Progress
+- Create form: metric name, owner, due date, root cause (required), corrective action (required)
+- Lists all action items for selected project with status badge
+- Creating an action item triggers a PM in-app notification
+- **Implemented:** ✅
+
+### FR-066 — DM Review History
+**Priority:** Medium  
+**Description:** DM shall see all past reviews for a project on the review page.  
+**Acceptance Criteria:**
+- Reviews shown newest first below the form
+- Each review shows: period badge, reviewer name + timestamp, commentary
+- Edit button loads review into form for update
+- **Implemented:** ✅
+
+---
+
+## FR-067 to FR-070 — PM Dashboard
+
+### FR-067 — PM Dashboard Hero Banner
+**Priority:** High  
+**Description:** PM Dashboard shall display a personalised hero banner with greeting and project alerts.  
+**Acceptance Criteria:**
+- Purple gradient banner with time-aware greeting ("Good Morning/Afternoon/Evening, [Name] 👋")
+- Current date displayed
+- Amber alert badge: "X projects need attention" (AMBER + RED count)
+- "+ New Project" button
+- **Implemented:** ✅
+
+### FR-068 — PM Dashboard Stat Cards (Clickable)
+**Priority:** High  
+**Description:** PM Dashboard shall show four clickable stat cards for quick project health overview.  
+**Acceptance Criteria:**
+- Cards: Total Projects, Green Health, Needs Attention, Awaiting Score
+- Clicking opens a filtered project modal
+- PM modal has two action buttons per project row: "Summary" and "Data Entry"
+- **Implemented:** ✅
+
+### FR-069 — PM Project Creation from Dashboard
+**Priority:** Medium  
+**Description:** PM shall be able to create a new project directly from the dashboard.  
+**Acceptance Criteria:**
+- "+ New Project" hero button → `/pm/projects?create=1`
+- "Create Project" quick action card → `/pm/projects?create=1`
+- **Implemented:** ✅
+
+### FR-070 — PM Dashboard Project Cards
+**Priority:** High  
+**Description:** PM Dashboard shall display project cards at the bottom showing all PM's projects.  
+**Acceptance Criteria:**
+- Cards show: project name, code, account, BU, RAG badge, dates, status
+- Clicking any card navigates to that project's KPI summary
+- Empty state: "No projects yet" with create button
+- **Implemented:** ✅
+
+---
+
+## FR-071 to FR-075 — DM Action Items & PM Notification
+
+### FR-071 — Action Item Creation
+**Priority:** High  
+**Description:** DM shall be able to create action items for any accessible project.  
+**Acceptance Criteria:**
+- POST `/api/v1/action-items` creates an action item row
+- Required fields: project_id, root_cause, corrective_action
+- Optional fields: metric_name, owner_name, target_closure_date
+- Default status: OPEN
+- **Implemented:** ✅
+
+### FR-072 — Automatic PM Notification on Action Item Create
+**Priority:** High  
+**Description:** When a DM creates an action item, the project's PM shall automatically receive an in-app notification.  
+**Acceptance Criteria:**
+- Backend creates a `Notification` row for `project.project_manager_id` after each action item commit
+- Notification has: `type=ACTION_ITEM_CREATED`, `category=WORKFLOW`, `related_project_id`
+- No notification if `project_manager_id` is null
+- No notification if the DM is also the PM (self-notification skipped)
+- Notification failure never blocks action item creation — logged and rolled back silently
+- **Implemented:** ✅
+
+### FR-073 — Notification Bell
+**Priority:** High  
+**Description:** All roles shall see a notification bell in the header with an unread count badge.  
+**Acceptance Criteria:**
+- Bell polls `GET /api/v1/notifications/unread-count` every 30 seconds
+- Red badge with count appears when unread > 0
+- Clicking bell opens dropdown showing all notifications sorted newest first
+- "Mark all as read" button clears all unread
+- Each notification shows: category badge, time ago, title, message snippet
+- **Implemented:** ✅
+
+### FR-074 — PM Notification Deep-Link
+**Priority:** High  
+**Description:** PM clicking an `ACTION_ITEM_CREATED` notification shall navigate directly to the action items page for that project.  
+**Acceptance Criteria:**
+- Click → navigates to `/pm/actions?project={related_project_id}`
+- Notification is marked as read on click
+- **Implemented:** ✅
+
+### FR-075 — Action Item Status Tracking
+**Priority:** Medium  
+**Description:** Action items shall have a lifecycle status.  
+**Acceptance Criteria:**
+- Status values: OPEN, IN_PROGRESS, CLOSED
+- Status updatable via PATCH `/api/v1/action-items/{id}/status`
+- Closed items get `closed_at` timestamp
+- **Implemented:** ✅
+
+---
+
+## FR-076 to FR-078 — Theme System
+
+### FR-076 — Light / Dark Theme Toggle
+**Priority:** High  
+**Description:** All roles shall be able to toggle between light and dark theme using a control in the header.  
+**Acceptance Criteria:**
+- Toggle pill switch in every page's header bar
+- Light mode: white/purple palette; Dark mode: dark navy palette
+- Theme persists across sessions via `localStorage`
+- **Implemented:** ✅
+
+### FR-077 — CSS Variable Theming
+**Priority:** High  
+**Description:** All page backgrounds, card surfaces, text, and borders shall use CSS variables.  
+**Acceptance Criteria:**
+- Variables: `--bg`, `--surface`, `--border`, `--text`, `--muted`, `--primary`, `--shadow`
+- All inline `style` props use CSS variables, NOT hardcoded hex
+- Exception: RAG status colors and stat card gradient backgrounds remain hardcoded
+- **Implemented:** ✅
+
+### FR-078 — Tailwind Dark Theme Overrides
+**Priority:** Medium  
+**Description:** Tailwind utility classes shall be automatically overridden for dark mode via a CSS override file.  
+**Acceptance Criteria:**
+- `dark-theme.css` imported after Tailwind overrides common white/light classes
+- Colored stat tiles (`bg-violet`, `bg-emerald`, etc.) are intentionally preserved
+- **Implemented:** ✅
+
+---
+
+## FR-079 to FR-080 — Delivery Head Dashboard
+
+### FR-079 — Delivery Head Stat Tiles (Clickable)
+**Priority:** High  
+**Description:** Delivery Head dashboard shall show four clickable stat tiles for project health overview.  
+**Acceptance Criteria:**
+- Tiles: Total projects, Needs attention, Green health, At risk
+- Clicking opens a filtered project modal
+- Modal rows navigate to `/delivery-head/projects/{id}/summary`
+- **Implemented:** ✅
+
+### FR-080 — Delivery Head Project Filter Chips
+**Priority:** Medium  
+**Description:** Delivery Head dashboard shall provide RAG filter chips to filter the project list inline.  
+**Acceptance Criteria:**
+- Filter chips: All, Green, Amber, Red, Critical, No Score
+- Active chip highlighted in the RAG color
+- Also a search box (name/code/account)
+- **Implemented:** ✅

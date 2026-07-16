@@ -1,5 +1,8 @@
 # Spec 01 — Roles and Access Control
 
+**Version:** 2.1  
+**Last Updated:** July 2026
+
 ---
 
 ## Role Hierarchy
@@ -15,7 +18,7 @@ DELIVERY_HEAD
     └── Monitors projects in their assigned BU
 
 DELIVERY_MANAGER
-    └── Reviews KPI data for their assigned accounts
+    └── Reviews KPI data for their assigned accounts, creates action items
 
 PM (Project Manager)
     └── Creates and manages their own projects, enters KPI data
@@ -30,53 +33,63 @@ PM (Project Manager)
 - Creates and manages user accounts for all roles
 - Assigns Delivery Head to each BU
 - Assigns Delivery Manager to each Account
-- Views full governance overview (all projects, all BUs)
+- Assigns PM to each BU (via `pm_user_id` on BusinessUnit)
+- Views full governance overview (all projects, all BUs) via Portfolio Dashboard
 - Manages system configuration (health thresholds, notification rules)
 
 ### CEO
 - Read-only view across all projects and BUs
-- Sees Portfolio Dashboard with all projects, RAG status, metrics
+- Sees Portfolio Dashboard with stat cards, BU health chart, RAG donut, filter bar, and project table
+- Can click any stat card to see a filtered project list modal → navigate to project KPI summary
 - Cannot create or modify any data
 
 ### DELIVERY_EXCELLENCE
 - Manages the QPM metric catalog (add, edit, activate/deactivate metrics)
 - Reviews and approves/rejects PM custom metric requests
-- Sees Portfolio Dashboard with all projects (same view as CEO)
+- Sees Portfolio Dashboard (identical to CEO and Platform Admin view)
+- Can click any stat card to see a filtered project list modal → navigate to project KPI summary
 - Cannot modify project data or KPI measurements
 
 ### DELIVERY_HEAD
-- Sees only projects in their assigned BU (via `bu_head_user_id` on BusinessUnit)
-- Monitors project health and submission trends
-- Can view KPI plans and measurements for their BU projects
+- Sees only projects in their assigned BU (via `delivery_head_user_id` on BusinessUnit)
+- Monitors project health with stat cards (Total, Needs Attention, Green Health, At Risk)
+- Can click stat cards to see filtered project modals → navigate to project summary
+- Bar chart and review donut on dashboard
 - Cannot modify project data or KPI measurements
 
 ### DELIVERY_MANAGER
 - Assigned to one or more Accounts (via `delivery_manager_user_id` on Account)
 - Sees only projects belonging to their assigned accounts
-- Reviews KPI data per project
-- Adds commentary and action items via DM Review
+- Dashboard has stat cards (Total, Needs Review, Green Health, At Risk) — all clickable
+- Clicking a stat card shows a filtered project modal with "Review KPIs" button per project
+- Reviews KPI data per project — adds commentary via DM Review page
+- Creates and manages Action Items on a dedicated Actions page (separate from review)
+- Action items trigger PM notifications automatically
 - Cannot modify KPI measurements — read-only on metric data
 
 ### PM (Project Manager)
 - Assigned to exactly one Business Unit (via `pm_user_id` on BusinessUnit)
-- Sees only accounts in their assigned BU
-- Creates projects under those accounts
+- Sees only accounts in their assigned BU when creating projects
+- Can create projects from both the My Projects page and the Dashboard
+- Dashboard has stat cards (Total, Green Health, Needs Attention, Awaiting Score) — all clickable
+- Clicking a stat card shows a filtered project modal with "Summary" and "Data Entry" buttons
 - Sets up KPI Plan for each project
 - Enters parameter values (measures) for all metrics
 - Views KPI Summary and trend charts for their projects
+- Receives in-app notifications when DM creates action items on their projects
 
 ---
 
 ## Data Scoping Rules
 
-| Role | Projects visible | Accounts visible |
-|---|---|---|
-| PLATFORM_ADMIN | All | All |
-| CEO | All | All |
-| DELIVERY_EXCELLENCE | All | All |
-| DELIVERY_HEAD | Projects in their BU | Accounts in their BU |
-| DELIVERY_MANAGER | Projects in their assigned accounts | Their assigned accounts |
-| PM | Only projects where `project_manager_id = user.id` | Only accounts in their assigned BU |
+| Role | Projects visible | Accounts visible | Can modify data |
+|---|---|---|---|
+| PLATFORM_ADMIN | All | All | Yes (org setup only) |
+| CEO | All | All | No |
+| DELIVERY_EXCELLENCE | All | All | Catalog only |
+| DELIVERY_HEAD | Projects in their BU | Accounts in their BU | No |
+| DELIVERY_MANAGER | Projects in their assigned accounts | Their assigned accounts | Action Items only |
+| PM | Only projects where `project_manager_id = user.id` | Only accounts in their assigned BU | Full KPI data entry |
 
 ---
 
@@ -96,9 +109,23 @@ PM (Project Manager)
 
 | Role | Home Path | Key Routes |
 |---|---|---|
-| PLATFORM_ADMIN | `/platform` | Dashboard, Business Units, Reports, Settings |
-| CEO | `/ceo` | Dashboard (Portfolio), Business Units, Projects |
+| PLATFORM_ADMIN | `/platform` | Dashboard (Portfolio), Business Units, Reports, Settings |
+| CEO | `/ceo` | Dashboard (Portfolio), Business Units, Projects, Reports |
 | DELIVERY_EXCELLENCE | `/delivery-excellence` | Dashboard (Portfolio), Metric Catalog |
-| DELIVERY_HEAD | `/delivery-head` | Dashboard, My BU, Projects, Compliance |
-| DELIVERY_MANAGER | `/delivery-manager` | Dashboard, Action Items |
-| PM | `/pm` | Dashboard, My Projects, Summary |
+| DELIVERY_HEAD | `/delivery-head` | Dashboard, Projects, Project Summary |
+| DELIVERY_MANAGER | `/delivery-manager` | Dashboard, Project Review, Action Items |
+| PM | `/pm` | Dashboard, My Projects, KPI Summary, Actions |
+
+---
+
+## Shared Dashboard Component (Portfolio)
+
+Platform Admin, CEO, and Delivery Excellence all use the **same** `PortfolioDashboardPage` component routed at their respective home paths. Navigation from the portfolio project list to the KPI summary uses a role-aware base path:
+
+| Role | Base Path | Project Summary Route |
+|---|---|---|
+| PLATFORM_ADMIN | `/platform` | `/platform/projects/:id/summary` |
+| CEO | `/ceo` | `/ceo/projects/:id/summary` |
+| DELIVERY_EXCELLENCE | `/delivery-excellence` | `/delivery-excellence/projects/:id/summary` |
+
+The `ProjectSummaryReadOnlyPage` is a shared read-only component rendered at all three paths.

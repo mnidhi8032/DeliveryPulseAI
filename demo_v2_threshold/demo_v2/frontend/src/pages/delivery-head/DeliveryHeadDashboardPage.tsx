@@ -18,9 +18,15 @@ const RAG_DOT_BG: Record<string, string> = {
 };
 
 // ── Stat tile ─────────────────────────────────────────────────────────────────
-function StatTile({ label, value, bg }: { label: string; value: number; bg: string }) {
+function StatTile({ label, value, bg, onClick }: { label: string; value: number; bg: string; onClick?: () => void }) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl p-5 flex flex-col gap-2 shadow-md ${bg}`}>
+    <div
+      onClick={onClick}
+      className={`relative overflow-hidden rounded-2xl p-5 flex flex-col gap-2 shadow-md ${bg}`}
+      style={{ cursor: onClick ? "pointer" : "default", transition: "transform 0.18s, box-shadow 0.18s" }}
+      onMouseEnter={e => { if (onClick) { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; } }}
+      onMouseLeave={e => { if (onClick) { (e.currentTarget as HTMLDivElement).style.transform = ""; } }}
+    >
       <div className="absolute top-3 right-3 opacity-20 text-white text-4xl select-none font-black">◫</div>
       <p className="text-4xl font-black text-white leading-none">{value}</p>
       <p className="text-sm font-semibold text-white/85">{label}</p>
@@ -124,6 +130,133 @@ function ReviewDonut({ needsAttention, upToDate }: { needsAttention: number; upT
   );
 }
 
+// ── DH Projects Modal ─────────────────────────────────────────────────────────
+const DH_MODAL_CONFIG: Record<string, { title: string; color: string }> = {
+  ALL:            { title: "All Projects",          color: "#7c3aed" },
+  NEEDS_ATTENTION:{ title: "Needs Attention",        color: "#0ea5e9" },
+  GREEN:          { title: "Green Health Projects",  color: "#10b981" },
+  AT_RISK:        { title: "At Risk Projects",       color: "#f97316" },
+};
+
+const DH_RAG_PILL: Record<string, { bg: string; border: string; text: string; label: string }> = {
+  GREEN:    { bg: "rgba(16,185,129,0.12)",  border: "rgba(16,185,129,0.30)",  text: "#065f46", label: "Green"    },
+  AMBER:    { bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.30)",  text: "#b45309", label: "Amber"    },
+  RED:      { bg: "rgba(244,63,94,0.12)",   border: "rgba(244,63,94,0.30)",   text: "#be123c", label: "Red"      },
+  CRITICAL: { bg: "rgba(190,18,60,0.12)",   border: "rgba(190,18,60,0.30)",   text: "#9f1239", label: "Critical" },
+};
+
+function DHModalRagPill({ rag }: { rag: string | null }) {
+  if (!rag) return (
+    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 10px",
+      background: "rgba(100,116,139,0.10)", border: "1px solid rgba(100,116,139,0.25)", color: "var(--muted)" }}>
+      No Score
+    </span>
+  );
+  const c = DH_RAG_PILL[rag];
+  if (!c) return null;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 10px",
+      background: c.bg, border: `1px solid ${c.border}`, color: c.text }}>
+      {c.label}
+    </span>
+  );
+}
+
+function DHProjectsModal({ filter, projects, onClose }: {
+  filter: string;
+  projects: Project[];
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const cfg = DH_MODAL_CONFIG[filter] ?? DH_MODAL_CONFIG["ALL"];
+
+  const filtered = projects.filter(p => {
+    if (filter === "ALL")             return true;
+    if (filter === "NEEDS_ATTENTION") return p.current_rag === "RED" || p.current_rag === "CRITICAL";
+    if (filter === "GREEN")           return p.current_rag === "GREEN";
+    if (filter === "AT_RISK")         return p.current_rag === "AMBER" || p.current_rag === "RED" || p.current_rag === "CRITICAL";
+    return true;
+  });
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "24px 16px",
+        animation: "dhFadeIn 0.15s ease",
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 640,
+          borderRadius: 24, background: "var(--surface)",
+          padding: 0, overflow: "hidden",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.25)",
+          animation: "dhSlideUp 0.2s ease",
+          maxHeight: "85vh", display: "flex", flexDirection: "column",
+        }}
+      >
+        {/* Header */}
+        <div style={{ background: cfg.color, padding: "18px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ background: "rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 800,
+            borderRadius: 999, padding: "3px 10px", minWidth: 28, textAlign: "center" }}>
+            {filtered.length}
+          </span>
+          <h2 style={{ flex: 1, fontSize: 17, fontWeight: 800, color: "#fff", margin: 0 }}>{cfg.title}</h2>
+          <button
+            onClick={onClose}
+            style={{ background: "rgba(255,255,255,0.20)", border: "none", borderRadius: 8,
+              width: 32, height: 32, cursor: "pointer", fontSize: 18, color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+          >×</button>
+        </div>
+
+        {/* Rows */}
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: "48px 24px", textAlign: "center" }}>
+              <p style={{ color: "var(--muted)", fontSize: 14 }}>No projects in this category</p>
+            </div>
+          ) : filtered.map((p, idx) => (
+            <div
+              key={p.id}
+              onClick={() => { navigate(`/delivery-head/projects/${p.id}/summary`); onClose(); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 14,
+                padding: "14px 24px",
+                borderBottom: idx < filtered.length - 1 ? "1px solid var(--border)" : "none",
+                cursor: "pointer", transition: "background 0.12s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = "rgba(99,102,241,0.04)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontWeight: 700, color: "var(--primary)", margin: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p.project_name}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                  <span style={{ fontSize: 10, fontFamily: "monospace", color: "var(--muted)", fontWeight: 600 }}>{p.project_code}</span>
+                  {p.account_name && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {p.account_name}</span>}
+                  {p.business_unit_name && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {p.business_unit_name}</span>}
+                </div>
+              </div>
+              <DHModalRagPill rag={p.current_rag} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{`
+        @keyframes dhFadeIn  { from { opacity:0 } to { opacity:1 } }
+        @keyframes dhSlideUp { from { transform:translateY(32px); opacity:0 } to { transform:translateY(0); opacity:1 } }
+      `}</style>
+    </div>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export function DeliveryHeadDashboardPage() {
   const navigate = useNavigate();
@@ -132,6 +265,7 @@ export function DeliveryHeadDashboardPage() {
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
   const [ragFilter, setRagFilter] = useState("ALL");
+  const [modalFilter, setModalFilter] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([listBusinessUnits(), listProjects()])
@@ -186,10 +320,10 @@ export function DeliveryHeadDashboardPage() {
 
       {/* stat tiles */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatTile label="Total projects"  value={projects.length}                      bg="bg-violet-600" />
-        <StatTile label="Needs attention" value={needsAttention}                       bg="bg-sky-500" />
-        <StatTile label="Green health"    value={greenCount}                           bg="bg-emerald-600" />
-        <StatTile label="At risk"         value={amberCount + redCount + criticalCount} bg="bg-orange-500" />
+        <StatTile label="Total projects"  value={projects.length}                       bg="bg-violet-600" onClick={() => setModalFilter("ALL")} />
+        <StatTile label="Needs attention" value={needsAttention}                        bg="bg-sky-500"    onClick={() => setModalFilter("NEEDS_ATTENTION")} />
+        <StatTile label="Green health"    value={greenCount}                            bg="bg-emerald-600" onClick={() => setModalFilter("GREEN")} />
+        <StatTile label="At risk"         value={amberCount + redCount + criticalCount} bg="bg-orange-500" onClick={() => setModalFilter("AT_RISK")} />
       </div>
 
       {/* charts row */}
@@ -306,6 +440,15 @@ export function DeliveryHeadDashboardPage() {
             );
           })}
         </div>
+      )}
+
+      {/* ── DH Projects Modal ── */}
+      {modalFilter !== null && (
+        <DHProjectsModal
+          filter={modalFilter}
+          projects={projects}
+          onClose={() => setModalFilter(null)}
+        />
       )}
     </div>
   );

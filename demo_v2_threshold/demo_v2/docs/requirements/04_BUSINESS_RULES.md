@@ -181,3 +181,88 @@ The `required_measures` field on each `kpi_plan_metric` is a JSON array of measu
 
 ### BR-009.4
 The measure mapping file defines whether a metric is computed (type "C") or direct (type "D"). Direct metrics use the entered parameter value directly. Computed metrics apply a formula (numerator/denominator structure with operators).
+
+---
+
+## BR-010 — Dashboard Interaction Rules
+
+### BR-010.1 — Stat Card Click Shows Filtered Modal
+Every clickable stat card on any dashboard opens a modal overlay listing only the projects matching that card's filter. The modal is not a separate page — it is an in-place overlay.
+
+### BR-010.2 — Modal Navigation Uses Role-Aware Paths
+All navigation from modals uses the current user's role to determine the correct route prefix:
+- PLATFORM_ADMIN → `/platform`
+- CEO → `/ceo`
+- DELIVERY_EXCELLENCE → `/delivery-excellence`
+- DELIVERY_MANAGER → `/delivery-manager`
+- DELIVERY_HEAD → `/delivery-head`
+- PM → `/pm`
+
+### BR-010.3 — PM Modal Has Two Actions Per Project
+The PM dashboard modal shows both "Summary" (outline) and "Data Entry" (solid) buttons per project row — unlike executive modals which navigate to summary only.
+
+### BR-010.4 — DM Modal Has Review Action Per Project
+The DM dashboard modal shows a "Review KPIs" button per project row navigating to `/delivery-manager/projects/{id}/review`.
+
+### BR-010.5 — Modal Empty State
+If no projects match a filter (e.g. no GREEN projects exist), the modal shows "No projects in this category" rather than being hidden or showing an error.
+
+---
+
+## BR-011 — DM Review and Action Item Separation Rules
+
+### BR-011.1 — Reviews Are Commentary Only
+A DM Review (`dm_reviews` table) contains only a period label and commentary text. Action items are stored separately in the `action_items` table and managed on a dedicated page.
+
+### BR-011.2 — Action Items Are Separate from Reviews
+Action items are NOT part of a review submission. They are created independently on `/delivery-manager/actions`. A DM can create action items at any time regardless of review status.
+
+### BR-011.3 — Action Items Trigger PM Notifications
+Every time a DM creates an action item via `POST /api/v1/action-items`, the backend automatically creates a `Notification` row for the project's PM. This happens in a separate database commit after the action item is saved.
+
+### BR-011.4 — No Self-Notification
+If the DM creating the action item is also the PM of the project (`project.project_manager_id = user.id`), no notification is created. This prevents unnecessary self-notifications.
+
+### BR-011.5 — Notification Failure Is Non-Blocking
+If the notification insert fails for any reason (DB error, missing PM, etc.), the action item creation is NOT rolled back. The error is logged at ERROR level but the action item is preserved.
+
+---
+
+## BR-012 — Notification Rules
+
+### BR-012.1 — Notification Targeting
+Every notification is targeted at exactly one user (`user_id` FK). There are no broadcast notifications.
+
+### BR-012.2 — Notification Types
+| Type | Trigger | Recipient |
+|---|---|---|
+| `ACTION_ITEM_CREATED` | DM creates action item | Project's PM |
+| `SUBMISSION_DRAFT_CREATED` | PM creates submission draft | Depends on workflow |
+
+### BR-012.3 — Unread Count Polling
+The frontend polls `GET /api/v1/notifications/unread-count` every 30 seconds. It does not use WebSockets or server-sent events.
+
+### BR-012.4 — Mark as Read on Click
+Clicking any notification in the bell dropdown marks it as read (`is_read = true`) via `POST /api/v1/notifications/{id}/read` before navigating.
+
+### BR-012.5 — Deep Link Resolution
+`ACTION_ITEM_CREATED` notifications with `related_project_id` set navigate the PM to `/pm/actions?project={related_project_id}` when clicked.
+
+---
+
+## BR-013 — Theme Rules
+
+### BR-013.1 — CSS Variable Requirement
+All page components (inline `style` props) must use CSS variables for backgrounds, text, borders, and shadows — not hardcoded hex values. This ensures correct rendering in both light and dark themes.
+
+### BR-013.2 — Permitted Hardcoded Colors
+The only hardcoded hex values permitted in inline styles are:
+- RAG semantic colors: `#22c55e` (green), `#f59e0b` (amber), `#ef4444` (red)
+- Stat card gradient backgrounds (always colored regardless of theme)
+- rgba-based RAG pill backgrounds (transparent enough to work in both themes)
+
+### BR-013.3 — Theme Persistence
+The user's theme preference is stored in `localStorage` under the key `deliverypulse_theme`. On app load, this value is read and applied before any component renders, preventing a flash of wrong theme.
+
+### BR-013.4 — Colored Tiles Exempt from Dark Override
+Tailwind classes for colored stat tiles (`bg-violet-600`, `bg-emerald-600`, `bg-orange-500`, etc.) are intentionally excluded from dark theme CSS overrides. They retain their brand colors in both light and dark modes.
