@@ -230,3 +230,24 @@ export async function getLatestMeasurement(planMetricId: string): Promise<KpiMea
     created_at: "", updated_at: "",
   } as KpiMeasurement;
 }
+
+// ── Spec 14: RAG Explanation & Recommendation ─────────────────────────────────
+
+export interface RagExplainResponse {
+  explanation: string | null;
+  recommendation: string | null;
+  breach_type: string | null;
+  is_worsening: boolean;
+  is_first_breach: boolean;
+}
+
+/**
+ * Fetch the plain-English explanation + recommendation for a RED/AMBER metric.
+ * Returns explanation=null when RAG is GREEN or there is no data.
+ */
+export async function explainMetric(planMetricId: string): Promise<RagExplainResponse> {
+  const { data } = await apiClient.get<RagExplainResponse>(
+    `/qpm/plans/${planMetricId}/explain`
+  );
+  return data;
+}

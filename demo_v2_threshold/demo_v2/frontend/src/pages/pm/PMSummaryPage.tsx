@@ -1,10 +1,13 @@
 /**
  * PM -- Summary Dashboard (light purple theme)
  * Logic is 100% unchanged. Only UI/CSS upgraded.
+ * Spec 14: Explanation + recommendation shown in expanded metric card.
  */
 import { useEffect, useState } from "react";
 import { listProjects } from "../../services/projectService";
-import { getKpiPlan, getKpiSummary } from "../../services/qpmService";
+import { getKpiPlan, getKpiSummary, explainMetric } from "../../services/qpmService";
+import { createActionItem } from "../../services/brdService";
+import type { RagExplainResponse } from "../../services/qpmService";
 import { useToast } from "../../contexts/ToastContext";
 import type { Project } from "../../types/project";
 import type { KpiSummary, KpiSummaryMetric } from "../../types/qpm";
@@ -354,6 +357,13 @@ export function PMSummaryPage() {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
   const [expandedDimension, setExpandedDimension] = useState<string | null>(null);
+  // Spec 14: explanation for the currently expanded metric
+  const [explanation, setExplanation] = useState<RagExplainResponse | null>(null);
+  const [explainLoading, setExplainLoading] = useState(false);
+  // Action item form
+  const [showActionForm, setShowActionForm] = useState(false);
+  const [actionForm, setActionForm] = useState({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
+  const [savingAction, setSavingAction] = useState(false);
 
   useEffect(() => {
     listProjects()
@@ -380,6 +390,51 @@ export function PMSummaryPage() {
     acc[cat].push(m);
     return acc;
   }, {});
+
+  // Spec 14: open metric card + fetch explanation for RED/AMBER
+  const handleExpandMetric = (m: KpiSummaryMetric) => {
+    if (expandedMetric === m.plan_metric_id) {
+      setExpandedMetric(null);
+      setExplanation(null);
+      setShowActionForm(false);
+      return;
+    }
+    setExpandedMetric(m.plan_metric_id);
+    setExplanation(null);
+    setShowActionForm(false);
+    setActionForm({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
+    if (m.rag_status === "RED" || m.rag_status === "AMBER") {
+      setExplainLoading(true);
+      explainMetric(m.plan_metric_id)
+        .then(r => setExplanation(r))
+        .catch(() => setExplanation(null))
+        .finally(() => setExplainLoading(false));
+    }
+  };
+
+  const handleRaiseAction = async (e: React.FormEvent, m: KpiSummaryMetric) => {
+    e.preventDefault();
+    if (!actionForm.root_cause.trim() || !actionForm.corrective_action.trim()) return;
+    setSavingAction(true);
+    try {
+      await createActionItem({
+        project_id: selectedProjectId,
+        root_cause: actionForm.root_cause,
+        corrective_action: actionForm.corrective_action,
+        metric_name: m.metric_name,
+        rag_status_at_creation: m.rag_status ?? undefined,
+        owner_name: actionForm.owner_name || undefined,
+        target_closure_date: actionForm.target_closure_date || undefined,
+      });
+      toast.success("Action item created. View it in Actions.");
+      setActionForm({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
+      setShowActionForm(false);
+    } catch {
+      toast.error("Failed to create action item.");
+    } finally {
+      setSavingAction(false);
+    }
+  };
 
   /* ── Page wrapper styles ─────────────────────────────── */
   const pageStyle: React.CSSProperties = {
@@ -603,7 +658,7 @@ export function PMSummaryPage() {
                       return (
                         <div key={m.plan_metric_id} style={{ gridColumn: "1 / -1" }}>
                           <GlassCard style={{
-                            border: `1px solid ${color}40`,
+                            border: `1px solid ${color}28`,
                             boxShadow: RAG_GLOW[rag ?? ""] ?? "0 4px 24px rgba(0,0,0,0.3)",
                           }}>
                             <div style={{
@@ -620,12 +675,121 @@ export function PMSummaryPage() {
                                 </p>
                               </div>
                               <button
-                                onClick={() => setExpandedMetric(null)}
+                                onClick={() => { setExpandedMetric(null); setExplanation(null); }}
                                 style={{ background: "rgba(108,99,255,0.08)", border: "1px solid #e8e6ff", borderRadius: 8, padding: "6px 12px", fontSize: 11, color: "var(--muted)", cursor: "pointer", fontWeight: 600 }}
                               >
                                 ✕ Close
                               </button>
                             </div>
+
+                            {/* Spec 14: Explanation + Recommendation box for RED/AMBER */}
+                            {(rag === "RED" || rag === "AMBER") && (
+                              <div style={{
+                                margin: "16px 20px 0",
+                                borderRadius: 12,
+                                border: `1px solid ${rag === "RED" ? "rgba(239,68,68,0.25)" : "rgba(245,158,11,0.25)"}`,
+                                background: rag === "RED" ? "rgba(239,68,68,0.05)" : "rgba(245,158,11,0.05)",
+                                padding: "14px 16px",
+                              }}>
+                                {explainLoading ? (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
+                                    <svg style={{ animation: "spin 1s linear infinite", width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Loading explanation…
+                                  </div>
+                                ) : explanation?.explanation ? (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                    {/* Header row */}
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                      <span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                                        Why is this {rag === "RED" ? "red" : "amber"}?
+                                      </span>
+                                      {explanation.is_worsening && (
+                                        <span style={{ fontSize: 9, fontWeight: 700, borderRadius: 999, padding: "2px 8px", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "#b91c1c" }}>↓ Worsening</span>
+                                      )}
+                                      {explanation.is_first_breach && (
+                                        <span style={{ fontSize: 9, fontWeight: 700, borderRadius: 999, padding: "2px 8px", background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.25)", color: "#b45309" }}>First breach</span>
+                                      )}
+                                    </div>
+                                    {/* Explanation */}
+                                    <p style={{ fontSize: 12, color: "var(--text)", margin: 0, lineHeight: 1.6 }}>
+                                      {explanation.explanation}
+                                    </p>
+                                    {/* Recommendation */}
+                                    {explanation.recommendation ? (
+                                      <div style={{ paddingTop: 10, borderTop: `1px solid ${rag === "RED" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)"}` }}>
+                                        <p style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 6px" }}>
+                                          Recommended action
+                                        </p>
+                                        <p style={{ fontSize: 12, color: "var(--text)", margin: 0, lineHeight: 1.6 }}>
+                                          {explanation.recommendation}
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <p style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic", margin: 0 }}>
+                                        No recommendation configured for this metric yet.
+                                      </p>
+                                    )}
+
+                                    {/* Raise Action Item */}
+                                    <div style={{ paddingTop: 10, borderTop: `1px solid ${rag === "RED" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)"}` }}>
+                                      {!showActionForm ? (
+                                        <button type="button" onClick={() => setShowActionForm(true)} style={{
+                                          fontSize: 11, fontWeight: 700, cursor: "pointer", borderRadius: 8,
+                                          padding: "6px 14px", border: "none",
+                                          background: rag === "RED" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)",
+                                          color: rag === "RED" ? "#b91c1c" : "#b45309",
+                                          transition: "background 0.15s",
+                                        }}>
+                                          + Raise Action Item
+                                        </button>
+                                      ) : (
+                                        <form onSubmit={e => handleRaiseAction(e, m)} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                          <p style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>
+                                            New Action — {m.metric_name}
+                                          </p>
+                                          <input required type="text" placeholder="Root cause *"
+                                            value={actionForm.root_cause}
+                                            onChange={e => setActionForm(f => ({ ...f, root_cause: e.target.value }))}
+                                            style={{ borderRadius: 8, border: "1.5px solid var(--border)", padding: "8px 12px", fontSize: 12, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" as const }} />
+                                          <textarea required placeholder="Corrective action *" rows={2}
+                                            value={actionForm.corrective_action}
+                                            onChange={e => setActionForm(f => ({ ...f, corrective_action: e.target.value }))}
+                                            style={{ borderRadius: 8, border: "1.5px solid var(--border)", padding: "8px 12px", fontSize: 12, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" as const, resize: "none" as const }} />
+                                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                            <input type="text" placeholder="Owner (optional)"
+                                              value={actionForm.owner_name}
+                                              onChange={e => setActionForm(f => ({ ...f, owner_name: e.target.value }))}
+                                              style={{ borderRadius: 8, border: "1.5px solid var(--border)", padding: "8px 12px", fontSize: 12, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit" }} />
+                                            <input type="date" placeholder="Target date"
+                                              value={actionForm.target_closure_date}
+                                              onChange={e => setActionForm(f => ({ ...f, target_closure_date: e.target.value }))}
+                                              style={{ borderRadius: 8, border: "1.5px solid var(--border)", padding: "8px 12px", fontSize: 12, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit" }} />
+                                          </div>
+                                          <div style={{ display: "flex", gap: 8 }}>
+                                            <button type="submit" disabled={savingAction || !actionForm.root_cause.trim() || !actionForm.corrective_action.trim()} style={{
+                                              borderRadius: 8, padding: "7px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none",
+                                              background: "var(--primary)", color: "#fff",
+                                              opacity: (savingAction || !actionForm.root_cause.trim() || !actionForm.corrective_action.trim()) ? 0.5 : 1,
+                                            }}>
+                                              {savingAction ? "Saving…" : "Save Action Item"}
+                                            </button>
+                                            <button type="button" onClick={() => setShowActionForm(false)} style={{
+                                              borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                              border: "1.5px solid var(--border)", background: "transparent", color: "var(--muted)",
+                                            }}>
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </form>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
+
                             <div style={{ padding: "18px 20px" }} onClick={e => e.stopPropagation()}>
                               <MetricTrendChart metric={m} />
                             </div>
@@ -637,7 +801,7 @@ export function PMSummaryPage() {
                     return (
                       <div
                         key={m.plan_metric_id}
-                        onClick={() => setExpandedMetric(m.plan_metric_id)}
+                        onClick={() => handleExpandMetric(m)}
                         className="kpi-card-hover"
                         style={{
                           borderRadius: 16, cursor: "pointer",
@@ -649,6 +813,21 @@ export function PMSummaryPage() {
                       >
                         {/* Top accent line */}
                         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${color}, transparent)`, borderRadius: "16px 16px 0 0" }} />
+
+                        {/* Spec 14: info badge for RED/AMBER */}
+                        {(rag === "RED" || rag === "AMBER") && (
+                          <span
+                            title="Click to see why this metric is underperforming"
+                            style={{
+                              position: "absolute", top: 8, right: 8,
+                              width: 16, height: 16, borderRadius: "50%",
+                              background: rag === "RED" ? "#ef4444" : "#f59e0b",
+                              color: "#fff", fontSize: 9, fontWeight: 900,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              boxShadow: `0 0 6px ${color}60`,
+                            }}
+                          >ℹ</span>
+                        )}
 
                         <div style={{ marginBottom: 10 }}>
                           <p style={{ fontSize: 9, fontWeight: 700, color: "#6c63ff", textTransform: "uppercase", letterSpacing: "0.10em", marginBottom: 4 }}>

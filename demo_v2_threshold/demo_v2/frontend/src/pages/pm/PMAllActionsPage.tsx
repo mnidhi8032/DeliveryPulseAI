@@ -1,6 +1,7 @@
 /**
  * PM — All Action Items
  * Consolidated view of action items across all PM's projects.
+ * Shows PM-raised and DM-raised items with a role filter dropdown.
  * Deep-linked from notification bell (ACTION_ITEM_CREATED).
  */
 import { useEffect, useState } from "react";
@@ -55,6 +56,7 @@ export function PMAllActionsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | "OPEN" | "IN_PROGRESS" | "CLOSED">("ALL");
   const [selectedProject, setSelectedProject] = useState<string>("ALL");
+  const [raisedByFilter, setRaisedByFilter] = useState<"ALL" | "PM" | "DM">("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const loadAll = async () => {
@@ -99,6 +101,13 @@ export function PMAllActionsPage() {
   const filtered = items.filter(i => {
     if (filter !== "ALL" && i.action_status !== filter) return false;
     if (selectedProject !== "ALL" && i.project_id !== selectedProject) return false;
+    // Role filter: DM items have created_by_name starting with "DM"
+    if (raisedByFilter === "DM") {
+      if (!i.created_by_name?.startsWith("DM")) return false;
+    }
+    if (raisedByFilter === "PM") {
+      if (i.created_by_name?.startsWith("DM")) return false;
+    }
     return true;
   });
 
@@ -149,6 +158,20 @@ export function PMAllActionsPage() {
             </button>
           ))}
 
+          {/* Raised By filter */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: "4px 6px", boxShadow: C.shadow }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.muted, paddingLeft: 4 }}>Raised by:</span>
+            {(["ALL", "PM", "DM"] as const).map(role => (
+              <button key={role} onClick={() => setRaisedByFilter(role)} style={{
+                borderRadius: 8, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "none", transition: "background 0.15s",
+                background: raisedByFilter === role ? "var(--primary)" : "transparent",
+                color: raisedByFilter === role ? "#fff" : C.muted,
+              }}>
+                {role === "ALL" ? "All" : role}
+              </button>
+            ))}
+          </div>
+
           {/* Project filter */}
           <select value={selectedProject} onChange={e => setSelectedProject(e.target.value)}
             style={{
@@ -156,8 +179,7 @@ export function PMAllActionsPage() {
               background: C.card, border: `1.5px solid ${C.border}`,
               borderRadius: 12, padding: "7px 36px 7px 14px",
               fontSize: 12, fontWeight: 600, color: C.text,
-              cursor: "pointer", outline: "none",
-              boxShadow: C.shadow,
+              cursor: "pointer", outline: "none", boxShadow: C.shadow,
             }}>
             <option value="ALL">All Projects</option>
             {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
@@ -267,7 +289,16 @@ export function PMAllActionsPage() {
                     <span>Owner: <strong style={{ color: C.text }}>{item.owner_name}</strong></span>
                   )}
                   {item.created_by_name && (
-                    <span>Raised by: <strong style={{ color: C.primary }}>{item.created_by_name}</strong></span>
+                    <span>Raised by: <strong style={{
+                      color: item.created_by_name.startsWith("DM") ? "#7c3aed" : C.primary,
+                    }}>{item.created_by_name}</strong>
+                    {item.created_by_name.startsWith("DM") && (
+                      <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, borderRadius: 4, padding: "1px 5px", background: "rgba(124,58,237,0.10)", color: "#7c3aed", border: "1px solid rgba(124,58,237,0.20)" }}>DM</span>
+                    )}
+                    {!item.created_by_name.startsWith("DM") && (
+                      <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, borderRadius: 4, padding: "1px 5px", background: "rgba(108,99,255,0.10)", color: "var(--primary)", border: "1px solid rgba(108,99,255,0.20)" }}>PM</span>
+                    )}
+                    </span>
                   )}
                   {item.target_closure_date && (
                     <span>Target: <strong style={{ color: isOverdue ? "#dc2626" : C.text }}>{item.target_closure_date}</strong></span>

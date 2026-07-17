@@ -24,12 +24,42 @@ import {
   getSetupAccounts,
   updateAccount,
 } from "../../services/customerAdminSetupService";
+import { apiClient } from "../../services/apiClient";
 import type { SetupBusinessUnit, SetupAccount } from "../../types/customerAdminSetup";
 import type { SystemSettings, MetricCatalogItem, SettingsAuditLog } from "../../types/platformSettings";
 import type { ManagedUser } from "../../types/platformUsers";
 import type { GovernancePeriod } from "../../types/governance";
 
-type Tab = "general" | "health" | "notifications" | "metrics" | "users" | "audit" | "periods" | "setup";
+// Spec 14 — Recommendation types
+interface MetricRec { id: string; metric_name: string; breach_type: string; recommendation_text: string; }
+
+async function listRecs(): Promise<MetricRec[]> {
+  const { data } = await apiClient.get<MetricRec[]>("/admin/metric-recommendations");
+  return data;
+}
+async function createRec(body: Omit<MetricRec, "id">): Promise<MetricRec> {
+  const { data } = await apiClient.post<MetricRec>("/admin/metric-recommendations", body);
+  return data;
+}
+async function updateRec(id: string, recommendation_text: string): Promise<MetricRec> {
+  const { data } = await apiClient.put<MetricRec>(`/admin/metric-recommendations/${id}`, { recommendation_text });
+  return data;
+}
+async function deleteRec(id: string): Promise<void> {
+  await apiClient.delete(`/admin/metric-recommendations/${id}`);
+}
+
+const BREACH_LABELS: Record<string, string> = {
+  under_lsl:             "Below LSL (Higher-better RED)",
+  under_target_amber:    "Below Target (Higher-better AMBER)",
+  over_usl:              "Above USL (Lower-better RED)",
+  over_target_amber:     "Above Target (Lower-better AMBER)",
+  outside_limits:        "Outside Limits (Within-limits RED)",
+  outside_nominal_above: "Above Nominal (Nominal RED/AMBER)",
+  outside_nominal_below: "Below Nominal (Nominal RED/AMBER)",
+};
+
+type Tab = "general" | "health" | "notifications" | "metrics" | "users" | "audit" | "periods" | "setup" | "recommendations";
 
 export function PlatformAdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("setup");
@@ -76,6 +106,12 @@ export function PlatformAdminSettingsPage() {
   const [accounts, setAccounts] = useState<SetupAccount[]>([]);
   const [dmUsers, setDmUsers] = useState<{ id: string; full_name: string; email: string }[]>([]);
   const [assigningDm, setAssigningDm] = useState<string | null>(null); // account id being saved
+
+  // Spec 14 — Metric Recommendations state
+  const [recs, setRecs] = useState<MetricRec[]>([]);
+  const [recModalOpen, setRecModalOpen] = useState(false);
+  const [editRec, setEditRec] = useState<MetricRec | null>(null);
+  const [recForm, setRecForm] = useState({ metric_name: "", breach_type: "over_usl", recommendation_text: "" });
 
   const toast = useToast();
 
@@ -152,6 +188,13 @@ export function PlatformAdminSettingsPage() {
         .catch(() => {});
       // Load accounts for DM assignment
       getSetupAccounts().then(setAccounts).catch(() => {});
+    }
+  }, [activeTab, toast]);
+
+  // Spec 14: load recommendations when tab is active
+  useEffect(() => {
+    if (activeTab === "recommendations") {
+      listRecs().then(setRecs).catch(() => toast.error("Failed to load recommendations"));
     }
   }, [activeTab, toast]);
 
@@ -314,14 +357,15 @@ export function PlatformAdminSettingsPage() {
   }
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "setup",       label: "Org Setup" },
-    { id: "general",     label: "General" },
-    { id: "health",      label: "Health Thresholds" },
-    { id: "notifications", label: "Notifications" },
-    { id: "metrics",     label: "Metric Catalog" },
-    { id: "periods",     label: "Gov. Periods" },
-    { id: "users",       label: "User Directory" },
-    { id: "audit",       label: "System Audits" },
+    { id: "setup",           label: "Org Setup" },
+    { id: "general",         label: "General" },
+    { id: "health",          label: "Health Thresholds" },
+    { id: "notifications",   label: "Notifications" },
+    { id: "metrics",         label: "Metric Catalog" },
+    { id: "periods",         label: "Gov. Periods" },
+    { id: "users",           label: "User Directory" },
+    { id: "recommendations", label: "Recommendations" },
+    { id: "audit",           label: "System Audits" },
   ];
 
   return (
@@ -532,7 +576,7 @@ export function PlatformAdminSettingsPage() {
           )}
 
           {/* Form Actions */}
-          {activeTab !== "metrics" && activeTab !== "audit" && (
+          {activeTab !== "metrics" && activeTab !== "audit" && activeTab !== "recommendations" && (
             <div className="flex justify-end p-4 bg-slate-50 rounded-lg border border-slate-200">
               <button
                 type="submit"
@@ -1209,6 +1253,163 @@ export function PlatformAdminSettingsPage() {
                   className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   {editUser ? "Save Profile" : "Provision Account"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Metric Recommendations Tab — Spec 14 */}
+      {activeTab === "recommendations" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, fontFamily: "'Inter',system-ui,sans-serif" }}>
+          <div style={{ borderRadius: 16, background: "var(--surface)", border: "1.5px solid var(--border)", padding: "20px 24px", boxShadow: "var(--shadow)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid var(--border)" }}>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", margin: 0 }}>Metric Recommendations</p>
+                <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>
+                  Configure recommended corrective actions for each metric breach type. These appear when DM or PM clicks "Why is this red?" on any metric.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setEditRec(null); setRecForm({ metric_name: "", breach_type: "over_usl", recommendation_text: "" }); setRecModalOpen(true); }}
+                style={{ borderRadius: 10, background: "var(--primary)", color: "#fff", border: "none", padding: "9px 18px", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0, boxShadow: "0 2px 8px rgba(108,99,255,0.30)" }}
+              >
+                + Add Recommendation
+              </button>
+            </div>
+
+            {recs.length === 0 ? (
+              <div style={{ borderRadius: 12, border: "2px dashed var(--border)", padding: "40px 24px", textAlign: "center" }}>
+                <p style={{ color: "var(--muted)", fontSize: 14 }}>No recommendations configured yet.</p>
+                <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>Add recommendations so PMs and DMs see actionable guidance when a metric turns Red or Amber.</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)", background: "rgba(108,99,255,0.04)" }}>
+                      {["Metric", "Breach Type", "Recommendation", ""].map(h => (
+                        <th key={h} style={{ padding: "9px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recs.map(r => (
+                      <tr key={r.id} style={{ borderBottom: "1px solid var(--border)" }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = "rgba(108,99,255,0.03)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}>
+                        <td style={{ padding: "12px 16px", fontWeight: 700, color: "var(--text)", whiteSpace: "nowrap" }}>{r.metric_name}</td>
+                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 10px",
+                            background: r.breach_type.includes("red") || r.breach_type === "under_lsl" || r.breach_type === "over_usl" || r.breach_type === "outside_limits"
+                              ? "rgba(239,68,68,0.10)" : "rgba(245,158,11,0.10)",
+                            color: r.breach_type.includes("red") || r.breach_type === "under_lsl" || r.breach_type === "over_usl" || r.breach_type === "outside_limits"
+                              ? "#b91c1c" : "#b45309",
+                            border: `1px solid ${r.breach_type === "under_lsl" || r.breach_type === "over_usl" || r.breach_type === "outside_limits" ? "rgba(239,68,68,0.25)" : "rgba(245,158,11,0.25)"}`,
+                          }}>
+                            {BREACH_LABELS[r.breach_type] ?? r.breach_type}
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px 16px", color: "var(--muted)", maxWidth: 440 }}>
+                          <p style={{ margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.recommendation_text}>
+                            {r.recommendation_text}
+                          </p>
+                        </td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", whiteSpace: "nowrap" }}>
+                          <button
+                            type="button"
+                            onClick={() => { setEditRec(r); setRecForm({ metric_name: r.metric_name, breach_type: r.breach_type, recommendation_text: r.recommendation_text }); setRecModalOpen(true); }}
+                            style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", background: "none", border: "1.5px solid var(--border)", borderRadius: 8, padding: "5px 12px", cursor: "pointer", marginRight: 6 }}
+                          >Edit</button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!window.confirm(`Delete recommendation for "${r.metric_name} / ${r.breach_type}"?`)) return;
+                              await deleteRec(r.id);
+                              setRecs(prev => prev.filter(x => x.id !== r.id));
+                              toast.success("Recommendation deleted");
+                            }}
+                            style={{ fontSize: 11, fontWeight: 700, color: "#b91c1c", background: "none", border: "1.5px solid rgba(239,68,68,0.25)", borderRadius: 8, padding: "5px 12px", cursor: "pointer" }}
+                          >Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Recommendation Create/Edit Modal */}
+      {recModalOpen && (
+        <div onClick={() => setRecModalOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: 16, backdropFilter: "blur(4px)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, borderRadius: 20, background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 24px 64px rgba(0,0,0,0.20)", overflow: "hidden" }}>
+            <div style={{ padding: "20px 24px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <p style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", margin: 0 }}>{editRec ? "Edit Recommendation" : "Add Recommendation"}</p>
+              <button onClick={() => setRecModalOpen(false)} style={{ background: "rgba(107,114,128,0.10)", border: "none", borderRadius: 8, width: 30, height: 30, cursor: "pointer", color: "var(--muted)", fontSize: 16 }}>×</button>
+            </div>
+            <form style={{ padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  if (editRec) {
+                    const updated = await updateRec(editRec.id, recForm.recommendation_text);
+                    setRecs(prev => prev.map(x => x.id === editRec.id ? { ...x, recommendation_text: updated.recommendation_text } : x));
+                    toast.success("Recommendation updated");
+                  } else {
+                    const created = await createRec(recForm);
+                    setRecs(prev => [...prev, created]);
+                    toast.success("Recommendation added");
+                  }
+                  setRecModalOpen(false);
+                } catch (err: any) {
+                  toast.error(err.response?.data?.detail || "Failed to save");
+                }
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Metric Name <span style={{ color: "#ef4444" }}>*</span></label>
+                <input type="text" required disabled={!!editRec}
+                  placeholder="E.g. Effort Variance"
+                  value={recForm.metric_name}
+                  onChange={e => setRecForm(f => ({ ...f, metric_name: e.target.value }))}
+                  style={{ borderRadius: 10, border: "1.5px solid var(--border)", padding: "10px 14px", fontSize: 13, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" as const, opacity: editRec ? 0.6 : 1 }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Breach Type <span style={{ color: "#ef4444" }}>*</span></label>
+                <div style={{ position: "relative" as const }}>
+                  <select required disabled={!!editRec}
+                    value={recForm.breach_type}
+                    onChange={e => setRecForm(f => ({ ...f, breach_type: e.target.value }))}
+                    style={{ width: "100%", appearance: "none" as any, borderRadius: 10, border: "1.5px solid var(--border)", padding: "10px 36px 10px 14px", fontSize: 13, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit", opacity: editRec ? 0.6 : 1, boxSizing: "border-box" as const }}
+                  >
+                    {Object.entries(BREACH_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                  <svg style={{ position: "absolute" as const, right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" as const, color: "var(--muted)" }} width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Recommendation Text <span style={{ color: "#ef4444" }}>*</span></label>
+                <textarea required rows={4}
+                  placeholder="E.g. Review recent scope changes and re-baseline the estimate..."
+                  value={recForm.recommendation_text}
+                  onChange={e => setRecForm(f => ({ ...f, recommendation_text: e.target.value }))}
+                  style={{ borderRadius: 10, border: "1.5px solid var(--border)", padding: "10px 14px", fontSize: 13, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" as const, resize: "none" as const }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+                <button type="button" onClick={() => setRecModalOpen(false)}
+                  style={{ borderRadius: 10, border: "1.5px solid var(--border)", padding: "9px 18px", fontSize: 12, fontWeight: 700, color: "var(--muted)", background: "transparent", cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button type="submit"
+                  style={{ borderRadius: 10, background: "var(--primary)", color: "#fff", border: "none", padding: "9px 22px", fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 8px rgba(108,99,255,0.30)" }}>
+                  {editRec ? "Save Changes" : "Add Recommendation"}
                 </button>
               </div>
             </form>

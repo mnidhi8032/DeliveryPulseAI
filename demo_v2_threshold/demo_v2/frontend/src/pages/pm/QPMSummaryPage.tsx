@@ -1,12 +1,15 @@
 /**
  * Sheet 4 -- KPI Summary Dashboard
  * Visual overview: RAG donut, per-category breakdown, metric cards with trend sparkline.
+ * Spec 14: Explanation + recommendation shown inside MetricTrendPanel for RED/AMBER metrics.
  */
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useToast } from "../../contexts/ToastContext";
 import { getProject } from "../../services/projectService";
-import { getKpiPlan, getKpiSummary } from "../../services/qpmService";
+import { getKpiPlan, getKpiSummary, explainMetric } from "../../services/qpmService";
+import { createActionItem } from "../../services/brdService";
+import type { RagExplainResponse } from "../../services/qpmService";
 import type { Project } from "../../types/project";
 import type { KpiSummary, KpiSummaryMetric } from "../../types/qpm";
 
@@ -244,8 +247,49 @@ function Sparkline({ history }: { history: KpiSummaryMetric["history"] }) {
 }
 
 /** Expanded trend panel shown when user clicks a metric card */
-function MetricTrendPanel({ m, onClose }: { m: KpiSummaryMetric; onClose: () => void }) {
+function MetricTrendPanel({ m, projectId, onClose }: { m: KpiSummaryMetric; projectId: string; onClose: () => void }) {
   const history = m.history ?? [];
+  const toast = useToast();
+  const [explain, setExplain] = useState<RagExplainResponse | null>(null);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [showActionForm, setShowActionForm] = useState(false);
+  const [actionForm, setActionForm] = useState({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
+  const [savingAction, setSavingAction] = useState(false);
+
+  // Fetch explanation for RED/AMBER metrics when the panel opens
+  useEffect(() => {
+    if (m.rag_status !== "RED" && m.rag_status !== "AMBER") return;
+    setExplainLoading(true);
+    explainMetric(m.plan_metric_id)
+      .then(r => setExplain(r))
+      .catch(() => setExplain(null))
+      .finally(() => setExplainLoading(false));
+  }, [m.plan_metric_id, m.rag_status]);
+
+  const handleRaiseAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!actionForm.root_cause.trim() || !actionForm.corrective_action.trim()) return;
+    setSavingAction(true);
+    try {
+      await createActionItem({
+        project_id: projectId,
+        root_cause: actionForm.root_cause,
+        corrective_action: actionForm.corrective_action,
+        metric_name: m.metric_name,
+        rag_status_at_creation: m.rag_status ?? undefined,
+        owner_name: actionForm.owner_name || undefined,
+        target_closure_date: actionForm.target_closure_date || undefined,
+      });
+      toast.success("Action item created and visible in your Actions page.");
+      setActionForm({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
+      setShowActionForm(false);
+    } catch {
+      toast.error("Failed to create action item.");
+    } finally {
+      setSavingAction(false);
+    }
+  };
+
   const RAG_BG: Record<string, string> = {
     GREEN: "bg-emerald-50 text-emerald-800",
     AMBER: "bg-amber-50 text-amber-800",
@@ -278,6 +322,86 @@ function MetricTrendPanel({ m, onClose }: { m: KpiSummaryMetric; onClose: () => 
           </div>
         ))}
       </div>
+
+      {/* Explanation + Recommendation box (Spec 14) — RED/AMBER only */}
+      {(m.rag_status === "RED" || m.rag_status === "AMBER") && (
+        <div className={`rounded-lg border px-4 py-3 space-y-3 ${
+          m.rag_status === "RED" ? "bg-rose-50 border-rose-200" : "bg-amber-50 border-amber-200"
+        }`}>
+          {explainLoading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Loading explanation…
+            </div>
+          ) : explain?.explanation ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Why is this {m.rag_status === "RED" ? "red" : "amber"}?</span>
+                {explain.is_worsening && (
+                  <span className="text-[9px] font-bold rounded-full px-1.5 py-0.5 bg-rose-100 text-rose-700 border border-rose-200">↓ Worsening</span>
+                )}
+                {explain.is_first_breach && (
+                  <span className="text-[9px] font-bold rounded-full px-1.5 py-0.5 bg-orange-100 text-orange-700 border border-orange-200">First breach</span>
+                )}
+              </div>
+              <p className="text-xs text-slate-700 leading-relaxed">{explain.explanation}</p>
+              {explain.recommendation ? (
+                <div className="mt-1 pt-2 border-t border-slate-200">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Recommended action</p>
+                  <p className="text-xs text-slate-700 leading-relaxed">{explain.recommendation}</p>
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-400 italic mt-1">No recommendation configured for this metric yet.</p>
+              )}
+            </div>
+          ) : null}
+
+          {/* Raise Action Item */}
+          <div className="pt-2 border-t border-slate-200">
+            {!showActionForm ? (
+              <button type="button" onClick={() => setShowActionForm(true)}
+                className={`text-xs font-bold px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                  m.rag_status === "RED"
+                    ? "bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-200"
+                    : "bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200"
+                }`}>
+                + Raise Action Item
+              </button>
+            ) : (
+              <form onSubmit={handleRaiseAction} className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">New Action — {m.metric_name}</p>
+                <input type="text" required placeholder="Root cause *"
+                  value={actionForm.root_cause} onChange={e => setActionForm(f => ({ ...f, root_cause: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                <textarea required placeholder="Corrective action *" rows={2}
+                  value={actionForm.corrective_action} onChange={e => setActionForm(f => ({ ...f, corrective_action: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" placeholder="Owner name (optional)"
+                    value={actionForm.owner_name} onChange={e => setActionForm(f => ({ ...f, owner_name: e.target.value }))}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                  <input type="date"
+                    value={actionForm.target_closure_date} onChange={e => setActionForm(f => ({ ...f, target_closure_date: e.target.value }))}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={savingAction || !actionForm.root_cause.trim() || !actionForm.corrective_action.trim()}
+                    className="rounded-lg bg-indigo-600 text-white px-4 py-1.5 text-xs font-bold cursor-pointer disabled:opacity-50 hover:bg-indigo-700">
+                    {savingAction ? "Saving…" : "Save Action Item"}
+                  </button>
+                  <button type="button" onClick={() => setShowActionForm(false)}
+                    className="rounded-lg border border-slate-300 px-4 py-1.5 text-xs font-semibold text-slate-600 cursor-pointer hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {history.length === 0 ? (
         <p className="text-xs text-slate-400 text-center py-4">No measurements yet.</p>
@@ -356,6 +480,7 @@ function RagDot({ rag }: { rag: string | null }) {
 
 function MetricCard({ m, onSelect, isSelected }: { m: KpiSummaryMetric; onSelect: () => void; isSelected: boolean }) {
   const rag = m.rag_status;
+  const isAlert = rag === "RED" || rag === "AMBER";
   const border = isSelected
     ? "border-indigo-400 ring-2 ring-indigo-200"
     : rag === "GREEN" ? "border-emerald-200" : rag === "AMBER" ? "border-amber-200" : rag === "RED" ? "border-rose-200" : "border-slate-200";
@@ -363,8 +488,14 @@ function MetricCard({ m, onSelect, isSelected }: { m: KpiSummaryMetric; onSelect
   return (
     <div
       onClick={onSelect}
-      className={`rounded-xl border ${border} bg-white p-4 shadow-sm flex flex-col gap-2 hover:shadow-md transition-all cursor-pointer`}
+      className={`rounded-xl border ${border} bg-white p-4 shadow-sm flex flex-col gap-2 hover:shadow-md transition-all cursor-pointer relative`}
     >
+      {/* Spec 14: info badge for RED/AMBER — hints that clicking shows explanation */}
+      {isAlert && (
+        <span className={`absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white z-10 ${
+          rag === "RED" ? "bg-rose-500" : "bg-amber-500"
+        }`} title="Click to see why this metric is underperforming">ℹ</span>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide truncate">{m.metric_category}</p>
@@ -589,7 +720,7 @@ export function QPMSummaryPage() {
 
       {/* Trend panel */}
       {selectedMetric && (
-        <MetricTrendPanel m={selectedMetric} onClose={() => setSelectedMetric(null)} />
+        <MetricTrendPanel m={selectedMetric} projectId={projectId!} onClose={() => setSelectedMetric(null)} />
       )}
 
       {/* Metric cards grid */}
