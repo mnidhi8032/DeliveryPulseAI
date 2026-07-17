@@ -302,6 +302,7 @@ export function QPMDataEntryPage() {
               <thead className="bg-slate-50 text-xs text-slate-500 font-semibold uppercase tracking-wide">
                 <tr>
                   <th className="px-5 py-3 text-left">Metric</th>
+                  <th className="px-4 py-3 text-center">Intent</th>
                   <th className="px-4 py-3 text-center">LSL</th>
                   <th className="px-4 py-3 text-center">Target</th>
                   <th className="px-4 py-3 text-center">USL</th>
@@ -317,6 +318,11 @@ export function QPMDataEntryPage() {
                         {metric.metric_category && (
                           <span className="text-[9px] text-slate-400">{metric.metric_category}</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-[10px] font-semibold text-slate-500">
+                          {metric.intent ?? "—"}
+                        </span>
                       </td>
                       {(["lsl","target","usl"] as const).map(field => (
                         <td key={field} className="px-3 py-2 text-center">
