@@ -16,6 +16,7 @@ from app.api.v1 import (
     metric_definitions,
     metrics,
     metric_approvals,
+    metric_recommendations,
     period_measures,
     platform,
     project_phases,
@@ -40,6 +41,7 @@ api_router.include_router(submissions.router)
 api_router.include_router(metrics.router)
 api_router.include_router(metric_definitions.router)
 api_router.include_router(metric_approvals.router)
+api_router.include_router(metric_recommendations.router)
 api_router.include_router(excel.router)
 api_router.include_router(notifications.router)
 api_router.include_router(audit.router)

@@ -5,7 +5,8 @@ import { useEffect, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useToast } from "../../contexts/ToastContext";
 import { getProject } from "../../services/projectService";
-import { getKpiPlan, getKpiSummary } from "../../services/qpmService";
+import { getKpiPlan, getKpiSummary, explainMetric } from "../../services/qpmService";
+import type { RagExplainResponse } from "../../services/qpmService";
 import { listReviewsForProject, createDMReview, updateDMReview } from "../../services/dmReviewService";
 import type { Project } from "../../types/project";
 import type { KpiSummary } from "../../types/qpm";
@@ -56,6 +57,53 @@ function fmt(val: string | number | null): string {
   if (val == null) return "—";
   const n = typeof val === "string" ? parseFloat(val) : val;
   return isNaN(n) ? "—" : n.toFixed(2);
+}
+
+// Spec 14: Collapsible explanation for RED/AMBER metrics in DM review
+function ExplainToggle({ planMetricId, rag }: { planMetricId: string; rag: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<RagExplainResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  if (rag !== "RED" && rag !== "AMBER") return null;
+
+  const handleToggle = async () => {
+    if (!open && !data) {
+      setLoading(true);
+      try {
+        const r = await explainMetric(planMetricId);
+        setData(r);
+      } catch { /* non-critical */ }
+      finally { setLoading(false); }
+    }
+    setOpen(v => !v);
+  };
+
+  const borderColor = rag === "RED" ? "rgba(239,68,68,0.25)" : "rgba(245,158,11,0.25)";
+  const bgColor     = rag === "RED" ? "rgba(239,68,68,0.05)" : "rgba(245,158,11,0.05)";
+  const textColor   = rag === "RED" ? "#b91c1c" : "#b45309";
+
+  return (
+    <td style={{ padding: "8px 16px" }} colSpan={6}>
+      <button
+        type="button"
+        onClick={handleToggle}
+        style={{ fontSize: 11, fontWeight: 700, color: textColor, background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4 }}
+      >
+        {loading ? "Loading…" : open ? "▾ Hide explanation" : "▸ Why is this " + rag.toLowerCase() + "?"}
+      </button>
+      {open && data?.explanation && (
+        <div style={{ marginTop: 8, borderRadius: 8, border: `1px solid ${borderColor}`, background: bgColor, padding: "10px 14px" }}>
+          <p style={{ fontSize: 12, color: "var(--text)", margin: 0, lineHeight: 1.5 }}>{data.explanation}</p>
+          {data.recommendation && (
+            <p style={{ fontSize: 11, color: "var(--muted)", margin: "6px 0 0", fontStyle: "italic" }}>
+              Suggestion: {data.recommendation}
+            </p>
+          )}
+        </div>
+      )}
+    </td>
+  );
 }
 
 export function DMProjectReviewPage() {
@@ -224,19 +272,27 @@ export function DMProjectReviewPage() {
                       </thead>
                       <tbody>
                         {metrics.map(m => (
-                          <tr key={m.plan_metric_id} style={{ borderBottom:`1px solid ${C.border}` }}>
-                            <td style={{ padding:"12px 16px", maxWidth:220 }}>
-                              <p style={{ fontWeight:700, color: C.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={m.metric_name}>{m.metric_name}</p>
-                              {m.uom && <p style={{ fontSize:11, color: C.muted, margin:"2px 0 0" }}>{m.uom}</p>}
-                            </td>
-                            <td style={{ padding:"12px 16px", textAlign:"right", fontWeight:700, color: C.text }}>{fmt(m.latest_value)}</td>
-                            <td style={{ padding:"12px 16px", textAlign:"right", color: C.muted }}>{fmt(m.target)}</td>
-                            <td style={{ padding:"12px 16px" }}><RagDot rag={m.rag_status} /></td>
-                            <td style={{ padding:"12px 16px" }}><TrendLabel trend={m.trend} /></td>
-                            <td style={{ padding:"12px 16px", color: C.muted }}>
-                              {m.last_updated ? new Date(m.last_updated).toLocaleDateString("en-US", { day:"numeric", month:"short", year:"numeric" }) : "—"}
-                            </td>
-                          </tr>
+                          <>
+                            <tr key={m.plan_metric_id} style={{ borderBottom: (m.rag_status === "RED" || m.rag_status === "AMBER") ? "none" : `1px solid ${C.border}` }}>
+                              <td style={{ padding:"12px 16px", maxWidth:220 }}>
+                                <p style={{ fontWeight:700, color: C.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={m.metric_name}>{m.metric_name}</p>
+                                {m.uom && <p style={{ fontSize:11, color: C.muted, margin:"2px 0 0" }}>{m.uom}</p>}
+                              </td>
+                              <td style={{ padding:"12px 16px", textAlign:"right", fontWeight:700, color: C.text }}>{fmt(m.latest_value)}</td>
+                              <td style={{ padding:"12px 16px", textAlign:"right", color: C.muted }}>{fmt(m.target)}</td>
+                              <td style={{ padding:"12px 16px" }}><RagDot rag={m.rag_status} /></td>
+                              <td style={{ padding:"12px 16px" }}><TrendLabel trend={m.trend} /></td>
+                              <td style={{ padding:"12px 16px", color: C.muted }}>
+                                {m.last_updated ? new Date(m.last_updated).toLocaleDateString("en-US", { day:"numeric", month:"short", year:"numeric" }) : "—"}
+                              </td>
+                            </tr>
+                            {/* Spec 14: collapsible explanation row for RED/AMBER */}
+                            {(m.rag_status === "RED" || m.rag_status === "AMBER") && (
+                              <tr key={`${m.plan_metric_id}-explain`} style={{ borderBottom:`1px solid ${C.border}` }}>
+                                <ExplainToggle planMetricId={m.plan_metric_id} rag={m.rag_status} />
+                              </tr>
+                            )}
+                          </>
                         ))}
                       </tbody>
                     </table>

@@ -1,13 +1,15 @@
 /**
  * Read-only Project KPI Summary — for Platform Admin, CEO, Delivery Excellence.
  * Uses CSS variables so it works in both light and dark theme.
+ * Spec 14: Shows first-sentence explanation on RED/AMBER metric rows.
  */
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { getProject } from "../../services/projectService";
-import { getKpiPlan, getKpiSummary } from "../../services/qpmService";
+import { getKpiPlan, getKpiSummary, explainMetric } from "../../services/qpmService";
+import type { RagExplainResponse } from "../../services/qpmService";
 import type { Project } from "../../types/project";
 import type { KpiSummary, KpiSummaryMetric } from "../../types/qpm";
 
@@ -37,13 +39,34 @@ function MetricRow({ m }: { m: KpiSummaryMetric }) {
     const n = typeof v === "string" ? parseFloat(v) : v;
     return isNaN(n) ? "—" : n.toFixed(2);
   };
+
+  // Spec 14: fetch explanation for RED/AMBER metrics (one sentence only)
+  const [explain, setExplain] = useState<RagExplainResponse | null>(null);
+  useEffect(() => {
+    if (m.rag_status !== "RED" && m.rag_status !== "AMBER") return;
+    explainMetric(m.plan_metric_id)
+      .then(r => { if (r.explanation) setExplain(r); })
+      .catch(() => {});
+  }, [m.plan_metric_id, m.rag_status]);
+
+  // First sentence only
+  const firstSentence = explain?.explanation
+    ? explain.explanation.split(". ")[0] + "."
+    : null;
+
   return (
     <tr style={{ borderBottom: "1px solid var(--border)" }}
       onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = "rgba(108,99,255,0.04)"; }}
       onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}>
-      <td style={{ padding: "10px 16px", maxWidth: 220 }}>
+      <td style={{ padding: "10px 16px", maxWidth: 260 }}>
         <p style={{ fontWeight: 700, color: "var(--text)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }} title={m.metric_name}>{m.metric_name}</p>
         {m.metric_category && <p style={{ fontSize: 11, color: "var(--muted)", margin: "1px 0 0" }}>{m.metric_category}</p>}
+        {/* Spec 14: one-line explanation for RED/AMBER */}
+        {firstSentence && (
+          <p style={{ fontSize: 11, color: m.rag_status === "RED" ? "#b91c1c" : "#b45309", margin: "4px 0 0", lineHeight: 1.4, fontStyle: "italic" }}>
+            {firstSentence}
+          </p>
+        )}
       </td>
       <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 700, color: "var(--text)", fontSize: 13 }}>{fmt(m.latest_value)}{m.uom ? ` ${m.uom}` : ""}</td>
       <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--muted)", fontSize: 13 }}>{fmt(m.target)}</td>
