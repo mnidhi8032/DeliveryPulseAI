@@ -57,6 +57,7 @@ export function PMAllActionsPage() {
   const [filter, setFilter] = useState<"ALL" | "OPEN" | "IN_PROGRESS" | "CLOSED">("ALL");
   const [selectedProject, setSelectedProject] = useState<string>("ALL");
   const [raisedByFilter, setRaisedByFilter] = useState<"ALL" | "PM" | "DM">("ALL");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "PROJECT" | "METRIC">("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const loadAll = async () => {
@@ -108,6 +109,9 @@ export function PMAllActionsPage() {
     if (raisedByFilter === "PM") {
       if (i.created_by_name?.startsWith("DM")) return false;
     }
+    // Type filter: project-level (no metric_name) vs metric-level
+    if (typeFilter === "PROJECT" && i.metric_name) return false;
+    if (typeFilter === "METRIC" && !i.metric_name) return false;
     return true;
   });
 
@@ -117,6 +121,8 @@ export function PMAllActionsPage() {
     OPEN: items.filter(i => i.action_status === "OPEN").length,
     IN_PROGRESS: items.filter(i => i.action_status === "IN_PROGRESS").length,
     CLOSED: items.filter(i => i.action_status === "CLOSED").length,
+    PROJECT_LEVEL: items.filter(i => !i.metric_name).length,
+    METRIC_LEVEL: items.filter(i => !!i.metric_name).length,
   };
 
   return (
@@ -172,6 +178,24 @@ export function PMAllActionsPage() {
             ))}
           </div>
 
+          {/* Type filter */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: "4px 6px", boxShadow: C.shadow }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.muted, paddingLeft: 4 }}>Type:</span>
+            {([
+              { key: "ALL",     label: "All" },
+              { key: "PROJECT", label: `Project-Level (${counts.PROJECT_LEVEL})` },
+              { key: "METRIC",  label: `Metric (${counts.METRIC_LEVEL})` },
+            ] as { key: "ALL" | "PROJECT" | "METRIC"; label: string }[]).map(t => (
+              <button key={t.key} onClick={() => setTypeFilter(t.key)} style={{
+                borderRadius: 8, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "none", transition: "background 0.15s",
+                background: typeFilter === t.key ? "#6366f1" : "transparent",
+                color: typeFilter === t.key ? "#fff" : C.muted,
+              }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           {/* Project filter */}
           <select value={selectedProject} onChange={e => setSelectedProject(e.target.value)}
             style={{
@@ -223,7 +247,7 @@ export function PMAllActionsPage() {
               <div key={item.id} style={{
                 borderRadius: 16, background: C.card,
                 border: `1.5px solid ${isHighlighted ? C.primary : C.border}`,
-                borderLeft: `4px solid ${item.action_status === "OPEN" ? "#ef4444" : item.action_status === "IN_PROGRESS" ? "#f59e0b" : "#22c55e"}`,
+                borderLeft: `4px solid ${!item.metric_name ? "#6366f1" : item.action_status === "OPEN" ? "#ef4444" : item.action_status === "IN_PROGRESS" ? "#f59e0b" : "#22c55e"}`,
                 boxShadow: isHighlighted ? `0 4px 24px rgba(108,99,255,0.18)` : C.shadow,
                 padding: "16px 20px",
                 transition: "box-shadow 0.2s",
@@ -233,9 +257,13 @@ export function PMAllActionsPage() {
                   <div style={{ flex: 1, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                     <StatusBadge s={item.action_status} />
                     <RagDot r={item.rag_status_at_creation} />
-                    {item.metric_name && (
+                    {item.metric_name ? (
                       <span style={{ fontSize: 11, fontWeight: 600, color: C.primary, background: `${C.primary}12`, borderRadius: 8, padding: "2px 8px" }}>
                         {item.metric_name}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#6366f1", background: "rgba(99,102,241,0.10)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 8, padding: "2px 8px", letterSpacing: "0.03em" }}>
+                        📋 Project-Level
                       </span>
                     )}
                     {isOverdue && (

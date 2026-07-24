@@ -8,6 +8,7 @@ import { getProject } from "../../services/projectService";
 import { getKpiPlan, getKpiSummary, explainMetric } from "../../services/qpmService";
 import type { RagExplainResponse } from "../../services/qpmService";
 import { listReviewsForProject, createDMReview, updateDMReview } from "../../services/dmReviewService";
+import { createActionItem } from "../../services/brdService";
 import type { Project } from "../../types/project";
 import type { KpiSummary } from "../../types/qpm";
 import type { DMReview } from "../../services/dmReviewService";
@@ -122,6 +123,12 @@ export function DMProjectReviewPage() {
   const [saving, setSaving] = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
 
+  // ── Raise action item inline ──────────────────────────────────────────────
+  const emptyActionForm = { root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "", metric_name: "" };
+  const [showActionForm, setShowActionForm] = useState(false);
+  const [actionForm, setActionForm] = useState(emptyActionForm);
+  const [savingAction, setSavingAction] = useState(false);
+
   const load = useCallback(async () => {
     if (!projectId) return;
     try {
@@ -159,6 +166,26 @@ export function DMProjectReviewPage() {
     const today = new Date();
     const M = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     setPeriodLabel(`${M[today.getMonth()]} ${today.getFullYear()}`);
+  };
+
+  const handleCreateAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectId || !actionForm.root_cause.trim() || !actionForm.corrective_action.trim()) return;
+    setSavingAction(true);
+    try {
+      await createActionItem({
+        project_id: projectId,
+        root_cause: actionForm.root_cause.trim(),
+        corrective_action: actionForm.corrective_action.trim(),
+        metric_name: actionForm.metric_name.trim() || undefined,
+        owner_name: actionForm.owner_name.trim() || undefined,
+        target_closure_date: actionForm.target_closure_date || undefined,
+      });
+      toast.success("Action item raised. Visible in Action Items.");
+      setActionForm(emptyActionForm);
+      setShowActionForm(false);
+    } catch { toast.error("Failed to create action item."); }
+    finally { setSavingAction(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -362,6 +389,103 @@ export function DMProjectReviewPage() {
             )}
           </div>
         </form>
+      </div>
+
+      {/* ── Raise Action Item ─────────────────────────────────────────────── */}
+      <div style={{ background: C.card, borderRadius:20, boxShadow: C.shadow, overflow:"hidden" }}>
+        {/* Card header */}
+        <div style={{ background:"#f5f3ff", borderBottom:`1px solid ${C.border}`, padding:"18px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <div style={{ width:38, height:38, borderRadius:12, background: C.primary + "20", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg style={{ width:18, height:18 }} fill="none" viewBox="0 0 24 24" stroke={C.primary} strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <div>
+              <p style={{ fontSize:15, fontWeight:800, color: C.text, margin:0 }}>Raise Action Item</p>
+              <p style={{ fontSize:12, color: C.muted, margin:"2px 0 0" }}>
+                Log a corrective action for {project?.project_name ?? "this project"} — tied to a specific metric or the overall project.
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setShowActionForm(v => !v)} style={{
+            borderRadius:12, padding:"8px 18px", fontSize:13, fontWeight:800, cursor:"pointer", flexShrink:0, transition:"all 0.15s",
+            background: showActionForm ? "transparent" : C.primary,
+            color: showActionForm ? C.muted : "#fff",
+            border: showActionForm ? `1.5px solid ${C.border}` : "none",
+            boxShadow: showActionForm ? "none" : `0 2px 10px ${C.primary}44`,
+          }}>
+            {showActionForm ? "Cancel" : "+ New Action Item"}
+          </button>
+        </div>
+
+        {/* Inline form */}
+        {showActionForm && (
+          <form onSubmit={handleCreateAction} style={{ padding:"24px", display:"flex", flexDirection:"column", gap:16 }}>
+            {/* Row 1 — Metric + Owner */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Metric / Area of concern</label>
+                <input type="text" placeholder="E.g. Schedule Variance (leave blank for project-level)"
+                  value={actionForm.metric_name}
+                  onChange={e => setActionForm(f => ({ ...f, metric_name: e.target.value }))}
+                  style={inputStyle} />
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Owner name</label>
+                <input type="text" placeholder="Optional"
+                  value={actionForm.owner_name}
+                  onChange={e => setActionForm(f => ({ ...f, owner_name: e.target.value }))}
+                  style={inputStyle} />
+              </div>
+            </div>
+
+            {/* Root cause */}
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Root Cause <span style={{ color:"#ef4444" }}>*</span></label>
+              <textarea required rows={2} placeholder="Describe the root cause of the issue…"
+                value={actionForm.root_cause}
+                onChange={e => setActionForm(f => ({ ...f, root_cause: e.target.value }))}
+                style={{ ...inputStyle, resize:"none" }} />
+            </div>
+
+            {/* Corrective action */}
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Corrective Action <span style={{ color:"#ef4444" }}>*</span></label>
+              <textarea required rows={2} placeholder="What corrective action will be taken?…"
+                value={actionForm.corrective_action}
+                onChange={e => setActionForm(f => ({ ...f, corrective_action: e.target.value }))}
+                style={{ ...inputStyle, resize:"none" }} />
+            </div>
+
+            {/* Target date + submit */}
+            <div style={{ display:"flex", flexWrap:"wrap", alignItems:"flex-end", gap:16, paddingTop:4, borderTop:`1px solid ${C.border}` }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:6, flex:"0 0 220px" }}>
+                <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Target Closure Date</label>
+                <input type="date"
+                  value={actionForm.target_closure_date}
+                  onChange={e => setActionForm(f => ({ ...f, target_closure_date: e.target.value }))}
+                  style={inputStyle} />
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button type="submit"
+                  disabled={savingAction || !actionForm.root_cause.trim() || !actionForm.corrective_action.trim()}
+                  style={{
+                    borderRadius:12, background: C.primary, color:"#fff", border:"none",
+                    padding:"10px 24px", fontSize:14, fontWeight:800, cursor:"pointer",
+                    boxShadow:`0 2px 10px ${C.primary}44`,
+                    opacity: (savingAction || !actionForm.root_cause.trim() || !actionForm.corrective_action.trim()) ? 0.5 : 1,
+                  }}>
+                  {savingAction ? "Saving…" : "Save Action Item"}
+                </button>
+                <button type="button" onClick={() => { setShowActionForm(false); setActionForm(emptyActionForm); }}
+                  style={{ borderRadius:12, border:`1.5px solid ${C.border}`, background:"transparent", color: C.muted, padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
       </div>
 
       {/* Past reviews */}
