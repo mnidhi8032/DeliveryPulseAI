@@ -12,7 +12,8 @@ import { listGovernancePeriods } from "../../services/governanceService";
 import { getSubmissionHealth, listMetricDefinitions, listMetricValues } from "../../services/metricService";
 import { getProject } from "../../services/projectService";
 import { getSubmission } from "../../services/submissionService";
-import { addDMReview } from "../../services/brdService";
+import { addDMReview, createActionItem } from "../../services/brdService";
+import { useToast } from "../../contexts/ToastContext";
 import { getStatusBadgeClass, formatStatus } from "../../utils/formatters";
 import { formatPeriodLabel } from "../../utils/dhSubmissionRows";
 import type { GovernancePeriod } from "../../types/governance";
@@ -22,6 +23,7 @@ import type { Submission } from "../../types/submission";
 
 export function DMSubmissionReviewPage() {
   const { submissionId } = useParams<{ submissionId: string }>();
+  const toast = useToast();
 
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -39,6 +41,12 @@ export function DMSubmissionReviewPage() {
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [savingComment, setSavingComment] = useState(false);
+
+  // Raise action item
+  const emptyActionForm = { root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "", metric_name: "" };
+  const [showActionForm, setShowActionForm] = useState(false);
+  const [actionForm, setActionForm] = useState(emptyActionForm);
+  const [savingAction, setSavingAction] = useState(false);
 
   const loadHealth = useCallback(async (sid: string) => {
     setHealthLoading(true);
@@ -88,6 +96,31 @@ export function DMSubmissionReviewPage() {
       setError("Failed to save commentary.");
     } finally {
       setSavingComment(false);
+    }
+  };
+
+  const handleCreateAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!submission || !actionForm.root_cause.trim() || !actionForm.corrective_action.trim()) return;
+    setSavingAction(true);
+    setError(null);
+    try {
+      await createActionItem({
+        project_id: submission.project_id,
+        root_cause: actionForm.root_cause.trim(),
+        corrective_action: actionForm.corrective_action.trim(),
+        metric_name: actionForm.metric_name.trim() || undefined,
+        owner_name: actionForm.owner_name.trim() || undefined,
+        target_closure_date: actionForm.target_closure_date || undefined,
+        submission_id: submissionId ?? undefined,
+      });
+      setSuccessMsg("Action item raised successfully.");
+      setActionForm(emptyActionForm);
+      setShowActionForm(false);
+    } catch {
+      setError("Failed to create action item.");
+    } finally {
+      setSavingAction(false);
     }
   };
 
@@ -217,16 +250,123 @@ export function DMSubmissionReviewPage() {
         )}
       </div>
 
-      {/* Action Items link */}
-      <div className="rounded border border-slate-200 bg-white p-4 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-slate-800">Action Items</p>
-          <p className="text-xs text-slate-500 mt-0.5">Create and track corrective actions for issues found.</p>
+      {/* Raise Action Item — inline form after commentary */}
+      <div className="rounded border border-slate-200 bg-white p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Raise Action Item</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Log a corrective action for this submission — tied to a specific metric or the overall project.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setShowActionForm(v => !v); setActionForm(emptyActionForm); }}
+            className={`rounded px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+              showActionForm
+                ? "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                : "bg-indigo-600 text-white hover:bg-indigo-700"
+            }`}
+          >
+            {showActionForm ? "Cancel" : "+ New Action Item"}
+          </button>
         </div>
-        <Link to={`/delivery-manager/actions?projectId=${submission.project_id}`}
-          className="rounded border border-slate-200 bg-white px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
-          Manage actions →
-        </Link>
+
+        {showActionForm && (
+          <form onSubmit={handleCreateAction} className="space-y-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                  Metric / Area of concern
+                </label>
+                <input
+                  type="text"
+                  placeholder="E.g. Test Pass Rate (leave blank for project-level)"
+                  value={actionForm.metric_name}
+                  onChange={e => setActionForm(f => ({ ...f, metric_name: e.target.value }))}
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                  Owner name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Optional"
+                  value={actionForm.owner_name}
+                  onChange={e => setActionForm(f => ({ ...f, owner_name: e.target.value }))}
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                  Root Cause <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  placeholder="Describe the root cause of the issue…"
+                  value={actionForm.root_cause}
+                  onChange={e => setActionForm(f => ({ ...f, root_cause: e.target.value }))}
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                  Corrective Action <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  placeholder="What corrective action will be taken?…"
+                  value={actionForm.corrective_action}
+                  onChange={e => setActionForm(f => ({ ...f, corrective_action: e.target.value }))}
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                  Target Closure Date
+                </label>
+                <input
+                  type="date"
+                  value={actionForm.target_closure_date}
+                  onChange={e => setActionForm(f => ({ ...f, target_closure_date: e.target.value }))}
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1 border-t border-slate-100">
+              <button
+                type="submit"
+                disabled={savingAction || !actionForm.root_cause.trim() || !actionForm.corrective_action.trim()}
+                className="rounded bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+              >
+                {savingAction ? "Saving…" : "Save Action Item"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowActionForm(false); setActionForm(emptyActionForm); }}
+                className="rounded border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {!showActionForm && (
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <svg className="h-4 w-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Click "+ New Action Item" to log a corrective action for this submission.{" "}
+            <Link to={`/delivery-manager/actions?projectId=${submission?.project_id}`} className="text-indigo-600 hover:underline">
+              View all actions →
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Audit trail */}

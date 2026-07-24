@@ -14,23 +14,26 @@ from app.models.base import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.models.user import User
     from app.models.project import Project
-    from app.models.kpi_plan import KpiPlan
+    from app.models.kpi_plan import KpiPlan, KpiPlanMetric
 
 
 class ProjectPeriodMeasure(Base, TimestampMixin):
     """
     Shared parameter store for a project+period combination.
 
-    One row per (project_id, period_label, measure_name).
-    Used by the new unified data entry UI so parameters like
-    "Delivered and Accepted Size" are entered once and automatically
-    propagated to all metrics that need them.
+    plan_metric_id meaning:
+      NULL     = shared default used by every metric referencing this measure_name
+      real UUID = override for that one metric only; overrides the shared default
+
+    The partial unique index uq_ppm_shared_default (WHERE plan_metric_id IS NULL)
+    enforces uniqueness for shared-default rows.  The 4-column unique constraint
+    uq_ppm_project_period_measure_metric enforces uniqueness for override rows.
     """
     __tablename__ = "project_period_measures"
     __table_args__ = (
         UniqueConstraint(
-            "project_id", "period_label", "measure_name",
-            name="uq_ppm_project_period_measure",
+            "project_id", "period_label", "measure_name", "plan_metric_id",
+            name="uq_ppm_project_period_measure_metric",
         ),
     )
 
@@ -49,6 +52,13 @@ class ProjectPeriodMeasure(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
+    # NULL = shared default; non-NULL = per-metric override
+    plan_metric_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kpi_plan_metrics.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     period_label: Mapped[str] = mapped_column(String(200), nullable=False)
     frequency: Mapped[str | None] = mapped_column(String(100), nullable=True)
     from_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -64,4 +74,5 @@ class ProjectPeriodMeasure(Base, TimestampMixin):
     entered_by: Mapped["User | None"] = relationship("User", foreign_keys=[entered_by_user_id])
 
     def __repr__(self) -> str:
-        return f"<ProjectPeriodMeasure {self.measure_name}={self.actual_value} period={self.period_label!r}>"
+        override = f" [override metric={self.plan_metric_id}]" if self.plan_metric_id else ""
+        return f"<ProjectPeriodMeasure {self.measure_name}={self.actual_value} period={self.period_label!r}{override}>"

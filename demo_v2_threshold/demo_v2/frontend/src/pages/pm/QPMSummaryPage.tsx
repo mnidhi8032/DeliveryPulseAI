@@ -13,6 +13,95 @@ import type { RagExplainResponse } from "../../services/qpmService";
 import type { Project } from "../../types/project";
 import type { KpiSummary, KpiSummaryMetric } from "../../types/qpm";
 
+// ── Project-level Action Item form (reusable) ─────────────────────────────────
+interface ProjectActionFormProps { projectId: string; projectName: string; }
+
+function ProjectActionForm({ projectId, projectName }: ProjectActionFormProps) {
+  const toast = useToast();
+  const [open, setOpen]     = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm]     = useState({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.root_cause.trim() || !form.corrective_action.trim()) return;
+    setSaving(true);
+    try {
+      await createActionItem({
+        project_id: projectId,
+        root_cause: form.root_cause,
+        corrective_action: form.corrective_action,
+        owner_name: form.owner_name || undefined,
+        target_closure_date: form.target_closure_date || undefined,
+      });
+      toast.success("Project action item created. View it in Actions.");
+      setForm({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
+      setOpen(false);
+    } catch { toast.error("Failed to create action item."); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 bg-slate-50">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Project-Level Action</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Raise a corrective action for <span className="font-semibold text-slate-700">{projectName}</span> as a whole — not tied to any single metric.
+          </p>
+        </div>
+        <button type="button" onClick={() => setOpen(v => !v)}
+          className={`rounded-lg px-4 py-2 text-xs font-bold cursor-pointer transition-colors border ${
+            open ? "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
+                 : "bg-indigo-600 border-transparent text-white hover:bg-indigo-700"
+          }`}>
+          {open ? "Cancel" : "+ Raise Project Action"}
+        </button>
+      </div>
+      {open && (
+        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Root Cause <span className="text-rose-500">*</span></label>
+              <textarea required rows={2} placeholder="Describe the root cause for this project-level issue…"
+                value={form.root_cause} onChange={e => setForm(f => ({ ...f, root_cause: e.target.value }))}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Corrective Action <span className="text-rose-500">*</span></label>
+              <textarea required rows={2} placeholder="What corrective action will be taken?…"
+                value={form.corrective_action} onChange={e => setForm(f => ({ ...f, corrective_action: e.target.value }))}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Owner Name</label>
+              <input type="text" placeholder="Optional"
+                value={form.owner_name} onChange={e => setForm(f => ({ ...f, owner_name: e.target.value }))}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Target Closure Date</label>
+              <input type="date"
+                value={form.target_closure_date} onChange={e => setForm(f => ({ ...f, target_closure_date: e.target.value }))}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300" />
+            </div>
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button type="submit" disabled={saving || !form.root_cause.trim() || !form.corrective_action.trim()}
+              className="rounded-lg bg-indigo-600 text-white px-5 py-2 text-sm font-bold cursor-pointer disabled:opacity-50 hover:bg-indigo-700">
+              {saving ? "Saving…" : "Save Action Item"}
+            </button>
+            <button type="button" onClick={() => setOpen(false)}
+              className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 cursor-pointer hover:bg-slate-50">
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 const RAG_BADGE: Record<string, string> = {
   GREEN: "bg-emerald-100 text-emerald-800 border-emerald-300",
   AMBER: "bg-amber-100 text-amber-800 border-amber-300",
@@ -742,6 +831,11 @@ export function QPMSummaryPage() {
             />
           ))}
         </div>
+      )}
+
+      {/* Project-level action item — after all metrics */}
+      {summary && projectId && project && (
+        <ProjectActionForm projectId={projectId} projectName={project.project_name} />
       )}
     </div>
   );

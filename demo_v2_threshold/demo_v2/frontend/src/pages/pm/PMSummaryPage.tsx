@@ -12,6 +12,102 @@ import { useToast } from "../../contexts/ToastContext";
 import type { Project } from "../../types/project";
 import type { KpiSummary, KpiSummaryMetric } from "../../types/qpm";
 
+// ── Project-level Action Item form ────────────────────────────────────────────
+function PMProjectActionForm({ projectId, projectName }: { projectId: string; projectName: string }) {
+  const toast = useToast();
+  const [open, setOpen]     = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm]     = useState({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.root_cause.trim() || !form.corrective_action.trim()) return;
+    setSaving(true);
+    try {
+      await createActionItem({
+        project_id: projectId,
+        root_cause: form.root_cause,
+        corrective_action: form.corrective_action,
+        owner_name: form.owner_name || undefined,
+        target_closure_date: form.target_closure_date || undefined,
+        // No metric_name → project-level action
+      });
+      toast.success("Project action item created. View it in Actions.");
+      setForm({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
+      setOpen(false);
+    } catch { toast.error("Failed to create action item."); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{ borderRadius: 16, background: "var(--surface)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ padding: "16px 20px", background: "rgba(108,99,255,0.04)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", margin: 0 }}>Project-Level Action</p>
+          <p style={{ fontSize: 11, color: "var(--muted)", margin: "3px 0 0" }}>
+            Raise a corrective action for <strong style={{ color: "var(--text)" }}>{projectName}</strong> as a whole — not tied to any single metric.
+          </p>
+        </div>
+        <button type="button" onClick={() => setOpen(v => !v)} style={{
+          borderRadius: 10, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
+          background: open ? "transparent" : "var(--primary)",
+          color: open ? "var(--muted)" : "#fff",
+          border: open ? "1.5px solid var(--border)" : "none",
+          boxShadow: open ? "none" : "0 2px 10px rgba(108,99,255,0.30)",
+        }}>
+          {open ? "Cancel" : "+ Raise Project Action"}
+        </button>
+      </div>
+      {/* Form */}
+      {open && (
+        <form onSubmit={handleSubmit} style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {[
+            { label: "Root Cause", key: "root_cause" as const, required: true, rows: 2, placeholder: "Describe the root cause for this project-level issue…" },
+            { label: "Corrective Action", key: "corrective_action" as const, required: true, rows: 2, placeholder: "What corrective action will be taken?…" },
+          ].map(f => (
+            <div key={f.key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                {f.label} {f.required && <span style={{ color: "#ef4444" }}>*</span>}
+              </label>
+              <textarea required={f.required} rows={f.rows} placeholder={f.placeholder}
+                value={form[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                style={{ borderRadius: 10, border: "1.5px solid var(--border)", padding: "9px 12px", fontSize: 13, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", resize: "none" }} />
+            </div>
+          ))}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {[
+              { label: "Owner Name", key: "owner_name" as const, type: "text", placeholder: "Optional" },
+              { label: "Target Closure Date", key: "target_closure_date" as const, type: "date", placeholder: "" },
+            ].map(f => (
+              <div key={f.key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{f.label}</label>
+                <input type={f.type} placeholder={f.placeholder}
+                  value={form[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  style={{ borderRadius: 10, border: "1.5px solid var(--border)", padding: "9px 12px", fontSize: 13, color: "var(--text)", background: "var(--surface)", outline: "none", fontFamily: "inherit" }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10, paddingTop: 4, borderTop: "1px solid var(--border)" }}>
+            <button type="submit" disabled={saving || !form.root_cause.trim() || !form.corrective_action.trim()} style={{
+              borderRadius: 10, background: "var(--primary)", color: "#fff", border: "none", padding: "9px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+              opacity: (saving || !form.root_cause.trim() || !form.corrective_action.trim()) ? 0.5 : 1,
+              boxShadow: "0 2px 8px rgba(108,99,255,0.30)",
+            }}>
+              {saving ? "Saving…" : "Save Action Item"}
+            </button>
+            <button type="button" onClick={() => setOpen(false)} style={{
+              borderRadius: 10, border: "1.5px solid var(--border)", background: "transparent", color: "var(--muted)", padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+            }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 const RAG_COLOR: Record<string, string> = {
   GREEN: "#22c55e",
   AMBER: "#f59e0b",
@@ -876,6 +972,11 @@ export function PMSummaryPage() {
                   Go to My Projects and click Data Entry to start entering metrics.
                 </p>
               </GlassCard>
+            )}
+
+            {/* Project-level action item — after all metrics */}
+            {selectedProjectId && selectedProject && (
+              <PMProjectActionForm projectId={selectedProjectId} projectName={selectedProject.project_name} />
             )}
           </div>
         )}

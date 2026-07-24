@@ -1,8 +1,10 @@
 /**
  * QPM Data Entry — Unified parameter entry page.
  * All shared measures entered once; all metrics auto-computed on Save.
+ * Metrics are grouped by dimension, each showing frequency/intent/thresholds
+ * plus the actual named parameters it needs (no generic P1/P2/P3 labels).
  */
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useToast } from "../../contexts/ToastContext";
 import { getProject } from "../../services/projectService";
@@ -10,9 +12,8 @@ import { getKpiPlan, submitQpmPlan } from "../../services/qpmService";
 import { getAllMeasures, saveAndCompute } from "../../services/periodMeasuresService";
 import type { Project } from "../../types/project";
 import type { KpiPlan } from "../../types/qpm";
-import type { AllMeasuresResponse, MetricComputeResult, HistoryRow } from "../../services/periodMeasuresService";
+import type { AllMeasuresResponse, MetricComputeResult, MetricInfo, HistoryRow } from "../../services/periodMeasuresService";
 import { RagBadge } from "../../components/RagBadge";
-
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function currentPeriodLabel(): string {
   const today = new Date();
@@ -20,7 +21,7 @@ function currentPeriodLabel(): string {
                   "August","September","October","November","December"];
   return `${MONTHS[today.getMonth()]} ${today.getFullYear()}`;
 }
-
+ 
 function currentPeriodDates(): { from_date: string; to_date: string } {
   const today = new Date();
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
@@ -28,13 +29,34 @@ function currentPeriodDates(): { from_date: string; to_date: string } {
   const end   = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   return { from_date: fmt(start), to_date: fmt(end) };
 }
-
-
+ 
+// Groups metrics by their dimension (metric_category), preserving first-seen order.
+function groupMetricsByDimension(metrics: MetricInfo[]): Array<[string, MetricInfo[]]> {
+  const groups: Record<string, MetricInfo[]> = {};
+  const order: string[] = [];
+  for (const m of metrics) {
+    const dimension = m.metric_category || "Other";
+    if (!groups[dimension]) {
+      groups[dimension] = [];
+      order.push(dimension);
+    }
+    groups[dimension].push(m);
+  }
+  return order.map(dimension => [dimension, groups[dimension]]);
+}
+ 
+// Keys that jump to the next / previous navigable field instead of their
+// native behavior (native up/down spinners on number inputs are sacrificed
+// in favor of fast, spreadsheet-style entry across many fields).
+const NAV_NEXT_KEYS = new Set(["ArrowRight", "ArrowDown", "Enter"]);
+const NAV_PREV_KEYS = new Set(["ArrowLeft", "ArrowUp"]);
+ 
 export function QPMDataEntryPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const toast  = useToast();
   const navigate = useNavigate();
-
+  const gridRef = useRef<HTMLDivElement>(null);
+ 
   const [project, setProject]     = useState<Project | null>(null);
   const [plan,    setPlan]        = useState<KpiPlan | null>(null);
   const [data,    setData]        = useState<AllMeasuresResponse | null>(null);
@@ -42,20 +64,65 @@ export function QPMDataEntryPage() {
   const [saving,  setSaving]      = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [historyFilter, setHistoryFilter] = useState("All metrics");
-
+  // Filter metric cards by their reporting frequency (Monthly / Weekly / Fortnightly / ...)
+  const [frequencyFilter, setFrequencyFilter] = useState("All frequencies");
+ 
   // Editable measure values: { measure_name -> string }
+  // NOTE: this is a single flat map keyed by measure_name, so a measure that
+  // appears in more than one metric card (e.g. "Delivered and accepted size")
+  // automatically stays in sync everywhere it's shown — there's only one
+  // input box's worth of state per measure, just rendered in multiple places.
   const [measureValues, setMeasureValues] = useState<Record<string, string>>({});
+
+  // Per-metric overrides: keyed by `${plan_metric_id}::${measure_name}`
+  // When a key is present, that metric uses this value instead of the shared default.
+  const [measureOverrides, setMeasureOverrides] = useState<Record<string, string>>({});
+
+  // ── Override helpers ─────────────────────────────────────────────────────
+  const overrideKey = (planMetricId: string, measureName: string) =>
+    `${planMetricId}::${measureName}`;
+
+  const getDisplayValue = (planMetricId: string, measureName: string): string => {
+    const key = overrideKey(planMetricId, measureName);
+    // Always use per-metric slot; fall back to shared default only if slot not initialised
+    return key in measureOverrides ? measureOverrides[key] : (measureValues[measureName] ?? "");
+  };
+
+  const setDisplayValue = (planMetricId: string, measureName: string, val: string) => {
+    // Always write to the per-metric slot — each card is fully independent
+    const key = overrideKey(planMetricId, measureName);
+    setMeasureOverrides(prev => ({ ...prev, [key]: val }));
+  };
+
+  // "overridden" = this metric's value differs from the shared default
+  const isOverridden = (planMetricId: string, measureName: string) => {
+    const key = overrideKey(planMetricId, measureName);
+    const perMetricVal = measureOverrides[key];
+    const sharedVal = measureValues[measureName] ?? "";
+    return perMetricVal !== undefined && perMetricVal !== sharedVal;
+  };
+
+  const resetOverride = (planMetricId: string, measureName: string) => {
+    // Reset this metric's slot back to the shared default value
+    const key = overrideKey(planMetricId, measureName);
+    const sharedVal = measureValues[measureName] ?? "";
+    setMeasureOverrides(prev => ({ ...prev, [key]: sharedVal }));
+  };
   // Editable thresholds: { plan_metric_id -> { lsl, target, usl } }
   const [thresholds, setThresholds] = useState<Record<string, { lsl: string; target: string; usl: string }>>({});
   // Period state
   const [periodLabel, setPeriodLabel] = useState(currentPeriodLabel());
-
+  // Per-metric "Frequency name" — editable independently on each card.
+  // Seeded from periodLabel when data loads, but from then on each metric's
+  // value can be changed on its own without affecting any other card.
+  const [frequencyNames, setFrequencyNames] = useState<Record<string, string>>({});
+ 
   // Computed results from last Save
   const [results, setResults] = useState<MetricComputeResult[]>([]);
-
+ 
   // PM comment
   const [pmComment, setPmComment]     = useState("");
-
+ 
   // ── Load data ────────────────────────────────────────────────────────────
   const loadData = useCallback(async (period: string) => {
     if (!projectId) return;
@@ -69,14 +136,38 @@ export function QPMDataEntryPage() {
       setPlan(kpiPlan);
       if (kpiPlan.pm_rag_comments) setPmComment(kpiPlan.pm_rag_comments);
       setData(measData);
-
-      // Init measure values — pre-fill existing values
+ 
+      // Init measure values — pre-fill existing shared defaults
       const init: Record<string, string> = {};
       for (const m of measData.measures) {
         init[m.measure_name] = m.actual_value != null ? String(m.actual_value) : "";
       }
       setMeasureValues(init);
 
+      // Init per-metric overrides:
+      // Start by seeding every metric×measure slot with the shared default value,
+      // so each card has its own independent value from the start.
+      // Then overwrite with any saved per-metric overrides from the DB.
+      const ovInit: Record<string, string> = {};
+
+      // Seed all metric×measure combos from shared defaults
+      for (const metric of measData.metrics) {
+        for (const measureName of metric.required_measures) {
+          const sharedVal = measData.measures.find(m => m.measure_name === measureName)?.actual_value;
+          const key = `${metric.plan_metric_id}::${measureName}`;
+          ovInit[key] = sharedVal != null ? String(sharedVal) : "";
+        }
+      }
+
+      // Overwrite with saved per-metric overrides from the DB
+      for (const m of measData.measures) {
+        for (const ov of (m.overrides ?? [])) {
+          const key = `${ov.plan_metric_id}::${m.measure_name}`;
+          ovInit[key] = ov.actual_value != null ? String(ov.actual_value) : "";
+        }
+      }
+      setMeasureOverrides(ovInit);
+ 
       // Init thresholds from metrics
       const tInit: Record<string, { lsl: string; target: string; usl: string }> = {};
       for (const m of measData.metrics) {
@@ -87,7 +178,19 @@ export function QPMDataEntryPage() {
         };
       }
       setThresholds(tInit);
-
+ 
+      // Init per-metric frequency names — seeded from the period, but only
+      // for metrics that don't already have a value the PM has customized.
+      setFrequencyNames(prev => {
+        const next: Record<string, string> = { ...prev };
+        for (const m of measData.metrics) {
+          if (next[m.plan_metric_id] === undefined) {
+            next[m.plan_metric_id] = period;
+          }
+        }
+        return next;
+      });
+ 
       // Pre-populate results from history (most recent per metric)
       const latestByMetric: Record<string, MetricComputeResult> = {};
       for (const h of measData.history) {
@@ -112,45 +215,99 @@ export function QPMDataEntryPage() {
       setLoading(false);
     }
   }, [projectId, toast]);
-
+ 
   useEffect(() => { loadData(periodLabel); }, []);
-
+ 
   const handlePeriodChange = (p: string) => {
     setPeriodLabel(p);
     setLoading(true);
     loadData(p);
   };
-
+ 
+  // ── Arrow-key / Tab field navigation ─────────────────────────────────────
+  // Lets the PM move between input boxes with the arrow keys (or Enter),
+  // spreadsheet-style, instead of having to click each one. Every navigable
+  // field carries data-qpm-nav="true"; we walk the DOM order within the
+  // metrics grid rather than tracking indices in state, so it stays correct
+  // no matter how filtering/grouping reorders the cards.
+  const handleNavKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!NAV_NEXT_KEYS.has(e.key) && !NAV_PREV_KEYS.has(e.key)) return;
+    const root = gridRef.current;
+    if (!root) return;
+    const fields = Array.from(root.querySelectorAll<HTMLInputElement>('[data-qpm-nav="true"]'));
+    const currentIndex = fields.indexOf(e.currentTarget);
+    if (currentIndex === -1) return;
+    e.preventDefault();
+    const nextIndex = NAV_NEXT_KEYS.has(e.key) ? currentIndex + 1 : currentIndex - 1;
+    const target = fields[nextIndex];
+    if (target) {
+      target.focus();
+      target.select();
+    }
+  };
+ 
+  // Also select the field's contents when it's reached via native Tab / Shift+Tab,
+  // so typing immediately overwrites the value — same feel as the arrow-key jump.
+  const handleNavFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+ 
   // ── Save ─────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!plan || !projectId) return;
     setSaving(true);
     const { from_date, to_date } = currentPeriodDates();
     try {
-      const measures = Object.entries(measureValues).map(([measure_name, val]) => ({
-        measure_name,
-        actual_value: val.trim() !== "" ? parseFloat(val) : null,
-      }));
+      // Every entry is now per-metric (plan_metric_id set).
+      // We also send one shared-default row per unique measure_name so that
+      // the backend fallback still works for any metric not in the override map.
+      // The shared default is the value from the FIRST metric that uses the measure.
+      const sentShared = new Set<string>();
+      const measures: { measure_name: string; actual_value: number | null; plan_metric_id?: string | null }[] = [];
+
+      // Per-metric entries from measureOverrides
+      for (const [key, val] of Object.entries(measureOverrides)) {
+        const sepIdx = key.indexOf("::");
+        const plan_metric_id = key.slice(0, sepIdx);
+        const measure_name   = key.slice(sepIdx + 2);
+        measures.push({
+          measure_name,
+          actual_value: val.trim() !== "" ? parseFloat(val) : null,
+          plan_metric_id,
+        });
+      }
+
+      // Also send shared defaults (plan_metric_id = null) using measureValues
+      // for any measure not already covered — keeps backward compat with the backend
+      for (const [measure_name, val] of Object.entries(measureValues)) {
+        if (!sentShared.has(measure_name)) {
+          measures.push({
+            measure_name,
+            actual_value: val.trim() !== "" ? parseFloat(val) : null,
+            plan_metric_id: null,
+          });
+          sentShared.add(measure_name);
+        }
+      }
+
       const res = await saveAndCompute(projectId, {
         plan_id: plan.id,
         period_label: periodLabel,
         frequency: "Monthly",
         from_date, to_date,
         measures,
-        thresholds, // pass PM-edited thresholds so they persist
+        thresholds,
       });
       setResults(res.computed_metrics);
-      const complete  = res.computed_metrics.filter(m => m.complete).length;
-      const total     = res.computed_metrics.length;
+      const complete = res.computed_metrics.filter(m => m.complete).length;
+      const total    = res.computed_metrics.length;
       toast.success(`Saved. ${complete}/${total} metrics computed.`);
-      // Also save PM comment if one has been entered
       if (pmComment.trim() && plan) {
         try {
           const updated = await submitQpmPlan(plan.id, plan.pm_perception_rag ?? undefined, pmComment.trim());
           setPlan(updated);
-        } catch { /* non-critical — metrics already saved */ }
+        } catch { /* non-critical */ }
       }
-      // Reload to get fresh history
       await loadData(periodLabel);
     } catch (e: any) {
       toast.error(e.response?.data?.detail || "Save failed");
@@ -158,18 +315,32 @@ export function QPMDataEntryPage() {
       setSaving(false);
     }
   };
-
+ 
   // ── History filter options ───────────────────────────────────────────────
   const historyMetricNames = data
     ? ["All metrics", ...Array.from(new Set(data.history.map(h => h.metric_name)))]
     : ["All metrics"];
-
+ 
   const filteredHistory: HistoryRow[] = data
     ? (historyFilter === "All metrics"
         ? data.history
         : data.history.filter(h => h.metric_name === historyFilter))
     : [];
-
+ 
+  // ── Frequency filter options (Monthly / Weekly / Fortnightly / ...) ───────
+  const frequencyOptions = data
+    ? ["All frequencies", ...Array.from(new Set(data.metrics.map(m => m.frequency).filter(Boolean) as string[]))]
+    : ["All frequencies"];
+ 
+  const frequencyFilteredMetrics = data
+    ? (frequencyFilter === "All frequencies"
+        ? data.metrics
+        : data.metrics.filter(m => m.frequency === frequencyFilter))
+    : [];
+ 
+  // Metrics grouped by dimension, for the grouped-cards layout below.
+  const dimensionGroups = data ? groupMetricsByDimension(frequencyFilteredMetrics) : [];
+ 
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loading) return (
     <div className="space-y-4 animate-pulse">
@@ -177,16 +348,16 @@ export function QPMDataEntryPage() {
       <div className="h-96 rounded-xl bg-slate-200" />
     </div>
   );
-
+ 
   return (
     <div className="space-y-5 text-slate-800">
-
+ 
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Link to="/pm/projects" className="text-xs text-slate-500 hover:text-slate-800">← Back to My Projects</Link>
-          <h1 className="mt-0.5 text-xl font-bold text-slate-900">KPI Data Entry</h1>
-          <p className="text-xs text-slate-500">{project?.project_name}</p>
+          <h1 className="mt-1 text-2xl font-bold text-slate-900">{project?.project_name || "Project"}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">KPI Data Entry</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Period selector */}
@@ -210,9 +381,20 @@ export function QPMDataEntryPage() {
                plan.qpm_status === "REJECTED" ? "Rejected" : plan.qpm_status}
             </span>
           )}
+          {/* History icon — page-level, top-right corner */}
+          <button
+            type="button"
+            onClick={() => setShowHistory(true)}
+            title="View history"
+            className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-100 cursor-pointer transition-colors"
+          >
+            <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
         </div>
       </div>
-
+ 
       {/* ── Stats strip ── */}
       {data && (
         <div className="flex flex-wrap gap-4 text-xs text-slate-500">
@@ -226,126 +408,148 @@ export function QPMDataEntryPage() {
           <span className="text-slate-400">{results.filter(r => !r.complete).length} not computed</span>
         </div>
       )}
-
-      {/* ── PARAMETERS PANEL ── */}
+ 
+      {/* ── Frequency filter ── */}
       {data && !showHistory && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-slate-900">Parameters</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {data.metrics.length} metrics · {data.measures.length} parameters
-              </p>
-            </div>
-          </div>
-          <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {data.measures.map(m => {
-              const val = measureValues[m.measure_name] ?? "";
-              const isEmpty = val.trim() === "";
-              return (
-                <div
-                  key={m.measure_name}
-                  className={`rounded-xl border p-4 space-y-2 transition-colors ${
-                    isEmpty ? "border-amber-300 bg-amber-50/40" : "border-slate-200 bg-white"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-semibold text-slate-700 leading-snug">
-                      {m.measure_name}
-                    </label>
-                    <span className={`text-[9px] font-bold rounded-full px-2 py-0.5 border shrink-0 ${
-                      isEmpty
-                        ? "bg-amber-100 text-amber-700 border-amber-300"
-                        : "bg-slate-100 text-slate-500 border-slate-200"
-                    }`}>
-                      {m.metrics_count} metric{m.metrics_count !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <input
-                    type="number"
-                    step="any"
-                    value={val}
-                    onChange={e => setMeasureValues(prev => ({ ...prev, [m.measure_name]: e.target.value }))}
-                    placeholder={isEmpty ? "Not entered" : "Enter value"}
-                    className={`w-full rounded-lg border px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-colors ${
-                      isEmpty
-                        ? "border-amber-300 bg-white text-amber-500 placeholder-amber-400"
-                        : "border-slate-200 bg-slate-50 text-slate-900 focus:bg-white"
-                    }`}
-                  />
-                </div>
-              );
-            })}
-          </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500">Filter by frequency</label>
+          <select
+            value={frequencyFilter}
+            onChange={e => setFrequencyFilter(e.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+          >
+            {frequencyOptions.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+          {frequencyFilter !== "All frequencies" && (
+            <span className="text-[11px] text-slate-400">
+              {frequencyFilteredMetrics.length} of {data.metrics.length} metrics
+            </span>
+          )}
         </div>
       )}
-
-      {/* ── THRESHOLDS PANEL ── */}
-      {data && !showHistory && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-            <p className="text-sm font-bold text-slate-900">Thresholds</p>
-            {/* History icon */}
-            <button
-              type="button"
-              onClick={() => setShowHistory(true)}
-              title="View history"
-              className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-100 cursor-pointer transition-colors"
-            >
-              <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+ 
+      {/* ── METRICS GROUPED BY DIMENSION ── */}
+      <div ref={gridRef}>
+        {data && !showHistory && dimensionGroups.length === 0 && (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-8 text-center text-sm text-slate-400">
+            No metrics with a "{frequencyFilter}" frequency.
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500 font-semibold uppercase tracking-wide">
-                <tr>
-                  <th className="px-5 py-3 text-left">Metric</th>
-                  <th className="px-4 py-3 text-center">Intent</th>
-                  <th className="px-4 py-3 text-center">LSL</th>
-                  <th className="px-4 py-3 text-center">Target</th>
-                  <th className="px-4 py-3 text-center">USL</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {data.metrics.map(metric => {
-                  const t = thresholds[metric.plan_metric_id] ?? { lsl: "", target: "", usl: "" };
-                  return (
-                    <tr key={metric.plan_metric_id} className="hover:bg-slate-50">
-                      <td className="px-5 py-3">
-                        <p className="font-semibold text-slate-800 text-xs leading-snug">{metric.metric_name}</p>
-                        {metric.metric_category && (
-                          <span className="text-[9px] text-slate-400">{metric.metric_category}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="text-[10px] font-semibold text-slate-500">
-                          {metric.intent ?? "—"}
+        )}
+        {data && !showHistory && dimensionGroups.map(([dimension, metricsInDimension]) => (
+          <div key={dimension} className="mb-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+              {dimension}
+            </p>
+            <div className="space-y-3 mb-2">
+              {metricsInDimension.map(metric => {
+                const t = thresholds[metric.plan_metric_id] ?? { lsl: "", target: "", usl: "" };
+                return (
+                  <div key={metric.plan_metric_id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-900 mb-3">{metric.metric_name}</p>
+ 
+                    {/* Frequency / Intent / LSL / Target / USL row */}
+                    <div className="flex flex-wrap gap-4 mb-3">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">Frequency</label>
+                        <span className="inline-block rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold px-2 py-1">
+                          {metric.frequency || "—"}
                         </span>
-                      </td>
-                      {(["lsl","target","usl"] as const).map(field => (
-                        <td key={field} className="px-3 py-2 text-center">
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">Intent</label>
+                        <span className="text-xs text-slate-700">{metric.intent || "—"}</span>
+                      </div>
+                      {(["lsl", "target", "usl"] as const).map(field => (
+                        <div key={field}>
+                          <label className="block text-[10px] text-slate-400 mb-1 uppercase">{field}</label>
                           <input
                             type="number" step="any"
+                            data-qpm-nav="true"
+                            onKeyDown={handleNavKeyDown}
+                            onFocus={handleNavFocus}
                             value={t[field]}
                             onChange={e => setThresholds(prev => ({
                               ...prev,
-                              [metric.plan_metric_id]: { ...prev[metric.plan_metric_id], [field]: e.target.value }
+                              [metric.plan_metric_id]: { ...prev[metric.plan_metric_id], [field]: e.target.value },
                             }))}
-                            className="w-20 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:bg-white"
+                            className="w-16 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:bg-white"
                           />
-                        </td>
+                        </div>
                       ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    </div>
+ 
+                    {/* Frequency name + actual named parameters */}
+                    <div className="border-t border-slate-100 pt-3 flex flex-wrap gap-4 items-end">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">Frequency name</label>
+                        <input
+                          type="text"
+                          data-qpm-nav="true"
+                          onKeyDown={handleNavKeyDown}
+                          onFocus={handleNavFocus}
+                          value={frequencyNames[metric.plan_metric_id] ?? periodLabel}
+                          onChange={e => setFrequencyNames(prev => ({ ...prev, [metric.plan_metric_id]: e.target.value }))}
+                          title="Independent per metric — editing this only changes this card"
+                          className="w-28 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:bg-white"
+                        />
+                      </div>
+                      {metric.required_measures.map(measureName => {
+                        const overridden = isOverridden(metric.plan_metric_id, measureName);
+                        const val = getDisplayValue(metric.plan_metric_id, measureName);
+                        const isEmpty = val.trim() === "";
+                        const sharedVal = measureValues[measureName] ?? "";
+                        const usesShared = !overridden && data?.measures.find(m => m.measure_name === measureName)?.metrics_count !== 1;
+                        return (
+                          <div key={measureName}>
+                            {/* Label + sync indicator */}
+                            <div className="flex items-center gap-1 mb-1">
+                              <label className="text-[10px] text-slate-400 max-w-[160px] leading-tight">
+                                {measureName}
+                              </label>
+                              {overridden && (
+                                <button
+                                  type="button"
+                                  title={`This metric uses its own value. Click to sync back to shared value (${sharedVal || "empty"})`}
+                                  onClick={() => resetOverride(metric.plan_metric_id, measureName)}
+                                  className="ml-1 text-[9px] font-bold text-indigo-500 hover:text-rose-600 cursor-pointer shrink-0 underline decoration-dotted"
+                                >
+                                  {/* ↺ sync */}
+                                </button>
+                              )}
+                              {!overridden && usesShared && (
+                                <span className="ml-1 text-[9px] text-slate-300" title="Shared with other metrics — type to set independently">
+                                  {/* shared */}
+                                </span>
+                              )}
+                            </div>
+                            <input
+                              type="number" step="any"
+                              data-qpm-nav="true"
+                              onKeyDown={handleNavKeyDown}
+                              onFocus={handleNavFocus}
+                              value={val}
+                              onChange={e => setDisplayValue(metric.plan_metric_id, measureName, e.target.value)}
+                              placeholder={isEmpty ? "Not entered" : "Enter value"}
+                              className={`w-40 rounded-lg border px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 transition-colors ${
+                                overridden
+                                  ? "border-indigo-400 bg-indigo-50 text-indigo-900 focus:ring-indigo-300"
+                                  : isEmpty
+                                    ? "border-amber-300 bg-amber-50/40 text-amber-600 placeholder-amber-400 focus:ring-indigo-300"
+                                    : "border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:ring-indigo-300"
+                              }`}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
-
+        ))}
+      </div>
+ 
       {/* ── HISTORY PANEL ── */}
       {showHistory && data && (
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -425,7 +629,7 @@ export function QPMDataEntryPage() {
           </div>
         </div>
       )}
-
+ 
       {/* ── PM Comment ── */}
       {!showHistory && plan && (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -449,12 +653,12 @@ export function QPMDataEntryPage() {
           />
         </div>
       )}
-
+ 
       {/* ── Bottom action bar ── */}
       {!showHistory && (
         <div className="flex items-center justify-between gap-3 py-3 border-t border-slate-200 bg-white sticky bottom-0 px-1">
           <p className="text-xs text-slate-400">
-            All complete metrics are computed automatically on Save.
+            All complete metrics are computed automatically on Save. Use the arrow keys, Tab, or Enter to jump between fields.
           </p>
           <div className="flex gap-3">
             <button
@@ -475,7 +679,7 @@ export function QPMDataEntryPage() {
           </div>
         </div>
       )}
-
+ 
     </div>
   );
 }

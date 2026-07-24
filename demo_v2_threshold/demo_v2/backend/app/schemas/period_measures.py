@@ -8,6 +8,8 @@ from pydantic import BaseModel
 class PeriodMeasureItem(BaseModel):
     measure_name: str
     actual_value: Decimal | None = None
+    # NULL = shared default; non-NULL = per-metric override for this plan_metric_id only
+    plan_metric_id: UUID | None = None
 
 
 class PeriodMeasureSaveRequest(BaseModel):
@@ -25,6 +27,7 @@ class PeriodMeasureResponse(BaseModel):
     measure_name: str
     actual_value: Decimal | None
     updated_at: datetime
+    plan_metric_id: UUID | None = None
 
     model_config = {"from_attributes": True}
 

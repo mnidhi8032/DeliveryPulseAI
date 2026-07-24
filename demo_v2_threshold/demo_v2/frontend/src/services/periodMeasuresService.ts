@@ -1,10 +1,19 @@
 import { apiClient } from "./apiClient";
 
+export interface MeasureOverride {
+  plan_metric_id: string;
+  metric_name: string;
+  actual_value: number | null;
+}
+
 export interface MeasureInfo {
   measure_name: string;
   actual_value: number | null;
   metrics_using: string[];
   metrics_count: number;
+  /** Per-metric overrides for this measure — each entry is one metric that
+   *  has broken away from the shared default value. */
+  overrides: MeasureOverride[];
 }
 
 export interface MetricInfo {
@@ -85,7 +94,12 @@ export async function saveAndCompute(
     frequency?: string;
     from_date?: string;
     to_date?: string;
-    measures: { measure_name: string; actual_value: number | null }[];
+    measures: {
+      measure_name: string;
+      actual_value: number | null;
+      /** omit / null = shared default; non-null = per-metric override */
+      plan_metric_id?: string | null;
+    }[];
     thresholds?: Record<string, { lsl?: string; target?: string; usl?: string }>;
   },
 ): Promise<PeriodSaveResponse> {
