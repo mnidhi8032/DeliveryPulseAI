@@ -117,6 +117,7 @@ class ProjectService:
 
         from app.models.kpi_plan import KpiPlan, KpiPlanMetric
         from app.models.qpm_catalog_metric import QPMCatalogMetric
+        from app.models.engagement_model_preset import EngagementModelPreset
         from app.services.qpm_service import get_required_measures
         from sqlalchemy import select
         import json, uuid as _uuid
@@ -132,11 +133,50 @@ class ProjectService:
         self._session.add(plan)
         self._session.flush()
 
-        stmt = select(QPMCatalogMetric).where(QPMCatalogMetric.is_active == True, QPMCatalogMetric.compliance == "M")
-        if body.project_type:
-            stmt = stmt.where(QPMCatalogMetric.project_type.ilike(f"%{body.project_type}%"))
-        if body.delivery_process_model:
-            stmt = stmt.where(QPMCatalogMetric.delivery_model.ilike(f"%{body.delivery_process_model}%"))
+        # ── Select mandatory metrics ─────────────────────────────────────────
+        # Strategy: check engagement_model_presets for an exact (project_type,
+        # delivery_process_model) match first.  If found, select catalog rows by
+        # exact name — this gives a precise, evidence-based metric list.
+        # If no preset exists for this combo, fall back to the original broad
+        # ILIKE tag-matching so projects with unlisted engagement models still
+        # get metrics auto-added.
+        preset_names: list[str] = []
+        if body.project_type and body.delivery_process_model:
+            preset_rows = self._session.execute(
+                select(EngagementModelPreset.metric_name).where(
+                    EngagementModelPreset.project_type == body.project_type,
+                    EngagementModelPreset.delivery_model == body.delivery_process_model,
+                )
+            ).scalars().all()
+            preset_names = list(preset_rows)
+
+        if preset_names:
+            # Preset path — exact name match against evidence-based list.
+            # The compliance filter is intentionally omitted here: the preset IS
+            # the authority on which metrics are mandatory for this engagement,
+            # so metrics that happen to be marked 'O' in the catalog are still
+            # included when a client project explicitly requires them.
+            stmt = select(QPMCatalogMetric).where(
+                QPMCatalogMetric.is_active == True,
+                QPMCatalogMetric.name.in_(preset_names),
+            )
+        else:
+            # Fallback path — original broad ILIKE tag-matching (unchanged)
+            stmt = select(QPMCatalogMetric).where(
+                QPMCatalogMetric.is_active == True,
+                QPMCatalogMetric.compliance == "M",
+            )
+            if body.project_type:
+                stmt = stmt.where(
+                    QPMCatalogMetric.project_type.ilike(f"%{body.project_type}%")
+                )
+            if body.delivery_process_model:
+                stmt = stmt.where(
+                    QPMCatalogMetric.delivery_model.ilike(
+                        f"%{body.delivery_process_model}%"
+                    )
+                )
+
         mandatory = self._session.execute(stmt).scalars().all()
 
         for m in mandatory:
