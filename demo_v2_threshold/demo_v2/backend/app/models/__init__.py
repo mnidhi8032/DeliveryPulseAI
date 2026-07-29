@@ -25,6 +25,7 @@ from app.models.system_configuration import SystemConfiguration
 from app.models.qpm_catalog_metric import QPMCatalogMetric
 from app.models.kpi_plan import KpiPlan, KpiPlanMetric, KpiDocInfo, KpiDocVersionHistory
 from app.models.kpi_measurement import KpiMeasurement, KpiMeasureEntry
+from app.models.engagement_model_preset import EngagementModelPreset
 
 __all__ = [
     "Base",
@@ -51,5 +52,6 @@ __all__ = [
     "SystemConfiguration",
     "ActionItem",
     "GovernanceReview",
+    "EngagementModelPreset",
 ]
 
