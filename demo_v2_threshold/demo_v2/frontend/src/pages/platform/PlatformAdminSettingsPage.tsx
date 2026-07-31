@@ -22,6 +22,7 @@ import {
   createBusinessUnit,
   updateBusinessUnit,
   getSetupAccounts,
+  createAccount,
   updateAccount,
 } from "../../services/customerAdminSetupService";
 import { apiClient } from "../../services/apiClient";
@@ -102,10 +103,12 @@ export function PlatformAdminSettingsPage() {
   const [editBuId, setEditBuId] = useState<string | null>(null);
   const [buForm, setBuForm] = useState({ code: "", name: "", description: "", is_active: true, bu_head_user_id: "" });
 
-  // Accounts — DM assignment
+  // Accounts — creation + DM assignment
   const [accounts, setAccounts] = useState<SetupAccount[]>([]);
   const [dmUsers, setDmUsers] = useState<{ id: string; full_name: string; email: string }[]>([]);
   const [assigningDm, setAssigningDm] = useState<string | null>(null); // account id being saved
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [accountForm, setAccountForm] = useState({ business_unit_id: "", code: "", name: "", is_active: true });
 
   // Spec 14 — Metric Recommendations state
   const [recs, setRecs] = useState<MetricRec[]>([]);
@@ -242,6 +245,26 @@ export function PlatformAdminSettingsPage() {
       getSetupBusinessUnits().then(setBus).catch(() => {});
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "Failed to save Business Unit");
+    }
+  };
+
+  const handleAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const created = await createAccount({
+        business_unit_id: accountForm.business_unit_id,
+        code: accountForm.code,
+        name: accountForm.name,
+        is_active: accountForm.is_active,
+      });
+      setAccounts(prev => [created, ...prev]);
+      toast.success("Account created");
+      setAccountModalOpen(false);
+      setAccountForm({ business_unit_id: "", code: "", name: "", is_active: true });
+      // Reload to reflect server state
+      getSetupAccounts().then(setAccounts).catch(() => {});
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || "Failed to create Account");
     }
   };
 
@@ -722,16 +745,30 @@ export function PlatformAdminSettingsPage() {
             </table>
           </div>
 
-          {/* Accounts — Delivery Manager Assignment */}
+          {/* Accounts — Creation + Delivery Manager Assignment */}
           <div className="border-t border-slate-100 pt-6">
-            <div className="mb-4">
-              <h3 className="text-sm font-bold text-slate-900">Account — Delivery Manager Assignment</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Assign a Delivery Manager to each account. The DM will see all projects under that account.
-                {dmUsers.length === 0 && (
-                  <span className="ml-1 text-amber-600 font-semibold">No Delivery Manager users found — provision one in User Directory first.</span>
-                )}
-              </p>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Accounts / Clients</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Assign a Delivery Manager to each account. The DM will see all projects under that account.
+                  {dmUsers.length === 0 && (
+                    <span className="ml-1 text-amber-600 font-semibold">No Delivery Manager users found — provision one in User Directory first.</span>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountForm({ business_unit_id: bus[0]?.id || "", code: "", name: "", is_active: true });
+                  setAccountModalOpen(true);
+                }}
+                disabled={bus.length === 0}
+                title={bus.length === 0 ? "Create a Business Unit first" : undefined}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                + Create Account
+              </button>
             </div>
             <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="min-w-full divide-y divide-slate-100 text-sm">
@@ -746,7 +783,7 @@ export function PlatformAdminSettingsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {accounts.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No accounts found.</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No accounts yet. Click "+ Create Account" to add one.</td></tr>
                   ) : accounts.map(acc => {
                     const bu = bus.find(b => b.id === acc.business_unit_id);
                     return (
@@ -847,6 +884,68 @@ export function PlatformAdminSettingsPage() {
                   {editBuId ? "Update BU" : "Create BU"}
                 </button>
                 <button type="button" onClick={() => { setBuModalOpen(false); setEditBuId(null); }}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Account Modal */}
+      {accountModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">Create Account</h3>
+              <button type="button" onClick={() => setAccountModalOpen(false)}
+                className="rounded p-1 hover:bg-slate-100 text-slate-400 cursor-pointer">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <form onSubmit={handleAccountSubmit} className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Business Unit *</label>
+                <select required
+                  value={accountForm.business_unit_id}
+                  onChange={e => setAccountForm(f => ({ ...f, business_unit_id: e.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+                >
+                  <option value="">-- Select Business Unit --</option>
+                  {bus.map(b => (
+                    <option key={b.id} value={b.id}>{b.name} ({b.code})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Account Code *</label>
+                <input type="text" required
+                  placeholder="E.g. ACME"
+                  value={accountForm.code}
+                  onChange={e => setAccountForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Account / Client Name *</label>
+                <input type="text" required
+                  placeholder="E.g. Acme Corporation"
+                  value={accountForm.name}
+                  onChange={e => setAccountForm(f => ({ ...f, name: e.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="account_active" checked={accountForm.is_active}
+                  onChange={e => setAccountForm(f => ({ ...f, is_active: e.target.checked }))}
+                  className="h-4 w-4 rounded border-slate-300" />
+                <label htmlFor="account_active" className="text-xs font-semibold text-slate-700">Active</label>
+              </div>
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <button type="submit"
+                  className="flex-1 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 cursor-pointer">
+                  Create Account
+                </button>
+                <button type="button" onClick={() => setAccountModalOpen(false)}
                   className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
                   Cancel
                 </button>

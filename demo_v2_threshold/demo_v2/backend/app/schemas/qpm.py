@@ -57,6 +57,9 @@ class KpiPlanMetricCreateRequest(BaseModel):
     reported_to_customer: bool = False
     rationale: str | None = None
     data_source: str | None = None
+    # PM/DE can specify measure names explicitly for custom metrics
+    # e.g. ["Actual Effort", "Planned Effort"] — stored as JSON array
+    required_measures: str | list[str] | None = None
 
 class KpiPlanMetricUpdateRequest(BaseModel):
     frequency: str | None = None
@@ -371,6 +374,9 @@ class QPMCatalogMetricCreateRequest(BaseModel):
     default_target: Decimal | None = None
     default_lsl: Decimal | None = None
     default_usl: Decimal | None = None
+    # DE specifies the measure names required to compute this metric
+    # e.g. ["Actual Effort", "Planned Effort"] for a 2-input metric
+    measures: list[str] | None = None
 
 class QPMCatalogMetricUpdateRequest(BaseModel):
     category: str | None = None
@@ -388,6 +394,8 @@ class QPMCatalogMetricUpdateRequest(BaseModel):
     default_lsl: Decimal | None = None
     default_usl: Decimal | None = None
     is_active: bool | None = None
+    # DE updates the measure names for this catalog metric
+    measures: list[str] | None = None
 
 
 # Per-metric trend endpoint

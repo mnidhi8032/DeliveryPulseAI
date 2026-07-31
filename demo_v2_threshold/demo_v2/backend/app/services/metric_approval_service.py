@@ -86,6 +86,13 @@ class MetricApprovalService:
             frequency=body.frequency,
             priority=body.priority or "O",
             justification=body.justification.strip(),
+            default_target=body.default_target,
+            default_lsl=body.default_lsl,
+            default_usl=body.default_usl,
+            measures_json=json.dumps(body.measures) if body.measures else None,
+            metrics_type=body.metrics_type,
+            project_type=body.project_type,
+            delivery_model=body.delivery_model,
             status="PENDING",
         )
         self._s.add(req)
@@ -132,6 +139,76 @@ class MetricApprovalService:
         rows = self._s.execute(stmt).scalars().all()
         return [self._to_response(r) for r in rows]
 
+    def add_to_catalog(self, user: User, request_id: uuid.UUID) -> MetricApprovalRequestResponse:
+        """DE explicitly adds an approved metric to the global QPM catalog."""
+        from app.core.constants import RoleCode
+        if user.role.code not in (RoleCode.DELIVERY_EXCELLENCE, RoleCode.PLATFORM_ADMIN):
+            raise HTTPException(status_code=403, detail="Delivery Excellence role required")
+
+        req = self._s.execute(
+            select(MetricApprovalRequest).options(selectinload(MetricApprovalRequest.requested_by))
+            .where(MetricApprovalRequest.id == request_id)
+        ).scalar_one_or_none()
+        if req is None:
+            raise HTTPException(status_code=404, detail="Request not found")
+        if req.status != "APPROVED":
+            raise HTTPException(status_code=400, detail="Only APPROVED requests can be added to the catalog")
+
+        from app.models.qpm_catalog_metric import QPMCatalogMetric
+        from app.services.qpm_service import register_metric_measures, _parse_formula_measures
+
+        existing = self._s.execute(
+            select(QPMCatalogMetric).where(QPMCatalogMetric.name == req.metric_name)
+        ).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"'{req.metric_name}' already exists in the catalog.")
+
+        catalog_metric = QPMCatalogMetric(
+            id=uuid.uuid4(),
+            category=req.metric_category or "Efficiency",
+            name=req.metric_name,
+            formula=req.formula,
+            uom=req.uom,
+            metrics_type=getattr(req, "metrics_type", None) or "Result",
+            intent=req.intent,
+            frequency=req.frequency,
+            compliance=req.priority or "O",
+            project_type=getattr(req, "project_type", None),
+            delivery_model=getattr(req, "delivery_model", None),
+            default_target=getattr(req, "default_target", None),
+            default_lsl=getattr(req, "default_lsl", None),
+            default_usl=getattr(req, "default_usl", None),
+            is_active=True,
+        )
+        self._s.add(catalog_metric)
+        self._s.flush()
+
+        # Register in compute map
+        measures_list = []
+        if getattr(req, "measures_json", None):
+            try:
+                measures_list = json.loads(req.measures_json)
+            except Exception:
+                pass
+        if not measures_list and req.formula:
+            nums, dens, _op, _hp = _parse_formula_measures(req.formula)
+            measures_list = list(dict.fromkeys(nums + dens))
+        if measures_list:
+            register_metric_measures(req.metric_name, measures_list, req.formula or "")
+
+        self._s.commit()
+        return self._to_response(req)
+        """DE sees all pending requests; PM sees their own."""
+        stmt = select(MetricApprovalRequest).options(
+            selectinload(MetricApprovalRequest.requested_by)
+        ).order_by(MetricApprovalRequest.created_at.desc())
+        if user.role.code == RoleCode.PM:
+            stmt = stmt.where(MetricApprovalRequest.requested_by_user_id == user.id)
+        elif user.role.code not in (RoleCode.DELIVERY_EXCELLENCE, RoleCode.PLATFORM_ADMIN):
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        rows = self._s.execute(stmt).scalars().all()
+        return [self._to_response(r) for r in rows]
+
     def decide(self, user: User, request_id: uuid.UUID, body: MetricApprovalDecision) -> MetricApprovalRequestResponse:
         if user.role.code not in (RoleCode.DELIVERY_EXCELLENCE, RoleCode.PLATFORM_ADMIN):
             raise HTTPException(status_code=403, detail="Delivery Excellence role required")
@@ -155,8 +232,17 @@ class MetricApprovalService:
         req.updated_at = now
 
         if body.action == "APPROVE":
-            # Add the metric to the KPI plan
-            required = get_required_measures(req.metric_name)
+            # Add metric to the KPI plan (NOT auto-adding to catalog — DE does that separately)
+            measures_for_plan = []
+            if getattr(req, "measures_json", None):
+                try:
+                    import json as _json2
+                    measures_for_plan = _json2.loads(req.measures_json)
+                except Exception:
+                    pass
+            if not measures_for_plan:
+                measures_for_plan = get_required_measures(req.metric_name)
+
             pm = KpiPlanMetric(
                 id=uuid.uuid4(),
                 kpi_plan_id=req.kpi_plan_id,
@@ -171,7 +257,7 @@ class MetricApprovalService:
                 is_custom=True,
                 reported_to_customer=False,
                 is_active=True,
-                required_measures=json.dumps(required),
+                required_measures=json.dumps(measures_for_plan),
             )
             self._s.add(pm)
 

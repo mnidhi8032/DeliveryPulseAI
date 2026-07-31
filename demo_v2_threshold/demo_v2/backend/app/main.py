@@ -11,9 +11,13 @@ from app.core.settings import settings
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Startup/shutdown hooks (e.g. pool dispose) — extend in later phases."""
+    """Startup/shutdown hooks."""
+    # Bootstrap catalog formula parsing so DE-created metrics have correct
+    # required_measures in the in-memory map from the moment the server starts.
+    from app.services.qpm_service import _bootstrap_catalog_formulas
+    from database.database import SessionLocal
+    _bootstrap_catalog_formulas(SessionLocal)
     yield
-    # Example when shutting down: from database.database import engine; engine.dispose()
 
 
 app = FastAPI(

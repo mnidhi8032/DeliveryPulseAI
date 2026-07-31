@@ -13,6 +13,13 @@ class MetricApprovalRequestCreate(BaseModel):
     intent: str | None = None
     frequency: str | None = None
     priority: str | None = None
+    metrics_type: str | None = None
+    project_type: str | None = None
+    delivery_model: str | None = None
+    default_target: float | None = None
+    default_lsl: float | None = None
+    default_usl: float | None = None
+    measures: list[str] | None = None  # measure parameter names
     justification: str  # mandatory reason from PM
 
 

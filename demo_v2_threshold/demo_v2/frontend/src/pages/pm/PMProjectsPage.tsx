@@ -37,8 +37,12 @@ export function PMProjectsPage() {
   const [addForm, setAddForm] = useState({
     catalog_metric_id: "",
     metric_name: "", metric_category: "", formula: "", uom: "",
-    intent: "Higher the better", frequency: "Monthly", priority: "O",
-    justification: "",  // required for custom metric requests
+    intent: "Higher the better", frequency: "Monthly",
+    priority: "O", metrics_type: "Result",
+    project_type: "", delivery_model: "",
+    target: "", lsl: "", usl: "",
+    measures_str: "",
+    justification: "",
   });
   const [form, setForm] = useState({
     account_id: "",
@@ -126,6 +130,7 @@ export function PMProjectsPage() {
         // Custom metric — submit approval request to DE
         if (!addForm.metric_name.trim()) { toast.error("Metric name is required"); setAddingMetric(false); return; }
         if (!addForm.justification.trim()) { toast.error("Justification is required for custom metrics"); setAddingMetric(false); return; }
+        const measuresArr = addForm.measures_str.split(",").map(s => s.trim()).filter(Boolean);
         const req = await submitMetricRequest({
           kpi_plan_id: planId,
           metric_name: addForm.metric_name,
@@ -134,14 +139,21 @@ export function PMProjectsPage() {
           uom: addForm.uom || undefined,
           intent: addForm.intent || undefined,
           frequency: addForm.frequency || undefined,
-          priority: addForm.priority || undefined,
+          priority: addForm.priority || "O",
+          metrics_type: addForm.metrics_type || undefined,
+          project_type: addForm.project_type || undefined,
+          delivery_model: addForm.delivery_model || undefined,
+          default_target: addForm.target ? parseFloat(addForm.target) : null,
+          default_lsl: addForm.lsl ? parseFloat(addForm.lsl) : null,
+          default_usl: addForm.usl ? parseFloat(addForm.usl) : null,
+          measures: measuresArr.length > 0 ? measuresArr : undefined,
           justification: addForm.justification,
         });
         setMyRequests(prev => [req, ...prev]);
         toast.success("Request submitted to Delivery Excellence for approval.");
       }
       setShowAddForm(false);
-      setAddForm({ catalog_metric_id: "", metric_name: "", metric_category: "", formula: "", uom: "", intent: "Higher the better", frequency: "Monthly", priority: "O", justification: "" });
+      setAddForm({ catalog_metric_id: "", metric_name: "", metric_category: "", formula: "", uom: "", intent: "Higher the better", frequency: "Monthly", priority: "O", metrics_type: "Result", project_type: "", delivery_model: "", target: "", lsl: "", usl: "", measures_str: "", justification: "" });
     } catch (e: any) {
       toast.error(e.response?.data?.detail || "Failed");
     } finally {
@@ -479,6 +491,11 @@ export function PMProjectsPage() {
                     </select>
                     <svg style={{ position: "absolute" as const, right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" as const, color: "var(--muted)" }} width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                   </div>
+                  {accounts.length === 0 && (
+                    <p style={{ fontSize: 11, color: "#d97706", margin: 0 }}>
+                      No accounts found. Ask a Platform Admin to create one under Settings → Org Setup.
+                    </p>
+                  )}
                 </div>
 
                 {/* Code + Name */}
@@ -649,48 +666,134 @@ export function PMProjectsPage() {
                           </select>
                         </div>
                       ) : (
-                        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
-                          <div style={{ borderRadius:10,border:"1.5px solid #fcd34d",background:"rgba(245,158,11,0.10)",padding:"10px 12px",fontSize:11,color:"#92400e",gridColumn:"1/-1" }}>
+                        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+                          <div style={{ borderRadius:10,border:"1.5px solid #fcd34d",background:"rgba(245,158,11,0.10)",padding:"10px 12px",fontSize:11,color:"#92400e" }}>
                             Custom metric requests require Delivery Excellence approval. You'll be notified once reviewed.
                           </div>
-                          <div style={{ gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Metric Name *</label>
-                            <input type="text" required value={addForm.metric_name} onChange={e => setAddForm(f => ({ ...f, metric_name: e.target.value }))} placeholder="E.g. Sprint Velocity"
+
+                          {/* Row 1: Category + Metric Name */}
+                          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Category *</label>
+                              <select value={addForm.metric_category} onChange={e => setAddForm(f => ({ ...f, metric_category: e.target.value }))}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                <option value="">Select…</option>
+                                {METRIC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </div>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Metric Name *</label>
+                              <input type="text" required value={addForm.metric_name} onChange={e => setAddForm(f => ({ ...f, metric_name: e.target.value }))} placeholder="E.g. Effort Variance"
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                            </div>
+                          </div>
+
+                          {/* Row 2: UOM + Intent */}
+                          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>UOM</label>
+                              <input type="text" value={addForm.uom} onChange={e => setAddForm(f => ({ ...f, uom: e.target.value }))} placeholder="E.g. %"
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                            </div>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Intent</label>
+                              <select value={addForm.intent} onChange={e => setAddForm(f => ({ ...f, intent: e.target.value }))}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                {["Higher the better","Lower the better","Nominal the best","Within Limits","Not Applicable"].map(i => <option key={i} value={i}>{i}</option>)}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Row 3: Compliance + Frequency */}
+                          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Compliance</label>
+                              <select value={addForm.priority} onChange={e => setAddForm(f => ({ ...f, priority: e.target.value }))}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                <option value="O">Optional</option>
+                                <option value="M">Mandatory</option>
+                                <option value="C">Conditional</option>
+                                <option value="R">Recommended</option>
+                              </select>
+                            </div>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Frequency</label>
+                              <select value={addForm.frequency} onChange={e => setAddForm(f => ({ ...f, frequency: e.target.value }))}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                {FREQUENCIES.map(fr => <option key={fr} value={fr}>{fr}</option>)}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Row 4: Default Target + Default LSL */}
+                          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Default Target</label>
+                              <input type="number" step="any" value={addForm.target} onChange={e => setAddForm(f => ({ ...f, target: e.target.value }))}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                            </div>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Default LSL</label>
+                              <input type="number" step="any" value={addForm.lsl} onChange={e => setAddForm(f => ({ ...f, lsl: e.target.value }))}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                            </div>
+                          </div>
+
+                          {/* Row 5: Default USL + Metrics Type */}
+                          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Default USL</label>
+                              <input type="number" step="any" value={addForm.usl} onChange={e => setAddForm(f => ({ ...f, usl: e.target.value }))}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                            </div>
+                            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                              <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Metrics Type</label>
+                              <select value={addForm.metrics_type} onChange={e => setAddForm(f => ({ ...f, metrics_type: e.target.value }))}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                {["Result","Enabler","Insight"].map(o => <option key={o}>{o}</option>)}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Formula */}
+                          <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Formula</label>
+                            <textarea value={addForm.formula} onChange={e => setAddForm(f => ({ ...f, formula: e.target.value }))}
+                              rows={2} placeholder="E.g. (Actual / Planned) * 100"
+                              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none" />
+                          </div>
+
+                          {/* Applicable Project Types */}
+                          <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Applicable Project Types <span style={{ fontWeight:400,color:"var(--muted)" }}>(comma-separated)</span></label>
+                            <input type="text" value={addForm.project_type} onChange={e => setAddForm(f => ({ ...f, project_type: e.target.value }))}
+                              placeholder="E.g. Fresh Development,Testing,Migration"
                               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
                           </div>
+
+                          {/* Applicable Delivery Models */}
                           <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Category</label>
-                            <select value={addForm.metric_category} onChange={e => setAddForm(f => ({ ...f, metric_category: e.target.value }))}
-                              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
-                              <option value="">Select…</option>
-                              {METRIC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                          </div>
-                          <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>UOM</label>
-                            <input type="text" value={addForm.uom} onChange={e => setAddForm(f => ({ ...f, uom: e.target.value }))} placeholder="E.g. %"
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Applicable Delivery Models <span style={{ fontWeight:400,color:"var(--muted)" }}>(comma-separated)</span></label>
+                            <input type="text" value={addForm.delivery_model} onChange={e => setAddForm(f => ({ ...f, delivery_model: e.target.value }))}
+                              placeholder="E.g. Agile-Scrum,Waterfall,Iterative"
                               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
                           </div>
+
+                          {/* Measure Parameters */}
                           <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Intent</label>
-                            <select value={addForm.intent} onChange={e => setAddForm(f => ({ ...f, intent: e.target.value }))}
-                              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
-                              {["Higher the better","Lower the better","Nominal the best","Within Limits"].map(i => <option key={i} value={i}>{i}</option>)}
-                            </select>
+                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Measure Parameters <span style={{ fontWeight:400,color:"var(--muted)" }}>(comma-separated, in formula order)</span></label>
+                            <input type="text" value={addForm.measures_str} onChange={e => setAddForm(f => ({ ...f, measures_str: e.target.value }))}
+                              placeholder="E.g. Total Size, Effort spent in Person-days"
+                              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
                           </div>
+
+                          {/* Justification — amber */}
                           <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                            <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Frequency</label>
-                            <select value={addForm.frequency} onChange={e => setAddForm(f => ({ ...f, frequency: e.target.value }))}
-                              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
-                              {FREQUENCIES.map(fr => <option key={fr} value={fr}>{fr}</option>)}
-                            </select>
-                          </div>
-                          <div style={{ gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:4 }}>
                             <label style={{ fontSize:12,fontWeight:600,color:"var(--text)" }}>Why is this metric needed? *</label>
                             <textarea required value={addForm.justification} onChange={e => setAddForm(f => ({ ...f, justification: e.target.value }))}
                               rows={3} placeholder="Explain why this custom metric is needed..."
-                              className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
-                            <p style={{ fontSize:10,color:"#d97706" }}>Will be sent to Delivery Excellence for approval.</p>
+                              className="rounded-lg border border-amber-300 bg-amber-50/40 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none" />
+                            <p style={{ fontSize:10,color:"#d97706",margin:0 }}>Will be sent to Delivery Excellence for approval.</p>
                           </div>
                         </div>
                       )}

@@ -1,7 +1,7 @@
 """Metric approval request — PM requests a custom metric, DE approves/rejects."""
 import uuid
 from datetime import datetime
-from sqlalchemy import ForeignKey, String, Text, DateTime
+from sqlalchemy import ForeignKey, String, Text, DateTime, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
@@ -39,6 +39,15 @@ class MetricApprovalRequest(Base, TimestampMixin):
 
     # PM's justification
     justification: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Optional threshold defaults and measure parameter names (JSON array)
+    default_target: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
+    default_lsl: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
+    default_usl: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
+    measures_json: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array of measure names
+    metrics_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    project_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delivery_model: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Workflow
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")  # PENDING | APPROVED | REJECTED

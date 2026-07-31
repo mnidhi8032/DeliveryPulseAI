@@ -96,7 +96,7 @@ export async function saveAndCompute(
     to_date?: string;
     measures: {
       measure_name: string;
-      actual_value: number | null;
+      actual_value: number | string | null;  // string for date values (YYYY-MM-DD)
       /** omit / null = shared default; non-null = per-metric override */
       plan_metric_id?: string | null;
     }[];

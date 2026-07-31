@@ -21,6 +21,7 @@ export async function createCatalogMetric(payload: {
   delivery_model?: string; project_category?: string; frequency?: string;
   compliance?: string; default_target?: number | null;
   default_lsl?: number | null; default_usl?: number | null;
+  measures?: string[]; // measure parameter names for computation engine
 }): Promise<QPMCatalogMetric> {
   const { data } = await apiClient.post<QPMCatalogMetric>("/qpm/catalog", payload);
   return data;
@@ -32,6 +33,7 @@ export async function updateCatalogMetric(metricId: string, payload: Partial<{
   delivery_model: string; project_category: string; frequency: string;
   compliance: string; default_target: number | null;
   default_lsl: number | null; default_usl: number | null; is_active: boolean;
+  measures: string[]; // update measure parameter names
 }>): Promise<QPMCatalogMetric> {
   const { data } = await apiClient.patch<QPMCatalogMetric>(`/qpm/catalog/${metricId}`, payload);
   return data;
@@ -61,6 +63,7 @@ export async function addPlanMetric(planId: string, payload: {
   target?: number | null; lsl?: number | null; usl?: number | null;
   is_custom?: boolean; tailoring_reason?: string; reported_to_customer?: boolean;
   rationale?: string; data_source?: string;
+  required_measures?: string | null; // JSON array string of measure names
 }): Promise<KpiPlanMetric> {
   const { data } = await apiClient.post<KpiPlanMetric>(`/qpm/plans/${planId}/metrics`, payload);
   return data;

@@ -31,6 +31,13 @@ export async function submitMetricRequest(payload: {
   intent?: string;
   frequency?: string;
   priority?: string;
+  metrics_type?: string;
+  project_type?: string;
+  delivery_model?: string;
+  default_target?: number | null;
+  default_lsl?: number | null;
+  default_usl?: number | null;
+  measures?: string[];
   justification: string;
 }): Promise<MetricApprovalRequest> {
   const { data } = await apiClient.post<MetricApprovalRequest>("/metric-approvals", payload);
@@ -39,6 +46,14 @@ export async function submitMetricRequest(payload: {
 
 export async function listMetricRequests(): Promise<MetricApprovalRequest[]> {
   const { data } = await apiClient.get<MetricApprovalRequest[]>("/metric-approvals");
+  return data;
+}
+
+export async function addRequestToCatalog(requestId: string): Promise<MetricApprovalRequest> {
+  const { data } = await apiClient.post<MetricApprovalRequest>(
+    `/metric-approvals/${requestId}/add-to-catalog`,
+    {},
+  );
   return data;
 }
 

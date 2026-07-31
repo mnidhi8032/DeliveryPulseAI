@@ -49,17 +49,335 @@ def _load_measure_map():
 _load_measure_map()
 
 
+def _bootstrap_catalog_formulas(session_factory) -> None:
+    """On startup: parse formulas from catalog metrics and register them in the
+    in-memory map so all metrics — including ones created before this fix —
+    have correct required_measures without a server restart.
+    Called once from app startup.
+    """
+    try:
+        with session_factory() as session:
+            rows = session.execute(
+                select(QPMCatalogMetric).where(QPMCatalogMetric.is_active == True)
+            ).scalars().all()
+            for m in rows:
+                # Skip if already in map from the JSON file
+                if m.name in _MEASURE_MAP:
+                    continue
+                formula = m.formula or ""
+                if formula:
+                    nums, dens, _op, _hp = _parse_formula_measures(formula)
+                    extracted = nums + dens
+                    if extracted and extracted != [m.name]:
+                        register_metric_measures(m.name, extracted, formula)
+    except Exception:
+        pass  # Non-critical — just means some metrics won't have formula-based measures pre-loaded
+
+
 def get_required_measures(metric_name: str) -> list[str]:
-    """Return ordered list of measure names required to compute a metric."""
+    """Return ordered list of measure names required to compute a metric.
+
+    Checks the in-memory map first. If not found, returns [metric_name] as fallback.
+    """
     rows = _MEASURE_MAP.get(metric_name, [])
-    # Direct metrics (D): single measure = KPI directly
-    # Computed metrics (C): multiple measures
+    if not rows:
+        return [metric_name]
+
+    # FORMULA-type entry — return the actual measure names stored in the entry
+    if rows[0].get("comp_type") == "FORMULA":
+        stored_measures = rows[0].get("measures", [])
+        if stored_measures:
+            return list(stored_measures)
+        return [metric_name]
+
     numerators = sorted([r for r in rows if r.get("n_seq")], key=lambda x: x["n_seq"])
     denominators = sorted([r for r in rows if r.get("d_seq") and not r.get("n_seq")], key=lambda x: x["d_seq"])
     all_measures = numerators + denominators
     if not all_measures:
         return [metric_name]  # fallback: single direct measure same name as metric
     return [r["measure"] for r in all_measures]
+
+
+def get_required_measures_for_plan_metric(plan_metric) -> list[str]:
+    """Return required measures for a KpiPlanMetric instance.
+
+    Priority order:
+    1. plan_metric.required_measures column (JSON array) — stored at add-time.
+       Skip if it equals [metric_name] (the old fallback — means it was never properly set).
+    2. measure_mapping.json / in-memory map lookup.
+    3. Parse the formula text to extract operand names.
+    4. Final fallback: [metric_name].
+    """
+    metric_name = plan_metric.metric_name
+
+    # 1. Stored required_measures — only use if it's NOT just the fallback [metric_name]
+    if plan_metric.required_measures:
+        try:
+            stored = json.loads(plan_metric.required_measures)
+            if isinstance(stored, list) and stored and stored != [metric_name]:
+                return stored
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # 2. In-memory map (measure_mapping.json + registered metrics)
+    from_map = get_required_measures(metric_name)
+    if from_map != [metric_name]:
+        return from_map
+
+    # 3. Parse the formula on this plan metric
+    formula = getattr(plan_metric, "formula", None) or ""
+    if formula:
+        nums, dens, _op, _hp = _parse_formula_measures(formula)
+        extracted = nums + dens
+        if extracted and extracted != [metric_name]:
+            # Register in map so subsequent calls are fast
+            register_metric_measures(metric_name, extracted, formula)
+            return extracted
+
+    # 4. Final fallback
+    return [metric_name]
+
+
+def _parse_formula_measures(formula: str) -> tuple[list[str], list[str], str, bool]:
+    """Parse a human-readable formula into (numerators, denominators, primary_op, has_pct).
+
+    has_pct = True when the formula ends with '* 100' — caller should multiply result.
+
+    Examples:
+      "Total Size / Effort"              → (["Total Size"], ["Effort"], "/", False)
+      "Actual Effort - Planned Effort"   → (["Actual Effort","Planned Effort"], [], "-", False)
+      "(A - B) / B * 100"                → (["A","B"], ["B"], "/", True)
+      "CSAT Score"                       → (["CSAT Score"], [], "D", False)
+    """
+    import re
+
+    if not formula or not formula.strip():
+        return [], [], "D", False
+
+    f = formula.strip()
+
+    # Detect and strip * 100 suffix
+    has_pct = bool(re.search(r'\*\s*100\s*$', f, flags=re.IGNORECASE))
+    f = re.sub(r'\*\s*100\s*$', '', f, flags=re.IGNORECASE).strip()
+
+    # Strip single outer parens group
+    f = re.sub(r'^\((.+)\)$', r'\1', f).strip()
+
+    def _split_spaced(expr: str) -> list[str]:
+        """Split on space-padded +/- preserving hyphenated words."""
+        expr = re.sub(r'^\((.+)\)$', r'\1', expr.strip()).strip()
+        expr = re.sub(r'\*\s*100\s*$', '', expr, flags=re.IGNORECASE).strip()
+        parts = re.split(r'\s+[+\-]\s+', expr)
+        return [p.strip() for p in parts if p.strip()]
+
+    # Find first top-level '/'
+    depth = 0
+    div_pos = -1
+    for i, ch in enumerate(f):
+        if ch == '(': depth += 1
+        elif ch == ')': depth -= 1
+        elif ch == '/' and depth == 0:
+            div_pos = i
+            break
+
+    if div_pos >= 0:
+        nums = _split_spaced(f[:div_pos])
+        dens = _split_spaced(f[div_pos + 1:])
+        return nums, dens, "/", has_pct
+    else:
+        parts = re.split(r'\s+([+\-])\s+', f)
+        operands = [parts[i].strip() for i in range(0, len(parts), 2) if parts[i].strip()]
+        ops = [parts[i] for i in range(1, len(parts), 2)]
+        primary_op = ops[0] if ops else "D"
+        return operands, [], primary_op, has_pct
+
+
+def register_metric_measures(metric_name: str, measures: list[str], formula: str | None = None) -> None:
+    """Register measure definitions for a new catalog / custom metric in the in-memory map.
+
+    If `measures` is provided explicitly, those names are used directly.
+    If `measures` is empty/None but a `formula` is given, the formula is parsed to extract
+    operand names and build the correct numerator/denominator structure.
+
+    This is called when:
+    - DE creates/updates a catalog metric
+    - PM adds a custom metric to a plan
+
+    After calling this, compute_kpi_value(metric_name, ...) will work correctly.
+    """
+    if not measures and formula:
+        nums, dens, op, has_pct = _parse_formula_measures(formula)
+        measures_from_formula = nums + dens
+        # Deduplicate while preserving order (a measure may appear in both num and den)
+        seen: set[str] = set()
+        measures_deduped = []
+        for m in measures_from_formula:
+            if m not in seen:
+                seen.add(m)
+                measures_deduped.append(m)
+        if measures_deduped:
+            measures = measures_deduped
+        else:
+            return  # cannot extract measures
+
+    if not measures:
+        return
+
+    # Parse formula to know which measures go in numerator vs denominator
+    nums_set: set[str] = set()
+    dens_set: set[str] = set()
+    has_pct = False
+    if formula:
+        parsed_nums, parsed_dens, _, has_pct = _parse_formula_measures(formula)
+        # Build case-insensitive lookup maps
+        measures_lower = {m.lower(): m for m in measures}
+        # Map parsed operand names to provided measure names (case-insensitive, partial match)
+        def _match_measure(operand: str) -> str | None:
+            op_lower = operand.lower().strip()
+            # Exact match first
+            if op_lower in measures_lower:
+                return measures_lower[op_lower]
+            # Substring match — operand is contained in measure name or vice versa
+            for ml, m in measures_lower.items():
+                if op_lower in ml or ml in op_lower:
+                    return m
+            return None
+
+        for op in parsed_nums:
+            m = _match_measure(op)
+            if m:
+                nums_set.add(m)
+        for op in parsed_dens:
+            m = _match_measure(op)
+            if m:
+                dens_set.add(m)
+
+    # Special case: if a measure appears in BOTH numerator and denominator expressions
+    # (e.g. "(A - B) / B * 100"), we store the formula string for direct evaluation
+    # because the n_seq/d_seq structure can't represent a measure in two roles.
+    if dens_set and nums_set:
+        shared = nums_set & dens_set
+        if shared and formula:
+            _, _, _op2, _hp2 = _parse_formula_measures(formula)
+            _MEASURE_MAP[metric_name] = [{
+                "metric": metric_name,
+                "measure": "__formula__",
+                "formula": formula,
+                "measures": list(measures),
+                "comp_type": "FORMULA",
+                "has_pct": _hp2,
+                "uom": "Number",
+                "n_seq": 1, "n_op": "+",
+                "d_seq": None, "d_op": "",
+                "count": len(measures),
+            }]
+            return
+
+    # Any measure not matched to denominator goes to numerator
+    entries = []
+    # Build map entries, preserving operators between numerator terms
+    # from the formula so A - B computes correctly.
+    def _ops_for_group(expr_part: str, matched_measures: list[str]) -> list[str]:
+        """Return the operator AFTER each measure in the expression (look-ahead convention).
+        Last measure gets '+'. Operators come from the formula; fallback '+' if not parsed.
+        """
+        import re
+        tokens = re.split(r'\s+([+\-])\s+', expr_part.strip())
+        ops_in_expr = [tokens[i] for i in range(1, len(tokens), 2)]
+        # Extend to same length as matched_measures; last op is always '+'
+        result = []
+        for idx in range(len(matched_measures)):
+            if idx < len(ops_in_expr):
+                result.append(ops_in_expr[idx])
+            else:
+                result.append("+")
+        return result
+
+    import re as _re
+    # Reconstruct numerator / denominator expressions from formula for operator extraction
+    _f2 = _re.sub(r'\*\s*100\s*$', '', (formula or "").strip(), flags=_re.IGNORECASE).strip()
+    _f2 = _re.sub(r'^\((.+)\)$', r'\1', _f2).strip()
+    _div_pos = -1
+    _depth = 0
+    for _i, _ch in enumerate(_f2):
+        if _ch == '(': _depth += 1
+        elif _ch == ')': _depth -= 1
+        elif _ch == '/' and _depth == 0:
+            _div_pos = _i
+            break
+    num_expr_raw = _f2[:_div_pos].strip() if _div_pos >= 0 else _f2
+    den_expr_raw = _f2[_div_pos+1:].strip() if _div_pos >= 0 else ""
+
+    # Get ordered numerator and denominator measure names
+    num_measures = [m for m in measures if m not in dens_set]
+    den_measures = [m for m in measures if m in dens_set]
+
+    num_ops = _ops_for_group(num_expr_raw, num_measures)
+    den_ops = _ops_for_group(den_expr_raw, den_measures)
+
+    entries = []
+    for idx, measure_name in enumerate(num_measures):
+        entries.append({
+            "metric": metric_name,
+            "measure": measure_name,
+            "uom": "Number",
+            "n_seq": idx + 1,
+            "n_op": num_ops[idx] if idx < len(num_ops) else "+",
+            "d_seq": None,
+            "d_op": "",
+            "count": len(measures),
+            "comp_type": "C" if len(measures) > 1 else "D",
+            "has_pct": has_pct,
+        })
+    for idx, measure_name in enumerate(den_measures):
+        entries.append({
+            "metric": metric_name,
+            "measure": measure_name,
+            "uom": "Number",
+            "n_seq": None,
+            "n_op": "",
+            "d_seq": idx + 1,
+            "d_op": den_ops[idx] if idx < len(den_ops) else "+",
+            "count": len(measures),
+            "comp_type": "C",
+            "has_pct": has_pct,
+        })
+
+    if entries:
+        _MEASURE_MAP[metric_name] = entries
+
+
+def _coerce_numeric(value) -> float | None:
+    """Convert a measure value to float.
+    
+    Handles:
+    - Plain numbers (int / float / Decimal)
+    - ISO date strings "YYYY-MM-DD" → days since 1970-01-01 epoch (enables date subtraction)
+    - Returns None for empty / None values.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    s = str(value).strip()
+    if not s:
+        return None
+    # Try plain number first
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    # Try ISO date — convert to epoch-days so arithmetic like
+    # (Actual End Date - Planned Start Date) yields a day count.
+    from datetime import date as _date
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"):
+        try:
+            d = _date.fromisoformat(s) if fmt == "%Y-%m-%d" else _date(*[int(x) for x in s.split("/" if "/" in s else "-")][::-1])
+            epoch = _date(1970, 1, 1)
+            return float((d - epoch).days)
+        except Exception:
+            continue
+    return None
 
 
 def compute_kpi_value(metric_name: str, measure_values: dict[str, float], uom: str | None = None) -> float | None:
@@ -73,77 +391,138 @@ def compute_kpi_value(metric_name: str, measure_values: dict[str, float], uom: s
     rows = _MEASURE_MAP.get(metric_name, [])
     if not rows:
         # Direct: single measure same name
-        return measure_values.get(metric_name)
+        return _coerce_numeric(measure_values.get(metric_name))
 
     comp_type = rows[0].get("comp_type", "D")
+
+    if comp_type == "FORMULA":
+        # Direct formula evaluation — used when a measure appears in both num and den
+        # (e.g. "(A - B) / B * 100"). Evaluate by substituting values into the formula.
+        formula_str = rows[0].get("formula", "")
+        formula_measures = rows[0].get("measures", [])
+        has_pct_f = bool(rows[0].get("has_pct", False))
+
+        # Parse the formula into num/den expressions and evaluate each
+        nums_expr_list, dens_expr_list, _, _ = _parse_formula_measures(formula_str)
+
+        def _eval_expr(operand_names: list[str], expr_str: str) -> float | None:
+            import re
+            # Get operators between operands (space-padded)
+            tokens = re.split(r'\s+([+\-])\s+', expr_str.strip())
+            operands_raw = [tokens[i].strip() for i in range(0, len(tokens), 2) if tokens[i].strip()]
+            ops_list = [tokens[i] for i in range(1, len(tokens), 2)]
+            result: float | None = None
+            for idx, op_name in enumerate(operands_raw):
+                # Find the measure value for this operand name
+                v: float | None = None
+                for m in formula_measures:
+                    if m.lower() == op_name.lower() or op_name.lower() in m.lower() or m.lower() in op_name.lower():
+                        v = _coerce_numeric(measure_values.get(m))
+                        if v is not None:
+                            break
+                if v is None:
+                    continue
+                if result is None:
+                    result = v
+                else:
+                    op = ops_list[idx - 1] if idx - 1 < len(ops_list) else "+"
+                    if op == "-":
+                        result -= v
+                    elif op == "*":
+                        result *= v
+                    else:
+                        result += v
+            return result
+
+        # Build cleaned expressions (strip outer parens, * 100)
+        import re as _re2
+        f2 = _re2.sub(r'\*\s*100\s*$', '', formula_str.strip(), flags=_re2.IGNORECASE).strip()
+        f2 = _re2.sub(r'^\((.+)\)$', r'\1', f2).strip()
+        div_pos2 = -1
+        depth2 = 0
+        for i2, ch2 in enumerate(f2):
+            if ch2 == '(': depth2 += 1
+            elif ch2 == ')': depth2 -= 1
+            elif ch2 == '/' and depth2 == 0:
+                div_pos2 = i2
+                break
+
+        if div_pos2 >= 0:
+            num_expr_s = f2[:div_pos2].strip()
+            den_expr_s = f2[div_pos2+1:].strip()
+            num_val_f = _eval_expr(nums_expr_list, num_expr_s)
+            den_val_f = _eval_expr(dens_expr_list, den_expr_s)
+            if num_val_f is None or not den_val_f:
+                return None
+            result_f = num_val_f / den_val_f
+        else:
+            result_f = _eval_expr(list(measure_values.keys()), f2)
+            if result_f is None:
+                return None
+
+        if has_pct_f or (uom or "").strip() == "%":
+            result_f *= 100
+        return result_f
 
     if comp_type == "D":
         # Direct — first measure IS the value
         measure = rows[0]["measure"]
-        return measure_values.get(measure)
+        return _coerce_numeric(measure_values.get(measure))
 
     # Computed (C): build numerator and denominator from measure inputs.
-    # Only multiply by 100 for percentage metrics (UOM == "%").
-    numerators  = sorted([r for r in rows if r.get("n_seq")],                              key=lambda x: x["n_seq"])
-    denominators = sorted([r for r in rows if r.get("d_seq")],                             key=lambda x: x["d_seq"])
+    # has_pct=True means formula had "* 100" — multiply result by 100.
+    has_pct = bool(rows[0].get("has_pct", False))
+    numerators  = sorted([r for r in rows if r.get("n_seq")], key=lambda x: x["n_seq"])
+    denominators = sorted([r for r in rows if r.get("d_seq")], key=lambda x: x["d_seq"])
 
     if not numerators:
         return None
 
-    # Build numerator.
-    # CONVENTION: n_op on row N is the operator used to combine row N+1 into the total
-    # (look-ahead). So when processing row i, apply the n_op from row i-1.
+    # Build numerator — apply the look-ahead n_op operator.
+    # n_op on row[i] means "apply this op when adding row[i+1]".
     num_val: float | None = None
-    prev_n_op: str = "+"
-    for r in numerators:
-        v = measure_values.get(r["measure"])
+    for idx, r in enumerate(numerators):
+        v = _coerce_numeric(measure_values.get(r["measure"]))
         if v is None:
             continue
         if num_val is None:
-            num_val = v              # first item — just set, no operator
+            num_val = v
         else:
-            op = (prev_n_op or "+").strip() or "+"
+            # The operator that brought this value in was stored on the PREVIOUS row
+            op = (numerators[idx - 1].get("n_op") or "+").strip() or "+"
             if op == "+":
                 num_val += v
             elif op == "-":
                 num_val -= v
             elif op == "*":
                 num_val *= v
-        # save this row's n_op for the next iteration
-        prev_n_op = (r.get("n_op") or "+").strip() or "+"
 
     if num_val is None:
         return None
 
     if not denominators:
-        return num_val
+        result = num_val
+    else:
+        denom_val: float | None = None
+        for idx, r in enumerate(denominators):
+            v = _coerce_numeric(measure_values.get(r["measure"]))
+            if v is None:
+                continue
+            if denom_val is None:
+                denom_val = v
+            else:
+                op = (denominators[idx - 1].get("d_op") or "+").strip() or "+"
+                if op == "+":
+                    denom_val += v
+                elif op == "-":
+                    denom_val -= v
 
-    # Build denominator.
-    # Same look-ahead convention: d_op on row N is the operator for row N+1.
-    denom_val: float | None = None
-    prev_d_op: str = "+"
-    for r in denominators:
-        v = measure_values.get(r["measure"])
-        if v is None:
-            continue
-        if denom_val is None:
-            denom_val = v
-        else:
-            op = (prev_d_op or "+").strip() or "+"
-            if op == "+":
-                denom_val += v
-            elif op == "-":
-                denom_val -= v
-        prev_d_op = (r.get("d_op") or "+").strip() or "+"
+        if not denom_val:
+            return None
+        result = num_val / denom_val
 
-    if not denom_val:
-        return None
-
-    result = num_val / denom_val
-
-    # Only scale to percentage when UOM is explicitly "%"
-    # Ratio/delivery-rate metrics (Person-hours/Size Unit, Number, etc.) stay as plain ratio
-    is_percent = (uom or "").strip() == "%"
+    # Apply * 100 scaling — from formula "* 100" flag OR from UOM="%"
+    is_percent = has_pct or (uom or "").strip() == "%"
     if is_percent:
         result = result * 100
 
@@ -254,17 +633,49 @@ class QPMService:
         self._s.add(metric)
         self._s.commit()
         self._s.refresh(metric)
+
+        # Register measure definitions in the in-memory compute map
+        measures = getattr(body, "measures", None) or []
+        formula = body.formula or ""
+        if measures or formula:
+            register_metric_measures(body.name, measures, formula)
+
         return QPMCatalogMetricResponse.model_validate(metric)
 
     def update_catalog_metric(self, user, metric_id: uuid.UUID, body) -> QPMCatalogMetricResponse:
         metric = self._s.get(QPMCatalogMetric, metric_id)
         if metric is None:
             raise HTTPException(status_code=404, detail="Catalog metric not found")
-        for field, val in body.model_dump(exclude_unset=True).items():
+        update_data = body.model_dump(exclude_unset=True)
+        # Extract measures before applying to ORM (not a DB column)
+        measures = update_data.pop("measures", None)
+        for field, val in update_data.items():
             setattr(metric, field, val)
         metric.updated_at = datetime.now(timezone.utc)
         self._s.commit()
         self._s.refresh(metric)
+
+        # Re-register updated measure definitions in compute map
+        formula = metric.formula or ""
+        effective_measures = measures if measures is not None else []
+        if effective_measures or formula:
+            register_metric_measures(metric.name, effective_measures, formula)
+
+        # Backfill existing KpiPlanMetric rows that use this catalog metric
+        # so their required_measures column is updated immediately
+        if effective_measures or formula:
+            new_required = get_required_measures(metric.name)
+            if new_required and new_required != [metric.name]:
+                plan_metrics = self._s.execute(
+                    select(KpiPlanMetric).where(
+                        KpiPlanMetric.catalog_metric_id == metric_id
+                    )
+                ).scalars().all()
+                for pm in plan_metrics:
+                    pm.required_measures = json.dumps(new_required)
+                if plan_metrics:
+                    self._s.commit()
+
         return QPMCatalogMetricResponse.model_validate(metric)
 
     # ── KPI Plan ──────────────────────────────────────────────────────────────
@@ -379,9 +790,34 @@ class QPMService:
         catalog = None
         if body.catalog_metric_id:
             catalog = self._s.get(QPMCatalogMetric, body.catalog_metric_id)
-        # Get required measures for this metric
         mname = body.metric_name or (catalog.name if catalog else "")
-        required = get_required_measures(mname)
+        effective_formula = body.formula or (catalog.formula if catalog else None) or ""
+
+        # Determine required_measures:
+        # 1. Explicitly provided in body — highest priority
+        # 2. In-memory map (measure_mapping.json)
+        # 3. Parse the formula text
+        # 4. Fallback: [mname]
+        if body.required_measures:
+            try:
+                provided = json.loads(body.required_measures) if isinstance(body.required_measures, str) else body.required_measures
+                if isinstance(provided, list) and provided:
+                    required = provided
+                    register_metric_measures(mname, required, effective_formula)
+                else:
+                    required = get_required_measures(mname)
+            except Exception:
+                required = get_required_measures(mname)
+        else:
+            required = get_required_measures(mname)
+            # If still just fallback, try parsing formula
+            if required == [mname] and effective_formula:
+                nums, dens, _op, _hp = _parse_formula_measures(effective_formula)
+                extracted = nums + dens
+                if extracted and extracted != [mname]:
+                    register_metric_measures(mname, extracted, effective_formula)
+                    required = extracted
+
         pm = KpiPlanMetric(
             id=uuid.uuid4(),
             kpi_plan_id=plan_id,
@@ -834,3 +1270,4 @@ class QPMService:
         self._s.commit()
         self._s.refresh(row)
         return KpiDocVersionHistoryResponse.model_validate(row)
+

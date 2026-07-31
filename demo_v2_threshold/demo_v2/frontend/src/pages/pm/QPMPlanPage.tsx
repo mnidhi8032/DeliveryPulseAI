@@ -11,6 +11,8 @@ import {
   getCatalog, getKpiPlan, updateKpiPlanConfig,
   addPlanMetric, removePlanMetric,
 } from "../../services/qpmService";
+import { submitMetricRequest, listMetricRequests } from "../../services/metricApprovalService";
+import type { MetricApprovalRequest } from "../../services/metricApprovalService";
 import type { Project } from "../../types/project";
 import type { KpiPlan, KpiPlanMetric, QPMCatalogMetric } from "../../types/qpm";
 import {
@@ -53,7 +55,24 @@ export function QPMPlanPage() {
     metric_name: "", metric_category: "", formula: "", uom: "",
     intent: "Higher the better", frequency: "Monthly", priority: "O",
     target: "", lsl: "", usl: "", tailoring_reason: "", data_source: "",
+    measures_str: "", // comma-separated measure parameter names for calculation
   });
+
+  // Custom metric request modal (DE approval workflow)
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestTab, setRequestTab] = useState<"catalog" | "custom">("catalog");
+  const [requestForm, setRequestForm] = useState({
+    metric_name: "", metric_category: "", formula: "", uom: "",
+    intent: "Higher the better", frequency: "Monthly",
+    priority: "O", metrics_type: "Result",
+    project_type: "", delivery_model: "",
+    target: "", lsl: "", usl: "",
+    measures_str: "",
+    justification: "",
+  });
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [myRequests, setMyRequests] = useState<MetricApprovalRequest[]>([]);
+  const [requestsLoaded, setRequestsLoaded] = useState(false);
 
   useEffect(() => {
     if (!projectId) return;
@@ -198,6 +217,11 @@ export function QPMPlanPage() {
 
   const handleAddCustom = async () => {
     if (!plan || !customForm.metric_name) return;
+    // Parse measure parameter names from the comma-separated string
+    const measuresArr = customForm.measures_str
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
     try {
       const pm = await addPlanMetric(plan.id, {
         metric_name: customForm.metric_name,
@@ -213,13 +237,62 @@ export function QPMPlanPage() {
         is_custom: true,
         tailoring_reason: customForm.tailoring_reason,
         data_source: customForm.data_source,
+        // Pass measures so backend stores them in required_measures column
+        required_measures: measuresArr.length > 0 ? JSON.stringify(measuresArr) : undefined,
       });
       setPlan((prev) => prev ? { ...prev, metrics: [...prev.metrics, pm] } : prev);
-      setCustomForm({ metric_name: "", metric_category: "", formula: "", uom: "", intent: "Higher the better", frequency: "Monthly", priority: "O", target: "", lsl: "", usl: "", tailoring_reason: "", data_source: "" });
+      setCustomForm({ metric_name: "", metric_category: "", formula: "", uom: "", intent: "Higher the better", frequency: "Monthly", priority: "O", target: "", lsl: "", usl: "", tailoring_reason: "", data_source: "", measures_str: "" });
       setCatTab("selected");
       toast.success("Custom metric added");
     } catch (e: any) {
       toast.error(e.response?.data?.detail || "Failed to add custom metric");
+    }
+  };
+
+  // Open request modal and load PM's existing requests
+  const openRequestModal = async () => {
+    setRequestModalOpen(true);
+    setRequestTab("catalog");
+    if (!requestsLoaded) {
+      try {
+        const reqs = await listMetricRequests();
+        setMyRequests(reqs.filter(r => plan ? r.kpi_plan_id === plan.id : true));
+        setRequestsLoaded(true);
+      } catch { /* non-critical */ }
+    }
+  };
+
+  const handleSendToDE = async () => {
+    if (!plan || !requestForm.metric_name || !requestForm.justification) return;
+    setSubmittingRequest(true);
+    const measuresArr = requestForm.measures_str.split(",").map(s => s.trim()).filter(Boolean);
+    try {
+      const req = await submitMetricRequest({
+        kpi_plan_id: plan.id,
+        metric_name: requestForm.metric_name,
+        metric_category: requestForm.metric_category || undefined,
+        formula: requestForm.formula || undefined,
+        uom: requestForm.uom || undefined,
+        intent: requestForm.intent,
+        frequency: requestForm.frequency,
+        priority: requestForm.priority || "O",
+        metrics_type: requestForm.metrics_type || undefined,
+        project_type: requestForm.project_type || undefined,
+        delivery_model: requestForm.delivery_model || undefined,
+        default_target: requestForm.target ? parseFloat(requestForm.target) : null,
+        default_lsl: requestForm.lsl ? parseFloat(requestForm.lsl) : null,
+        default_usl: requestForm.usl ? parseFloat(requestForm.usl) : null,
+        measures: measuresArr.length > 0 ? measuresArr : undefined,
+        justification: requestForm.justification,
+      });
+      setMyRequests(prev => [req, ...prev]);
+      setRequestForm({ metric_name: "", metric_category: "", formula: "", uom: "", intent: "Higher the better", frequency: "Monthly", priority: "O", metrics_type: "Result", project_type: "", delivery_model: "", target: "", lsl: "", usl: "", measures_str: "", justification: "" });
+      setRequestTab("catalog");
+      toast.success(`Request sent to Delivery Excellence for "${req.metric_name}"`);
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || "Failed to send request");
+    } finally {
+      setSubmittingRequest(false);
     }
   };
 
@@ -312,7 +385,7 @@ export function QPMPlanPage() {
         {[
           { id: "catalog", label: `Metric Catalog (${catalog.length})` },
           { id: "selected", label: `Selected Metrics (${plan?.metrics.length || 0})` },
-          { id: "custom", label: "Add Custom Metric" },
+          { id: "custom", label: "Request Custom Metric" },
         ].map((t) => (
           <button key={t.id} onClick={() => setCatTab(t.id as any)}
             className={`flex-1 rounded-md py-2 text-xs font-bold transition-all ${catTab === t.id ? "bg-white text-slate-900 shadow border border-slate-200" : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/50"}`}>
@@ -472,62 +545,241 @@ export function QPMPlanPage() {
         </div>
       )}
 
-      {/* Custom Metric Tab */}
+      {/* Request Custom Metric Tab */}
       {catTab === "custom" && (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">Add Custom / Tailored Metric</h2>
-          <p className="text-xs text-slate-500">Use this for client-mandated metrics, formula changes, or metrics not in the standard catalog.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { label: "Metric Name *", key: "metric_name", type: "text", placeholder: "E.g. Sprint Velocity" },
-              { label: "Category", key: "metric_category", type: "select", options: METRIC_CATEGORIES },
-              { label: "UOM", key: "uom", type: "text", placeholder: "E.g. %" },
-              { label: "Intent", key: "intent", type: "select", options: ["Higher the better","Lower the better","Nominal the best","Within Limits","Not Applicable"] },
-              { label: "Frequency", key: "frequency", type: "select", options: FREQUENCIES },
-              { label: "Priority", key: "priority", type: "select", options: [["M","Mandatory"],["O","Optional"],["C","Conditional"],["R","Recommended"]] },
-              { label: "Target", key: "target", type: "number", placeholder: "E.g. 95" },
-              { label: "LSL (Lower Spec Limit)", key: "lsl", type: "number", placeholder: "E.g. 80" },
-              { label: "USL (Upper Spec Limit)", key: "usl", type: "number", placeholder: "E.g. 110" },
-              { label: "Data Source", key: "data_source", type: "text", placeholder: "E.g. JIRA, Time Tracking System" },
-            ].map(({ label, key, type, placeholder, options }) => (
-              <div key={key} className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-700">{label}</label>
-                {type === "select" ? (
-                  <select value={(customForm as any)[key]} onChange={(e) => setCustomForm((p) => ({ ...p, [key]: e.target.value }))}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+
+          {/* Info banner */}
+          <div className="flex items-start gap-3 px-6 py-4 bg-amber-50 border-b border-amber-200">
+            <svg className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-xs text-amber-800">
+              Custom metric requests require <strong>Delivery Excellence</strong> approval. Once approved, the metric is added to your KPI plan and the global catalog. You'll be notified when reviewed.
+            </p>
+          </div>
+
+          {/* Sub-tabs: Request form / My requests */}
+          <div className="flex border-b border-slate-200 bg-slate-50">
+            <button type="button"
+              onClick={() => setRequestsLoaded(false)}
+              className={`px-5 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${!requestsLoaded ? "border-indigo-500 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+              Request New Metric
+            </button>
+            <button type="button"
+              onClick={() => { setRequestsLoaded(true); if (myRequests.length === 0) listMetricRequests().then(rs => { setMyRequests(rs.filter(r => r.kpi_plan_id === plan?.id)); }).catch(() => {}); }}
+              className={`px-5 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${requestsLoaded ? "border-indigo-500 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+              My Requests ({myRequests.length})
+            </button>
+          </div>
+
+          {/* ── Request form ── */}
+          {!requestsLoaded && (
+            <div className="p-6 space-y-4">
+              {/* Row 1: Category + Metric Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Category <span className="text-rose-500">*</span></label>
+                  <select value={requestForm.metric_category}
+                    onChange={e => setRequestForm(p => ({ ...p, metric_category: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
                     <option value="">Select…</option>
-                    {(options as any[]).map((o) => Array.isArray(o)
-                      ? <option key={o[0]} value={o[0]}>{o[1]}</option>
-                      : <option key={o} value={o}>{o}</option>
-                    )}
+                    {METRIC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                ) : (
-                  <input type={type} placeholder={placeholder} value={(customForm as any)[key]}
-                    onChange={(e) => setCustomForm((p) => ({ ...p, [key]: e.target.value }))}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400" />
-                )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Metric Name <span className="text-rose-500">*</span></label>
+                  <input type="text" placeholder="E.g. Effort Variance"
+                    value={requestForm.metric_name}
+                    onChange={e => setRequestForm(p => ({ ...p, metric_name: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                </div>
               </div>
-            ))}
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-slate-700">Formula / Operational Definition</label>
-            <textarea value={customForm.formula} onChange={(e) => setCustomForm((p) => ({ ...p, formula: e.target.value }))}
-              placeholder="Describe how the metric is calculated…"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400 h-20" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-slate-700">Reason for Tailoring</label>
-            <input type="text" value={customForm.tailoring_reason}
-              onChange={(e) => setCustomForm((p) => ({ ...p, tailoring_reason: e.target.value }))}
-              placeholder="E.g. Client Mandate, Formula change…"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400" />
-          </div>
-          <button onClick={handleAddCustom} disabled={!customForm.metric_name || !!plan?.is_finalized}
-            className="rounded-lg bg-slate-900 px-5 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50 cursor-pointer">
-            Add Custom Metric to Plan
-          </button>
+
+              {/* Row 2: UOM + Intent */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">UOM</label>
+                  <input type="text" placeholder="E.g. %" value={requestForm.uom}
+                    onChange={e => setRequestForm(p => ({ ...p, uom: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Intent</label>
+                  <select value={requestForm.intent}
+                    onChange={e => setRequestForm(p => ({ ...p, intent: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                    {["Higher the better","Lower the better","Nominal the best","Within Limits","Not Applicable"].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Compliance + Frequency */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Compliance</label>
+                  <select value={requestForm.priority}
+                    onChange={e => setRequestForm(p => ({ ...p, priority: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                    <option value="O">Optional</option>
+                    <option value="M">Mandatory</option>
+                    <option value="C">Conditional</option>
+                    <option value="R">Recommended</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Frequency</label>
+                  <select value={requestForm.frequency}
+                    onChange={e => setRequestForm(p => ({ ...p, frequency: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                    {FREQUENCIES.map(f => <option key={f}>{f}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 4: Default Target + Default LSL */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Default Target</label>
+                  <input type="number" step="any" placeholder=""
+                    value={requestForm.target}
+                    onChange={e => setRequestForm(p => ({ ...p, target: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Default LSL</label>
+                  <input type="number" step="any" placeholder=""
+                    value={requestForm.lsl}
+                    onChange={e => setRequestForm(p => ({ ...p, lsl: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                </div>
+              </div>
+
+              {/* Row 5: Default USL + Metrics Type */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Default USL</label>
+                  <input type="number" step="any" placeholder=""
+                    value={requestForm.usl}
+                    onChange={e => setRequestForm(p => ({ ...p, usl: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Metrics Type</label>
+                  <select value={requestForm.metrics_type}
+                    onChange={e => setRequestForm(p => ({ ...p, metrics_type: e.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                    {["Result","Enabler","Insight"].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Formula */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Formula</label>
+                <textarea value={requestForm.formula} rows={2}
+                  onChange={e => setRequestForm(p => ({ ...p, formula: e.target.value }))}
+                  placeholder="E.g. (Actual / Planned) * 100"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none" />
+              </div>
+
+              {/* Applicable Project Types */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Applicable Project Types <span className="font-normal text-slate-400">(comma-separated)</span></label>
+                <input type="text" value={requestForm.project_type}
+                  onChange={e => setRequestForm(p => ({ ...p, project_type: e.target.value }))}
+                  placeholder="E.g. Fresh Development,Testing,Migration"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+              </div>
+
+              {/* Applicable Delivery Models */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Applicable Delivery Models <span className="font-normal text-slate-400">(comma-separated)</span></label>
+                <input type="text" value={requestForm.delivery_model}
+                  onChange={e => setRequestForm(p => ({ ...p, delivery_model: e.target.value }))}
+                  placeholder="E.g. Agile-Scrum,Waterfall,Iterative"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+              </div>
+
+              {/* Measure Parameters */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">
+                  Measure Parameters <span className="font-normal text-slate-400">(comma-separated, in formula order)</span>
+                </label>
+                <input type="text" value={requestForm.measures_str}
+                  onChange={e => setRequestForm(p => ({ ...p, measures_str: e.target.value }))}
+                  placeholder="E.g. Total Size, Effort spent in Person-days"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                <p className="text-[11px] text-slate-400">These become the labeled input fields on Sheet 2 and are used by the calculation engine.</p>
+              </div>
+
+              {/* Justification — amber, matches screenshot */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Why is this metric needed? <span className="text-rose-500">*</span></label>
+                <textarea value={requestForm.justification} rows={4}
+                  onChange={e => setRequestForm(p => ({ ...p, justification: e.target.value }))}
+                  placeholder="Explain why this custom metric is needed…"
+                  className="rounded-lg border border-amber-300 bg-amber-50/40 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none" />
+                <p className="text-[11px] text-amber-600">Will be sent to Delivery Excellence for approval.</p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                <button type="button" onClick={() => setCatTab("catalog")}
+                  className="rounded-lg border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                  Cancel
+                </button>
+                <button type="button"
+                  onClick={handleSendToDE}
+                  disabled={submittingRequest || !requestForm.metric_name || !requestForm.justification || !!plan?.is_finalized}
+                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-6 py-2 text-xs font-bold text-white disabled:opacity-50 cursor-pointer shadow-sm">
+                  {submittingRequest ? "Sending…" : "Send to DE"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── My Requests list ── */}
+          {requestsLoaded && (
+            <div className="divide-y divide-slate-100">
+              {myRequests.length === 0 ? (
+                <div className="px-6 py-10 text-center text-slate-400 text-sm">No requests yet.</div>
+              ) : myRequests.map(r => (
+                <div key={r.id} className="px-6 py-4 flex flex-wrap items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-slate-800">{r.metric_name}</p>
+                      {r.metric_category && (
+                        <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 rounded px-1.5 py-0.5 font-semibold">{r.metric_category}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{r.justification}</p>
+                    {r.review_comments && (
+                      <p className="text-xs text-slate-500 mt-1 italic border-l-2 border-slate-300 pl-2">"{r.review_comments}"</p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
+                      r.status === "APPROVED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                      r.status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                      "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                      {r.status}
+                    </span>
+                    <span className="text-[10px] text-slate-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+              <div className="px-6 py-3 bg-slate-50">
+                <button type="button" onClick={() => setRequestsLoaded(false)}
+                  className="text-xs text-indigo-600 hover:underline cursor-pointer">
+                  ← Request a new metric
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
