@@ -29,7 +29,35 @@ from app.schemas.period_measures import (
     PeriodSaveResponse,
 )
 from app.services.access_control_service import AccessControlService
-from app.services.qpm_service import get_required_measures, compute_kpi_value
+from app.services.qpm_service import get_required_measures, get_required_measures_for_plan_metric, compute_kpi_value, register_metric_measures, _parse_formula_measures, _MEASURE_MAP
+
+
+def _register_from_plan_metric(pm) -> None:
+    """Register a KpiPlanMetric's formula/measures in the in-memory compute map.
+
+    Called at computation time for custom/approved metrics that weren't loaded
+    from measure_mapping.json at startup.
+    """
+    import json as _json
+    measures = []
+    if pm.required_measures:
+        try:
+            stored = _json.loads(pm.required_measures)
+            if isinstance(stored, list) and stored and stored != [pm.metric_name]:
+                measures = stored
+        except Exception:
+            pass
+    formula = pm.formula or ""
+    if not measures and formula:
+        try:
+            nums, dens, _op, _hp = _parse_formula_measures(formula)
+            extracted = list(dict.fromkeys(nums + dens))
+            if extracted and extracted != [pm.metric_name]:
+                measures = extracted
+        except Exception:
+            pass
+    if measures:
+        register_metric_measures(pm.metric_name, measures, formula)
 
 
 class PeriodMeasuresService:
@@ -79,7 +107,22 @@ class PeriodMeasuresService:
         measure_to_metrics: dict[str, list[str]] = {}
         metric_info_list: list[dict] = []
         for m in active_metrics:
-            required = get_required_measures(m.metric_name)
+            required = get_required_measures_for_plan_metric(m)
+
+            # Auto-register custom metrics in the compute map so computation works
+            if m.metric_name not in _MEASURE_MAP and required != [m.metric_name]:
+                _register_from_plan_metric(m)
+
+            # If the stored required_measures was just the metric name fallback,
+            # persist the freshly resolved list back to DB so future calls are correct
+            try:
+                stored = json.loads(m.required_measures) if m.required_measures else []
+            except Exception:
+                stored = []
+            if stored == [m.metric_name] and required != [m.metric_name]:
+                m.required_measures = json.dumps(required)
+                # flush without commit — will be committed by the caller or next save
+
             for measure in required:
                 if measure not in measure_to_metrics:
                     measure_to_metrics[measure] = []
@@ -93,9 +136,9 @@ class PeriodMeasuresService:
                 .limit(1)
             ).scalar_one_or_none()
 
-            eff_lsl    = float(last_meas.lsl)    if last_meas and last_meas.lsl    is not None else (float(m.lsl)    if m.lsl    is not None else None)
-            eff_target = float(last_meas.target) if last_meas and last_meas.target is not None else (float(m.target) if m.target is not None else None)
-            eff_usl    = float(last_meas.usl)    if last_meas and last_meas.usl    is not None else (float(m.usl)    if m.usl    is not None else None)
+            eff_lsl    = float(m.lsl)    if m.lsl    is not None else None
+            eff_target = float(m.target) if m.target is not None else None
+            eff_usl    = float(m.usl)    if m.usl    is not None else None
 
             metric_info_list.append({
                 "plan_metric_id": str(m.id),
@@ -104,7 +147,7 @@ class PeriodMeasuresService:
                 "lsl":    eff_lsl,
                 "target": eff_target,
                 "usl":    eff_usl,
-                "required_measures": get_required_measures(m.metric_name),
+                "required_measures": get_required_measures_for_plan_metric(m),
                 "frequency": m.frequency,
                 "uom": m.uom,
                 "intent": m.intent,
@@ -118,14 +161,32 @@ class PeriodMeasuresService:
             )
         ).scalars().all()
 
+        # ── Pre-fill from most recent prior period when current period is empty ─
+        # This ensures measure values carry over to the next period entry so the
+        # PM only needs to change values that differ.
+        if not all_saved:
+            prior = self._s.execute(
+                select(ProjectPeriodMeasure)
+                .where(ProjectPeriodMeasure.project_id == project_id)
+                .order_by(ProjectPeriodMeasure.updated_at.desc())
+                .limit(200)
+            ).scalars().all()
+            # Use the most recent period that is different from the requested one
+            prior_filtered = [r for r in prior if r.period_label.lower() != period_label.lower()]
+            all_saved = prior_filtered  # pre-fill with prior values (read-only — not written to DB here)
+
         # Separate into shared defaults (plan_metric_id IS NULL) and overrides
         shared_rows: dict[str, ProjectPeriodMeasure] = {}
-        override_rows: dict[tuple[str, str], ProjectPeriodMeasure] = {}  # (plan_metric_id, measure_name) -> row
+        override_rows: dict[tuple[str, str], ProjectPeriodMeasure] = {}
         for row in all_saved:
             if row.plan_metric_id is None:
-                shared_rows[row.measure_name] = row
+                # Keep only the most recent shared default per measure
+                if row.measure_name not in shared_rows:
+                    shared_rows[row.measure_name] = row
             else:
-                override_rows[(str(row.plan_metric_id), row.measure_name)] = row
+                key = (str(row.plan_metric_id), row.measure_name)
+                if key not in override_rows:
+                    override_rows[key] = row
 
         # Build measures list with override info attached to each measure
         measures_list = []
@@ -230,8 +291,17 @@ class PeriodMeasuresService:
         # ── Upsert each measure (shared default or per-metric override) ────────
         saved_measures: list[PeriodMeasureResponse] = []
         for item in body.measures:
-            # Match by (project_id, period_label, measure_name, plan_metric_id)
-            # SQLAlchemy correctly handles NULL == NULL here when plan_metric_id is None
+            # Coerce actual_value: date strings → epoch-days float, else Decimal
+            from app.services.qpm_service import _coerce_numeric as _cn
+            raw_val = item.actual_value
+            if isinstance(raw_val, str):
+                coerced = _cn(raw_val)
+                store_val = Decimal(str(coerced)) if coerced is not None else None
+            elif raw_val is not None:
+                store_val = Decimal(str(raw_val))
+            else:
+                store_val = None
+
             stmt = select(ProjectPeriodMeasure).where(
                 ProjectPeriodMeasure.project_id == project_id,
                 func.lower(ProjectPeriodMeasure.period_label) == func.lower(body.period_label),
@@ -241,7 +311,7 @@ class PeriodMeasuresService:
             existing = self._s.execute(stmt).scalar_one_or_none()
 
             if existing:
-                existing.actual_value = item.actual_value
+                existing.actual_value = store_val
                 existing.frequency = body.frequency
                 existing.from_date = body.from_date
                 existing.to_date = body.to_date
@@ -259,14 +329,14 @@ class PeriodMeasuresService:
                     from_date=body.from_date,
                     to_date=body.to_date,
                     measure_name=item.measure_name,
-                    actual_value=item.actual_value,
+                    actual_value=store_val,
                     entered_by_user_id=user.id,
                 )
                 self._s.add(row)
 
             saved_measures.append(PeriodMeasureResponse(
                 measure_name=item.measure_name,
-                actual_value=item.actual_value,
+                actual_value=store_val,
                 plan_metric_id=item.plan_metric_id,
                 updated_at=now,
             ))
@@ -318,7 +388,7 @@ class PeriodMeasuresService:
 
         computed_results: list[MetricComputeResult] = []
         for pm in active_metrics:
-            required = get_required_measures(pm.metric_name)
+            required = get_required_measures_for_plan_metric(pm)
 
             # ── Per-metric value resolution ─────────────────────────────────
             # For each required measure: use override if one exists for this
@@ -333,7 +403,8 @@ class PeriodMeasuresService:
                 # else: measure is missing — will surface as missing below
 
             # ── Missing measures check (uses per-metric resolved dict) ───────
-            missing = [m for m in required if m not in per_metric_values]
+            # Filter out internal sentinel names like __formula__
+            missing = [m for m in required if m not in per_metric_values and m != "__formula__"]
 
             if missing:
                 computed_results.append(MetricComputeResult(
@@ -357,6 +428,12 @@ class PeriodMeasuresService:
                 select(QPMCatalogMetric).where(QPMCatalogMetric.name == pm.metric_name)
             ).scalar_one_or_none()
             metric_uom = catalog.uom if catalog else pm.uom
+
+            # Ensure this metric is registered in the in-memory compute map.
+            # Custom / newly approved metrics won't be in measure_mapping.json,
+            # so we register from the stored required_measures + formula here.
+            if pm.metric_name not in _MEASURE_MAP:
+                _register_from_plan_metric(pm)
 
             raw_value = compute_kpi_value(pm.metric_name, per_metric_values, uom=metric_uom)
             actual_val = Decimal(str(round(raw_value, 4))) if raw_value is not None else None
@@ -401,26 +478,49 @@ class PeriodMeasuresService:
                 measure_snapshot[f"measure{i}_name"]  = mname
                 measure_snapshot[f"measure{i}_value"] = per_metric_values.get(mname)
 
-            # Always insert a new KpiMeasurement row (each save = one chart data point)
-            meas_row = KpiMeasurement(
-                id=uuid.uuid4(),
-                plan_metric_id=pm.id,
-                entered_by_user_id=user.id,
-                frequency=body.frequency,
-                frequency_name=body.period_label,
-                from_date=body.from_date,
-                to_date=body.to_date,
-                actual_value=actual_val,
-                target=effective_target,
-                lsl=effective_lsl,
-                usl=effective_usl,
-                rag_status=rag,
-                submitted_by=user.full_name,
-                submitted_date=now,
-            )
-            for k, v in measure_snapshot.items():
-                setattr(meas_row, k, v)
-            self._s.add(meas_row)
+            # ── Upsert KpiMeasurement per (plan_metric_id, period_label) ─────
+            # One row per metric per period — update in place so the summary and
+            # tracker always show the LATEST value without accumulating duplicates.
+            existing_meas = self._s.execute(
+                select(KpiMeasurement).where(
+                    KpiMeasurement.plan_metric_id == pm.id,
+                    func.lower(KpiMeasurement.frequency_name) == func.lower(body.period_label),
+                )
+            ).scalar_one_or_none()
+
+            if existing_meas:
+                existing_meas.actual_value    = actual_val
+                existing_meas.target          = effective_target
+                existing_meas.lsl             = effective_lsl
+                existing_meas.usl             = effective_usl
+                existing_meas.rag_status      = rag
+                existing_meas.from_date       = body.from_date
+                existing_meas.to_date         = body.to_date
+                existing_meas.submitted_by    = user.full_name
+                existing_meas.submitted_date  = now
+                existing_meas.updated_at      = now
+                for k, v in measure_snapshot.items():
+                    setattr(existing_meas, k, v)
+            else:
+                meas_row = KpiMeasurement(
+                    id=uuid.uuid4(),
+                    plan_metric_id=pm.id,
+                    entered_by_user_id=user.id,
+                    frequency=body.frequency,
+                    frequency_name=body.period_label,
+                    from_date=body.from_date,
+                    to_date=body.to_date,
+                    actual_value=actual_val,
+                    target=effective_target,
+                    lsl=effective_lsl,
+                    usl=effective_usl,
+                    rag_status=rag,
+                    submitted_by=user.full_name,
+                    submitted_date=now,
+                )
+                for k, v in measure_snapshot.items():
+                    setattr(meas_row, k, v)
+                self._s.add(meas_row)
 
             computed_results.append(MetricComputeResult(
                 plan_metric_id=pm.id,

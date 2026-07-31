@@ -21,10 +21,31 @@ function currentPeriodLabel(): string {
                   "August","September","October","November","December"];
   return `${MONTHS[today.getMonth()]} ${today.getFullYear()}`;
 }
- 
-function currentPeriodDates(): { from_date: string; to_date: string } {
-  const today = new Date();
+
+/** Derive from_date/to_date from a period label like "July 2026" or "2026-07". Falls back to current month. */
+function periodDates(label: string): { from_date: string; to_date: string } {
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const MONTHS: Record<string, number> = {
+    january:0,february:1,march:2,april:3,may:4,june:5,
+    july:6,august:7,september:8,october:9,november:10,december:11,
+    jan:0,feb:1,mar:2,apr:3,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11,
+  };
+
+  // Try "Month YYYY" or "YYYY Month"
+  const parts = label.trim().split(/[\s\-_]+/);
+  let month = -1, year = -1;
+  for (const p of parts) {
+    const n = parseInt(p, 10);
+    if (!isNaN(n) && n > 1900) year = n;
+    else if (MONTHS[p.toLowerCase()] !== undefined) month = MONTHS[p.toLowerCase()];
+  }
+  if (month >= 0 && year > 0) {
+    const start = new Date(year, month, 1);
+    const end   = new Date(year, month + 1, 0);
+    return { from_date: fmt(start), to_date: fmt(end) };
+  }
+  // Fallback: current month
+  const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth(), 1);
   const end   = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   return { from_date: fmt(start), to_date: fmt(end) };
@@ -43,6 +64,30 @@ function groupMetricsByDimension(metrics: MetricInfo[]): Array<[string, MetricIn
     groups[dimension].push(m);
   }
   return order.map(dimension => [dimension, groups[dimension]]);
+}
+
+/** Returns true when the measure name suggests it's a date value (e.g. "Actual End Date"). */
+function isDateMeasure(measureName: string): boolean {
+  const lower = measureName.toLowerCase();
+  return lower.includes("date") || lower.includes("month") || lower.includes("year");
+}
+
+/**
+ * Convert a value string for transmission:
+ * - For date measures: keep the YYYY-MM-DD string as-is — the backend _coerce_numeric
+ *   converts it to epoch-days before arithmetic.
+ * - For number measures: parse to float (or null if empty).
+ */
+function coerceForSave(val: string, measureName: string): number | string | null {
+  if (val.trim() === "") return null;
+  if (isDateMeasure(measureName)) {
+    // Validate it looks like a date; return the ISO string raw
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) return val.trim();
+    // Try parsing partial inputs
+    return val.trim() || null;
+  }
+  const n = parseFloat(val);
+  return isNaN(n) ? null : n;
 }
  
 // Keys that jump to the next / previous navigable field instead of their
@@ -256,37 +301,30 @@ export function QPMDataEntryPage() {
   const handleSave = async () => {
     if (!plan || !projectId) return;
     setSaving(true);
-    const { from_date, to_date } = currentPeriodDates();
+    const { from_date, to_date } = periodDates(periodLabel);
     try {
-      // Every entry is now per-metric (plan_metric_id set).
-      // We also send one shared-default row per unique measure_name so that
-      // the backend fallback still works for any metric not in the override map.
-      // The shared default is the value from the FIRST metric that uses the measure.
       const sentShared = new Set<string>();
-      const measures: { measure_name: string; actual_value: number | null; plan_metric_id?: string | null }[] = [];
+      const measures: { measure_name: string; actual_value: number | string | null; plan_metric_id?: string | null }[] = [];
 
-      // Per-metric entries from measureOverrides
+      // Per-metric entries — only send entries that have a non-empty value
       for (const [key, val] of Object.entries(measureOverrides)) {
+        if (val.trim() === "") continue; // skip blanks — don't overwrite saved data with null
         const sepIdx = key.indexOf("::");
         const plan_metric_id = key.slice(0, sepIdx);
         const measure_name   = key.slice(sepIdx + 2);
-        measures.push({
-          measure_name,
-          actual_value: val.trim() !== "" ? parseFloat(val) : null,
-          plan_metric_id,
-        });
+        const coerced = coerceForSave(val, measure_name);
+        if (coerced === null) continue; // truly empty
+        measures.push({ measure_name, actual_value: coerced as number | string, plan_metric_id });
       }
 
-      // Also send shared defaults (plan_metric_id = null) using measureValues
-      // for any measure not already covered — keeps backward compat with the backend
+      // Shared default rows for measures not already covered per-metric
       for (const [measure_name, val] of Object.entries(measureValues)) {
-        if (!sentShared.has(measure_name)) {
-          measures.push({
-            measure_name,
-            actual_value: val.trim() !== "" ? parseFloat(val) : null,
-            plan_metric_id: null,
-          });
-          sentShared.add(measure_name);
+        if (!sentShared.has(measure_name) && val.trim() !== "") {
+          const coerced = coerceForSave(val, measure_name);
+          if (coerced !== null) {
+            measures.push({ measure_name, actual_value: coerced as number | string, plan_metric_id: null });
+            sentShared.add(measure_name);
+          }
         }
       }
 
@@ -301,7 +339,14 @@ export function QPMDataEntryPage() {
       setResults(res.computed_metrics);
       const complete = res.computed_metrics.filter(m => m.complete).length;
       const total    = res.computed_metrics.length;
-      toast.success(`Saved. ${complete}/${total} metrics computed.`);
+      const missing  = res.computed_metrics.filter(m => !m.complete);
+      if (missing.length > 0) {
+        const names = missing.map(m => `${m.metric_name} (missing: ${m.missing_measures.join(", ")})`).join("\n");
+        toast.success(`Saved. ${complete}/${total} metrics computed.`);
+        console.warn("Incomplete metrics:", names);
+      } else {
+        toast.success(`Saved. All ${total} metrics computed.`);
+      }
       if (pmComment.trim() && plan) {
         try {
           const updated = await submitQpmPlan(plan.id, plan.pm_perception_rag ?? undefined, pmComment.trim());
@@ -445,7 +490,28 @@ export function QPMDataEntryPage() {
                 const t = thresholds[metric.plan_metric_id] ?? { lsl: "", target: "", usl: "" };
                 return (
                   <div key={metric.plan_metric_id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-sm font-semibold text-slate-900 mb-3">{metric.metric_name}</p>
+                    {/* Header row: metric name + inline computed result */}
+                    <div className="flex items-center justify-between mb-3 gap-3">
+                      <p className="text-sm font-semibold text-slate-900">{metric.metric_name}</p>
+                      {(() => {
+                        const r = results.find(r => r.plan_metric_id === metric.plan_metric_id);
+                        if (!r) return null;
+                        if (!r.complete) return (
+                          <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 font-semibold shrink-0">
+                            Missing: {r.missing_measures.join(", ")}
+                          </span>
+                        );
+                        const ragColor = r.rag_status === "GREEN" ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                          : r.rag_status === "RED" ? "text-rose-700 bg-rose-50 border-rose-200"
+                          : r.rag_status === "AMBER" ? "text-amber-700 bg-amber-50 border-amber-200"
+                          : "text-slate-600 bg-slate-50 border-slate-200";
+                        return (
+                          <span className={`text-[11px] font-bold border rounded-full px-2.5 py-0.5 shrink-0 ${ragColor}`}>
+                            {r.actual_value != null ? `${Number(r.actual_value).toFixed(2)} · ` : ""}{r.rag_status ?? "—"}
+                          </span>
+                        );
+                      })()}
+                    </div>
  
                     {/* Frequency / Intent / LSL / Target / USL row */}
                     <div className="flex flex-wrap gap-4 mb-3">
@@ -499,12 +565,14 @@ export function QPMDataEntryPage() {
                         const isEmpty = val.trim() === "";
                         const sharedVal = measureValues[measureName] ?? "";
                         const usesShared = !overridden && data?.measures.find(m => m.measure_name === measureName)?.metrics_count !== 1;
+                        const isDate = isDateMeasure(measureName);
                         return (
                           <div key={measureName}>
                             {/* Label + sync indicator */}
                             <div className="flex items-center gap-1 mb-1">
                               <label className="text-[10px] text-slate-400 max-w-[160px] leading-tight">
                                 {measureName}
+                                {isDate && <span className="ml-1 text-[9px] text-indigo-400">(date)</span>}
                               </label>
                               {overridden && (
                                 <button
@@ -522,22 +590,40 @@ export function QPMDataEntryPage() {
                                 </span>
                               )}
                             </div>
-                            <input
-                              type="number" step="any"
-                              data-qpm-nav="true"
-                              onKeyDown={handleNavKeyDown}
-                              onFocus={handleNavFocus}
-                              value={val}
-                              onChange={e => setDisplayValue(metric.plan_metric_id, measureName, e.target.value)}
-                              placeholder={isEmpty ? "Not entered" : "Enter value"}
-                              className={`w-40 rounded-lg border px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 transition-colors ${
-                                overridden
-                                  ? "border-indigo-400 bg-indigo-50 text-indigo-900 focus:ring-indigo-300"
-                                  : isEmpty
-                                    ? "border-amber-300 bg-amber-50/40 text-amber-600 placeholder-amber-400 focus:ring-indigo-300"
-                                    : "border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:ring-indigo-300"
-                              }`}
-                            />
+                            {isDate ? (
+                              <input
+                                type="date"
+                                data-qpm-nav="true"
+                                onKeyDown={handleNavKeyDown}
+                                onFocus={handleNavFocus}
+                                value={val}
+                                onChange={e => setDisplayValue(metric.plan_metric_id, measureName, e.target.value)}
+                                className={`w-40 rounded-lg border px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 transition-colors ${
+                                  overridden
+                                    ? "border-indigo-400 bg-indigo-50 text-indigo-900 focus:ring-indigo-300"
+                                    : isEmpty
+                                      ? "border-amber-300 bg-amber-50/40 text-amber-600 focus:ring-indigo-300"
+                                      : "border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:ring-indigo-300"
+                                }`}
+                              />
+                            ) : (
+                              <input
+                                type="number" step="any"
+                                data-qpm-nav="true"
+                                onKeyDown={handleNavKeyDown}
+                                onFocus={handleNavFocus}
+                                value={val}
+                                onChange={e => setDisplayValue(metric.plan_metric_id, measureName, e.target.value)}
+                                placeholder={isEmpty ? "Not entered" : "Enter value"}
+                                className={`w-40 rounded-lg border px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 transition-colors ${
+                                  overridden
+                                    ? "border-indigo-400 bg-indigo-50 text-indigo-900 focus:ring-indigo-300"
+                                    : isEmpty
+                                      ? "border-amber-300 bg-amber-50/40 text-amber-600 placeholder-amber-400 focus:ring-indigo-300"
+                                      : "border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:ring-indigo-300"
+                                }`}
+                              />
+                            )}
                           </div>
                         );
                       })}

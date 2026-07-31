@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "../../contexts/ToastContext";
 import { getAllCatalog, createCatalogMetric, updateCatalogMetric } from "../../services/qpmService";
-import { listMetricRequests, decideMetricRequest } from "../../services/metricApprovalService";
+import { listMetricRequests, decideMetricRequest, addRequestToCatalog } from "../../services/metricApprovalService";
 import type { MetricApprovalRequest } from "../../services/metricApprovalService";
 import type { QPMCatalogMetric } from "../../types/qpm";
 import { METRIC_CATEGORIES, FREQUENCIES, COMPLIANCE_LABEL } from "../../types/qpm";
@@ -69,6 +69,7 @@ export function DECatalogPage() {
     intent: "Higher the better", project_type: "", delivery_model: "",
     project_category: "", frequency: "Monthly", compliance: "O",
     default_target: "", default_lsl: "", default_usl: "",
+    measures_str: "", // comma-separated measure parameter names
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -76,6 +77,7 @@ export function DECatalogPage() {
   const [requests, setRequests] = useState<MetricApprovalRequest[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [addingCatalogId, setAddingCatalogId] = useState<string | null>(null);
   const [rejectModal, setRejectModal] = useState<{ id: string; name: string } | null>(null);
   const [rejectComment, setRejectComment] = useState("");
 
@@ -97,6 +99,8 @@ export function DECatalogPage() {
   const openCreate = () => { setEditMetric(null); setForm(emptyForm); setShowModal(true); };
   const openEdit = (m: QPMCatalogMetric) => {
     setEditMetric(m);
+    // Reconstruct measures_str from the in-memory map if possible — not stored on catalog row,
+    // so we just leave it blank on edit (DE can re-enter if they want to update measures).
     setForm({
       category: m.category || "", name: m.name || "", formula: m.formula || "",
       uom: m.uom || "", metrics_type: m.metrics_type || "Result",
@@ -106,6 +110,7 @@ export function DECatalogPage() {
       default_target: m.default_target != null ? String(m.default_target) : "",
       default_lsl: m.default_lsl != null ? String(m.default_lsl) : "",
       default_usl: m.default_usl != null ? String(m.default_usl) : "",
+      measures_str: "",
     });
     setShowModal(true);
   };
@@ -113,11 +118,17 @@ export function DECatalogPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    // Parse measures_str into an array of trimmed non-empty names
+    const measures = form.measures_str
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
     const payload = {
       ...form,
       default_target: form.default_target !== "" ? parseFloat(form.default_target) : null,
       default_lsl: form.default_lsl !== "" ? parseFloat(form.default_lsl) : null,
       default_usl: form.default_usl !== "" ? parseFloat(form.default_usl) : null,
+      measures: measures.length > 0 ? measures : undefined,
     };
     try {
       if (editMetric) {
@@ -167,6 +178,18 @@ export function DECatalogPage() {
     } catch (e: any) {
       toast.error(e.response?.data?.detail || "Failed to reject");
     } finally { setDecidingId(null); }
+  };
+
+  const handleAddToCatalog = async (id: string, name: string) => {
+    setAddingCatalogId(id);
+    try {
+      await addRequestToCatalog(id);
+      toast.success(`"${name}" added to the QPM catalog`);
+      // Reload catalog to show new entry
+      loadCatalog();
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || "Failed to add to catalog");
+    } finally { setAddingCatalogId(null); }
   };
 
   // -- Derived
@@ -305,7 +328,14 @@ export function DECatalogPage() {
                     {r.uom && <div><span style={{ fontWeight: 700 }}>UOM:</span> {r.uom}</div>}
                     {r.intent && <div><span style={{ fontWeight: 700 }}>Intent:</span> {r.intent}</div>}
                     {r.frequency && <div><span style={{ fontWeight: 700 }}>Frequency:</span> {r.frequency}</div>}
+                    {(r as any).default_target != null && <div><span style={{ fontWeight: 700 }}>Target:</span> {(r as any).default_target}</div>}
+                    {(r as any).default_lsl != null && <div><span style={{ fontWeight: 700 }}>LSL:</span> {(r as any).default_lsl}</div>}
+                    {(r as any).default_usl != null && <div><span style={{ fontWeight: 700 }}>USL:</span> {(r as any).default_usl}</div>}
+                    {(r as any).metrics_type && <div><span style={{ fontWeight: 700 }}>Type:</span> {(r as any).metrics_type}</div>}
+                    {(r as any).project_type && <div style={{ gridColumn: "span 2" }}><span style={{ fontWeight: 700 }}>Project Types:</span> {(r as any).project_type}</div>}
+                    {(r as any).delivery_model && <div style={{ gridColumn: "span 2" }}><span style={{ fontWeight: 700 }}>Delivery Models:</span> {(r as any).delivery_model}</div>}
                     {r.formula && <div style={{ gridColumn: "span 2" }}><span style={{ fontWeight: 700 }}>Formula:</span> {r.formula}</div>}
+                    {(() => { try { const m = JSON.parse((r as any).measures_json || "[]"); return m.length > 0 ? <div style={{ gridColumn: "span 2" }}><span style={{ fontWeight: 700 }}>Measures:</span> {m.join(", ")}</div> : null; } catch { return null; } })()}
                   </div>
                   <div style={{ borderRadius: 10, border: "1px solid rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", padding: "10px 14px" }}>
                     <p style={{ fontSize: 9, fontWeight: 800, color: "#b45309", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.08em" }}>PM Justification</p>
@@ -345,6 +375,22 @@ export function DECatalogPage() {
                         Reject
                       </button>
                     </div>
+                  )}
+                  {r.status === "APPROVED" && (
+                    <button
+                      onClick={() => handleAddToCatalog(r.id, r.metric_name)}
+                      disabled={addingCatalogId === r.id}
+                      style={{
+                        background: `linear-gradient(135deg, ${T.accent}, ${T.accentDark})`,
+                        color: "#fff", border: "none", borderRadius: 10, padding: "8px 20px",
+                        fontSize: 11, fontWeight: 700, cursor: "pointer",
+                        opacity: addingCatalogId === r.id ? 0.5 : 1,
+                        boxShadow: `0 2px 10px ${T.accent}40`,
+                        alignSelf: "flex-start",
+                      }}
+                    >
+                      {addingCatalogId === r.id ? "Adding…" : "＋ Add to Catalog"}
+                    </button>
                   )}
                 </div>
               ))}
@@ -649,6 +695,24 @@ export function DECatalogPage() {
                   placeholder="E.g. Agile-Scrum,Waterfall,Iterative"
                   style={inputStyle}
                 />
+              </div>
+              {/* Measure parameters — critical for computation engine */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>
+                  Measure Parameters (comma-separated) *
+                </label>
+                <input
+                  type="text"
+                  value={form.measures_str}
+                  onChange={e => setForm(f => ({ ...f, measures_str: e.target.value }))}
+                  placeholder="E.g. Actual Effort, Planned Effort  (order matters for formula)"
+                  style={inputStyle}
+                />
+                <p style={{ fontSize: 10, color: T.textMuted, margin: 0 }}>
+                  List the input parameter names in the order they appear in the formula.
+                  For a single direct metric enter just one name. These become the input
+                  fields PM fills in on Sheet 2 and are used by the calculation engine.
+                </p>
               </div>
               <div style={{ display: "flex", gap: 10, borderTop: `1px solid ${T.divider}`, paddingTop: 14 }}>
                 <button

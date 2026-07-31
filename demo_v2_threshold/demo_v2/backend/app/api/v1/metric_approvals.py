@@ -46,3 +46,13 @@ def decide_request(
 ):
     """DE approves or rejects a pending request."""
     return MetricApprovalService(db).decide(current_user, request_id, body)
+
+
+@router.post("/{request_id}/add-to-catalog", response_model=MetricApprovalRequestResponse)
+def add_approved_to_catalog(
+    request_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """DE explicitly adds an approved metric to the global catalog."""
+    return MetricApprovalService(db).add_to_catalog(current_user, request_id)

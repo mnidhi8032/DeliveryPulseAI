@@ -7,7 +7,9 @@ from pydantic import BaseModel
 
 class PeriodMeasureItem(BaseModel):
     measure_name: str
-    actual_value: Decimal | None = None
+    # actual_value accepts numbers or ISO date strings ("YYYY-MM-DD").
+    # The service coerces dates to epoch-day floats for arithmetic.
+    actual_value: Decimal | str | None = None
     # NULL = shared default; non-NULL = per-metric override for this plan_metric_id only
     plan_metric_id: UUID | None = None
 

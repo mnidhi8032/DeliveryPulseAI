@@ -1,25 +1,30 @@
 /**
  * Platform Admin — Business Units
- * Counts are computed from listProjects() (live current_rag).
- * getPlatformRiskSummary() is used only for BU IDs and DH names.
+ * BU list comes from /business-units directly so newly created BUs
+ * (with no projects yet) still appear.
+ * RAG counts are computed from listProjects() (live current_rag).
+ * getPlatformRiskSummary() is used only for DH names.
  */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { listProjects } from "../../services/projectService";
 import { getPlatformRiskSummary } from "../../services/platformService";
+import { listBusinessUnits } from "../../services/businessUnitService";
 import type { Project } from "../../types/project";
 import type { PlatformRiskRow } from "../../types/platform";
+import type { BusinessUnit } from "../../services/businessUnitService";
 
 export function PlatformAdminBusinessUnitsPage() {
   const navigate = useNavigate();
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [projects,  setProjects]  = useState<Project[]>([]);
   const [riskMeta,  setRiskMeta]  = useState<PlatformRiskRow[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([listProjects(), getPlatformRiskSummary()])
-      .then(([projs, rs]) => { setProjects(projs); setRiskMeta(rs); })
+    Promise.all([listBusinessUnits(), listProjects(), getPlatformRiskSummary()])
+      .then(([bus, projs, rs]) => { setBusinessUnits(bus); setProjects(projs); setRiskMeta(rs); })
       .catch(() => setError("Failed to load business units."))
       .finally(() => setLoading(false));
   }, []);
@@ -36,39 +41,38 @@ export function PlatformAdminBusinessUnitsPage() {
     </div>
   );
 
-  // Group projects by BU name, compute real RAG counts
-  const buMap = new Map<string, { total: number; green: number; amber: number; red: number }>();
+  // Compute RAG counts from projects, keyed by BU name
+  const ragByBuName = new Map<string, { total: number; green: number; amber: number; red: number }>();
   for (const p of projects) {
     const bu = p.business_unit_name || "Unknown";
-    if (!buMap.has(bu)) buMap.set(bu, { total: 0, green: 0, amber: 0, red: 0 });
-    const e = buMap.get(bu)!;
+    if (!ragByBuName.has(bu)) ragByBuName.set(bu, { total: 0, green: 0, amber: 0, red: 0 });
+    const e = ragByBuName.get(bu)!;
     e.total++;
     if (p.current_rag === "GREEN") e.green++;
     else if (p.current_rag === "AMBER") e.amber++;
     else if (p.current_rag === "RED" || p.current_rag === "CRITICAL") e.red++;
   }
 
-  // Merge with riskMeta (for BU IDs + DH names)
+  // Merge riskMeta (for DH names), keyed by BU name
   const riskMetaByName = new Map(riskMeta.map(r => [r.business_unit_name, r]));
 
-  const rows = Array.from(buMap.entries())
-    .map(([buName, counts]) => {
-      const meta = riskMetaByName.get(buName);
+  // Build rows from the authoritative BU list — every BU shows even with 0 projects
+  const rows = businessUnits
+    .map(bu => {
+      const counts = ragByBuName.get(bu.name) ?? { total: 0, green: 0, amber: 0, red: 0 };
+      const meta   = riskMetaByName.get(bu.name);
       const redPct = counts.total > 0 ? (counts.red / counts.total) * 100 : 0;
-      // Strip "DH — " prefix: the display name is "DH — <BU Name>"
-      // We want just the human-readable part after the separator
-      const rawDh = meta?.delivery_head_name ?? "";
-      // Find the separator (em-dash or regular dash or hyphen) and take what's after it
-      const sep = rawDh.indexOf("\u2014"); // em-dash —
+      const rawDh  = meta?.delivery_head_name ?? "";
+      const sep    = rawDh.indexOf("\u2014"); // em-dash —
       const dhName = sep >= 0 ? rawDh.slice(sep + 1).trim() : rawDh.replace(/^DH\s*[-–]\s*/i, "").trim() || rawDh || "—";
       return {
-        buId: meta?.business_unit_id ?? buName,
-        buName,
+        buId: bu.id,
+        buName: bu.name,
         dhName: dhName || "—",
         total: counts.total,
         green: counts.green,
         amber: counts.amber,
-        red: counts.red,
+        red:   counts.red,
         redPct,
         isHighRisk: redPct > 20,
       };
