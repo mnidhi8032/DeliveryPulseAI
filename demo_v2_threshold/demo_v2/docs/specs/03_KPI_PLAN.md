@@ -48,10 +48,27 @@ The QPM Metric Catalog contains 83+ standard metrics across 11 categories, manag
 
 ## Metric Selection
 
-**Auto-selection on project creation:**  
-When a project is created with engagement model details, all mandatory (M) metrics matching the project type and delivery model are automatically added to the plan.
+**Auto-selection on project creation:**
 
-**Manual selection:**  
+The system uses a two-path strategy when selecting mandatory metrics for a new project:
+
+**Preset path (exact match — preferred):**
+`project_service.create_with_plan` first checks the `engagement_model_presets` table for an exact `(project_type, delivery_process_model)` match. If a preset exists, metrics are selected by exact name from the preset list — the catalog `compliance` flag is intentionally bypassed because the preset IS the authority on what is mandatory for that client engagement.
+
+**Fallback path (ILIKE tag-matching):**
+If no preset exists for the engagement combo, the original broad logic applies: all active catalog metrics with `compliance = 'M'` whose `project_type` and `delivery_model` columns contain the project's values (ILIKE) are added.
+
+**Seeded presets (July 2026 — from real client projects):**
+
+| Project Type | Delivery Model | Metric Count | Source |
+|---|---|---|---|
+| Testing | Agile-Scrum | 7 | JNJ AM R5.0 |
+| Maintenance | ITIL based Service Delivery | 6 | JNJ Platform Support |
+| Fresh Development | Agile-Scrum | 9 | JNJ JJCC Hybris |
+
+See `16_ENGAGEMENT_MODEL_PRESETS.md` for the full metric list and seeding details.
+
+**Manual selection:**
 PM can browse the catalog by category or search, and add optional/conditional metrics.
 
 **Auto-add button:**  

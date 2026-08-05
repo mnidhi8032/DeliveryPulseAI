@@ -50,17 +50,7 @@ export function QPMPlanPage() {
   const [catSearch, setCatSearch] = useState("");
   const [catTab, setCatTab] = useState<"catalog" | "selected" | "custom">("catalog");
 
-  // Custom metric form
-  const [customForm, setCustomForm] = useState({
-    metric_name: "", metric_category: "", formula: "", uom: "",
-    intent: "Higher the better", frequency: "Monthly", priority: "O",
-    target: "", lsl: "", usl: "", tailoring_reason: "", data_source: "",
-    measures_str: "", // comma-separated measure parameter names for calculation
-  });
-
-  // Custom metric request modal (DE approval workflow)
-  const [requestModalOpen, setRequestModalOpen] = useState(false);
-  const [requestTab, setRequestTab] = useState<"catalog" | "custom">("catalog");
+  // Custom metric request tab state
   const [requestForm, setRequestForm] = useState({
     metric_name: "", metric_category: "", formula: "", uom: "",
     intent: "Higher the better", frequency: "Monthly",
@@ -215,52 +205,6 @@ export function QPMPlanPage() {
     } catch { toast.error("Failed to remove metric"); }
   };
 
-  const handleAddCustom = async () => {
-    if (!plan || !customForm.metric_name) return;
-    // Parse measure parameter names from the comma-separated string
-    const measuresArr = customForm.measures_str
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
-    try {
-      const pm = await addPlanMetric(plan.id, {
-        metric_name: customForm.metric_name,
-        metric_category: customForm.metric_category,
-        formula: customForm.formula,
-        uom: customForm.uom,
-        intent: customForm.intent,
-        frequency: customForm.frequency,
-        priority: customForm.priority,
-        target: customForm.target ? parseFloat(customForm.target) : undefined,
-        lsl: customForm.lsl ? parseFloat(customForm.lsl) : undefined,
-        usl: customForm.usl ? parseFloat(customForm.usl) : undefined,
-        is_custom: true,
-        tailoring_reason: customForm.tailoring_reason,
-        data_source: customForm.data_source,
-        // Pass measures so backend stores them in required_measures column
-        required_measures: measuresArr.length > 0 ? JSON.stringify(measuresArr) : undefined,
-      });
-      setPlan((prev) => prev ? { ...prev, metrics: [...prev.metrics, pm] } : prev);
-      setCustomForm({ metric_name: "", metric_category: "", formula: "", uom: "", intent: "Higher the better", frequency: "Monthly", priority: "O", target: "", lsl: "", usl: "", tailoring_reason: "", data_source: "", measures_str: "" });
-      setCatTab("selected");
-      toast.success("Custom metric added");
-    } catch (e: any) {
-      toast.error(e.response?.data?.detail || "Failed to add custom metric");
-    }
-  };
-
-  // Open request modal and load PM's existing requests
-  const openRequestModal = async () => {
-    setRequestModalOpen(true);
-    setRequestTab("catalog");
-    if (!requestsLoaded) {
-      try {
-        const reqs = await listMetricRequests();
-        setMyRequests(reqs.filter(r => plan ? r.kpi_plan_id === plan.id : true));
-        setRequestsLoaded(true);
-      } catch { /* non-critical */ }
-    }
-  };
 
   const handleSendToDE = async () => {
     if (!plan || !requestForm.metric_name || !requestForm.justification) return;
@@ -287,7 +231,6 @@ export function QPMPlanPage() {
       });
       setMyRequests(prev => [req, ...prev]);
       setRequestForm({ metric_name: "", metric_category: "", formula: "", uom: "", intent: "Higher the better", frequency: "Monthly", priority: "O", metrics_type: "Result", project_type: "", delivery_model: "", target: "", lsl: "", usl: "", measures_str: "", justification: "" });
-      setRequestTab("catalog");
       toast.success(`Request sent to Delivery Excellence for "${req.metric_name}"`);
     } catch (e: any) {
       toast.error(e.response?.data?.detail || "Failed to send request");
@@ -318,7 +261,7 @@ export function QPMPlanPage() {
     <div className="space-y-6 text-slate-800">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link to={`/pm/projects/${projectId}`} className="text-xs text-slate-500 hover:text-slate-800">← Back to project</Link>
+          <Link to="/pm/projects" className="text-xs text-slate-500 hover:text-slate-800">← Back to My Projects</Link>
           <h1 className="mt-1 text-xl font-bold text-slate-900">KPI Plan — {project?.project_name}</h1>
           <p className="text-xs text-slate-500">{project?.project_code} · Select metrics from the QPM catalog</p>
         </div>

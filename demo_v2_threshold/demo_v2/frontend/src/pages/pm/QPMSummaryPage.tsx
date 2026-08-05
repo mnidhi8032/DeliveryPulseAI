@@ -679,7 +679,11 @@ export function QPMSummaryPage() {
     <div className="space-y-6 text-slate-800">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link to={`/pm/projects/${projectId}/qpm/entry`} className="text-xs text-slate-500 hover:text-slate-800">← Back to Data Entry</Link>
+          <div className="flex items-center gap-3">
+            <Link to="/pm/projects" className="text-xs text-slate-500 hover:text-slate-800">← My Projects</Link>
+            <span className="text-xs text-slate-300">/</span>
+            <Link to={`/pm/projects/${projectId}/qpm/entry`} className="text-xs text-slate-500 hover:text-slate-800">Data Entry</Link>
+          </div>
           <h1 className="mt-1 text-xl font-bold text-slate-900">KPI Summary -- {project?.project_name}</h1>
           <p className="text-xs text-slate-500">{summary?.project_type} | {summary?.delivery_process_model}</p>
         </div>

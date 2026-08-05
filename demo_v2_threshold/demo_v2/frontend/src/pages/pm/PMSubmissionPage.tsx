@@ -161,7 +161,7 @@ export function PMSubmissionPage() {
     setError(null);
     try {
       await deleteSubmission(submissionId);
-      navigate(`/pm/projects/${project?.id}`, { replace: true });
+      navigate("/pm/projects", { replace: true });
     } catch {
       setError("Failed to delete draft submission.");
     } finally {
@@ -290,10 +290,10 @@ export function PMSubmissionPage() {
   return (
     <div>
       <Link
-        to={`/pm/projects/${project.id}`}
+        to="/pm/projects"
         className="text-sm text-slate-600 hover:text-slate-900"
       >
-        ← Back to {project.project_name}
+        ← Back to My Projects
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

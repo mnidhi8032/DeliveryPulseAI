@@ -425,11 +425,26 @@ export function DMProjectReviewPage() {
             {/* Row 1 — Metric + Owner */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Metric / Area of concern</label>
-                <input type="text" placeholder="E.g. Schedule Variance (leave blank for project-level)"
+                <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>
+                  Metric name
+                  <span style={{ marginLeft:6, fontSize:10, fontWeight:500, color:"#6366f1" }}>
+                    — leave blank for a project-level action
+                  </span>
+                </label>
+                <input type="text" placeholder="Only fill if this relates to a specific metric"
                   value={actionForm.metric_name}
                   onChange={e => setActionForm(f => ({ ...f, metric_name: e.target.value }))}
                   style={inputStyle} />
+                {!actionForm.metric_name.trim() && (
+                  <span style={{ fontSize:10, color:"#6366f1", fontWeight:600 }}>
+                    📋 Will be saved as a Project-Level action
+                  </span>
+                )}
+                {actionForm.metric_name.trim() && (
+                  <span style={{ fontSize:10, color: C.muted, fontWeight:600 }}>
+                    📊 Will be saved as a Metric-Level action
+                  </span>
+                )}
               </div>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 <label style={{ fontSize:12, fontWeight:700, color: C.muted }}>Owner name</label>

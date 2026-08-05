@@ -109,7 +109,21 @@ Four count tiles: Green / Amber / Red / No Data metric counts (solid colored bac
 | Reporting period | Text input (e.g. "July 2026") | Yes — pre-filled with current month |
 | Commentary | Textarea | Yes |
 
-> **Note:** Action items have been removed from the review form. They are managed exclusively on the dedicated Action Items page (`/delivery-manager/actions`).
+> **Note:** Action items can now be raised directly from the Review KPIs page using the inline "Raise Action Item" card below the review form. They are also managed on the dedicated Action Items page (`/delivery-manager/actions`).
+
+**Raise Action Item (inline — below review form):**
+
+A card titled "Raise Action Item" sits below the review form on the Project Review page. Clicking "+ New Action Item" expands an inline form with fields:
+
+| Field | Required |
+|---|---|
+| Metric / Area of concern | No — leave blank for project-level action |
+| Owner name | No |
+| Root Cause | Yes |
+| Corrective Action | Yes |
+| Target Closure Date | No |
+
+Submitting creates an `action_item` row linked to the project. If `metric_name` is left blank, the item is a project-level action. The PM is automatically notified (Spec 11).
 
 **Submit / Update Review button** → creates or updates a `dm_reviews` record.
 

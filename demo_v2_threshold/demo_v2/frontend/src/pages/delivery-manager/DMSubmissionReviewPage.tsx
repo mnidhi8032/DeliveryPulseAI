@@ -13,7 +13,6 @@ import { getSubmissionHealth, listMetricDefinitions, listMetricValues } from "..
 import { getProject } from "../../services/projectService";
 import { getSubmission } from "../../services/submissionService";
 import { addDMReview, createActionItem } from "../../services/brdService";
-import { useToast } from "../../contexts/ToastContext";
 import { getStatusBadgeClass, formatStatus } from "../../utils/formatters";
 import { formatPeriodLabel } from "../../utils/dhSubmissionRows";
 import type { GovernancePeriod } from "../../types/governance";
@@ -23,7 +22,6 @@ import type { Submission } from "../../types/submission";
 
 export function DMSubmissionReviewPage() {
   const { submissionId } = useParams<{ submissionId: string }>();
-  const toast = useToast();
 
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -277,15 +275,22 @@ export function DMSubmissionReviewPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                  Metric / Area of concern
+                  Metric name
+                  <span className="ml-1 normal-case font-normal text-indigo-500">— leave blank for a project-level action</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="E.g. Test Pass Rate (leave blank for project-level)"
+                  placeholder="Only fill if this relates to a specific metric"
                   value={actionForm.metric_name}
                   onChange={e => setActionForm(f => ({ ...f, metric_name: e.target.value }))}
                   className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
                 />
+                {!actionForm.metric_name.trim() && (
+                  <p className="mt-1 text-[10px] font-semibold text-indigo-500">📋 Will be saved as a Project-Level action</p>
+                )}
+                {actionForm.metric_name.trim() && (
+                  <p className="mt-1 text-[10px] font-semibold text-slate-400">📊 Will be saved as a Metric-Level action</p>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
