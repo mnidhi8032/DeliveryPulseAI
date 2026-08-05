@@ -108,7 +108,7 @@ export function ProjectPhasesPage() {
 
   return (
     <div>
-      <Link to={`/pm/projects/${projectId}`} className="text-sm text-slate-600 hover:text-slate-900">
+      <Link to="/pm/projects" className="text-sm text-slate-600 hover:text-slate-900">
         ← Back to project
       </Link>
 

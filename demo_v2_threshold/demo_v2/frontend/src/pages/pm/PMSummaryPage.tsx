@@ -444,6 +444,35 @@ function MetricTrendChart({ metric }: { metric: KpiSummaryMetric }) {
   );
 }
 
+// ─── Mini Sparkline ──────────────────────────────────────────────────────────
+function MiniSparkline({ history }: { history: KpiSummaryMetric["history"] }) {
+  if (!history || history.length < 2) return (
+    <div style={{ height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <span style={{ fontSize: 9, color: "var(--muted)" }}>{history?.length === 1 ? "1 period" : "—"}</span>
+    </div>
+  );
+  const values = history.map(h => h.actual_value ?? 0);
+  const minV = Math.min(...values); const maxV = Math.max(...values);
+  const range = maxV - minV || 1;
+  const W = 120; const H = 32; const pad = 3;
+  const pts = values.map((v, i) => ({
+    x: pad + (i / (values.length - 1)) * (W - pad * 2),
+    y: pad + ((maxV - v) / range) * (H - pad * 2),
+    rag: history[i].rag_status,
+  }));
+  const ragColor: Record<string, string> = { GREEN: "#22c55e", AMBER: "#f59e0b", RED: "#ef4444" };
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 32 }}>
+      <polyline points={pts.map(p => `${p.x},${p.y}`).join(" ")} fill="none" stroke="rgba(108,99,255,0.3)" strokeWidth="1.5" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2.5"
+          fill={p.rag ? (ragColor[p.rag] || "#94a3b8") : "#94a3b8"}
+          stroke="var(--surface)" strokeWidth="1" />
+      ))}
+    </svg>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function PMSummaryPage() {
   const toast = useToast();
@@ -460,6 +489,9 @@ export function PMSummaryPage() {
   const [showActionForm, setShowActionForm] = useState(false);
   const [actionForm, setActionForm] = useState({ root_cause: "", corrective_action: "", owner_name: "", target_closure_date: "" });
   const [savingAction, setSavingAction] = useState(false);
+  // Filter bar for metric cards
+  const [catFilter, setCatFilter] = useState("All Categories");
+  const [ragFilter, setRagFilter] = useState("All RAG");
 
   useEffect(() => {
     listProjects()
@@ -738,14 +770,56 @@ export function PMSummaryPage() {
             </div>
 
             {/* Metric cards */}
-            {summary.metrics.length > 0 && (
+            {summary.metrics.length > 0 && (() => {
+              const allCategories = ["All Categories", ...Array.from(new Set(summary.metrics.map(m => m.metric_category || "Other")))];
+              const filtered = summary.metrics.filter(m => {
+                const matchCat = catFilter === "All Categories" || (m.metric_category || "Other") === catFilter;
+                const matchRag = ragFilter === "All RAG"
+                  || (ragFilter === "No Data" && !m.rag_status)
+                  || m.rag_status === ragFilter;
+                return matchCat && matchRag;
+              });
+              const selectStyle: React.CSSProperties = {
+                appearance: "none" as const, WebkitAppearance: "none" as const,
+                background: "var(--surface)", border: "1.5px solid var(--border)",
+                borderRadius: 10, padding: "7px 32px 7px 12px",
+                fontSize: 12, fontWeight: 600, color: "var(--text)",
+                cursor: "pointer", outline: "none", fontFamily: "inherit",
+              };
+              return (
               <div>
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 12 }}>
                   <SectionLabel>All KPIs</SectionLabel>
                   <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>All Metrics</h2>
                 </div>
+
+                {/* ── Filter bar ── */}
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 16,
+                  background: "var(--surface)", borderRadius: 12, padding: "10px 14px",
+                  border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+                  <div style={{ position: "relative" }}>
+                    <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setExpandedMetric(null); }} style={selectStyle}>
+                      {allCategories.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                    <svg style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#6c63ff" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  </div>
+                  <div style={{ position: "relative" }}>
+                    <select value={ragFilter} onChange={e => { setRagFilter(e.target.value); setExpandedMetric(null); }} style={selectStyle}>
+                      {["All RAG", "GREEN", "AMBER", "RED", "No Data"].map(r => <option key={r}>{r}</option>)}
+                    </select>
+                    <svg style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#6c63ff" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  </div>
+                  <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{filtered.length} metric{filtered.length !== 1 ? "s" : ""}</span>
+                  {(catFilter !== "All Categories" || ragFilter !== "All RAG") && (
+                    <button type="button" onClick={() => { setCatFilter("All Categories"); setRagFilter("All RAG"); setExpandedMetric(null); }}
+                      style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, color: "#6c63ff", background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: 8, padding: "4px 12px", cursor: "pointer" }}>
+                      ✕ Reset
+                    </button>
+                  )}
+                </div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
-                  {summary.metrics.map(m => {
+                  {filtered.map(m => {
                     const rag = m.rag_status;
                     const isExpanded = expandedMetric === m.plan_metric_id;
                     const color = rag ? RAG_COLOR[rag] : "#e5e7eb";
@@ -925,7 +999,7 @@ export function PMSummaryPage() {
                           >ℹ</span>
                         )}
 
-                        <div style={{ marginBottom: 10 }}>
+                        <div style={{ marginBottom: 8 }}>
                           <p style={{ fontSize: 9, fontWeight: 700, color: "#6c63ff", textTransform: "uppercase", letterSpacing: "0.10em", marginBottom: 4 }}>
                             {m.metric_category || "—"}
                           </p>
@@ -938,29 +1012,36 @@ export function PMSummaryPage() {
                         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
                           <div>
                             <p style={{ fontSize: 9, color: "var(--muted)", fontWeight: 600, marginBottom: 2 }}>LATEST</p>
-                            <p style={{ fontSize: 22, fontWeight: 900, color: "var(--text)", lineHeight: 1 }}>
+                            <p style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", lineHeight: 1 }}>
                               {m.latest_value != null ? Number(m.latest_value).toFixed(2) : "--"}
-                              {m.uom && <span style={{ fontSize: 10, fontWeight: 400, color: "var(--muted)", marginLeft: 3 }}>{m.uom}</span>}
+                              {m.uom && <span style={{ fontSize: 9, fontWeight: 400, color: "var(--muted)", marginLeft: 3 }}>{m.uom}</span>}
                             </p>
                           </div>
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                            {rag && <RagPill rag={rag} size="xs" />}
-                            <span style={{ fontSize: 9, color: "#6c63ff", fontWeight: 700 }}>trend →</span>
-                          </div>
+                          {rag && <RagPill rag={rag} size="xs" />}
                         </div>
 
-                        {/* Mini bar showing measurement count */}
-                        {m.measurement_count > 0 && (
-                          <div style={{ marginTop: 10, height: 2, borderRadius: 999, background: "rgba(108,99,255,0.08)", overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${Math.min((m.measurement_count / 10) * 100, 100)}%`, background: color, borderRadius: 999 }} />
-                          </div>
-                        )}
+                        {/* Sparkline */}
+                        <MiniSparkline history={m.history ?? []} />
+
+                        {/* T / L / U thresholds */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, fontSize: 9, color: "var(--muted)", marginTop: 2 }}>
+                          <span>T: <strong style={{ color: "var(--text)" }}>{m.target != null ? Number(m.target).toFixed(4) : "—"}</strong></span>
+                          <span>L: <strong style={{ color: "var(--text)" }}>{m.lsl != null ? Number(m.lsl).toFixed(4) : "—"}</strong></span>
+                          <span>U: <strong style={{ color: "var(--text)" }}>{m.usl != null ? Number(m.usl).toFixed(4) : "—"}</strong></span>
+                        </div>
+
+                        {/* Period count + trend hint */}
+                        <p style={{ fontSize: 9, color: "#6c63ff", fontWeight: 600, margin: "4px 0 0" }}>
+                          {m.measurement_count} period{m.measurement_count !== 1 ? "s" : ""}
+                          {m.measurement_count > 0 && " (click for trend)"}
+                        </p>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {summary.metrics.length === 0 && (
               <GlassCard style={{ padding: "56px 24px", textAlign: "center" }}>

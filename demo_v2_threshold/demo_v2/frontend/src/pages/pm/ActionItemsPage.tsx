@@ -110,8 +110,8 @@ export function ActionItemsPage() {
 
   return (
     <div>
-      <Link to={`/pm/projects/${projectId}`} className="text-sm text-slate-600 hover:text-slate-900">
-        ← Back to project
+      <Link to="/pm/projects" className="text-sm text-slate-600 hover:text-slate-900">
+        ← Back to My Projects
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

@@ -183,3 +183,29 @@ kpi_measurements → kpi_plan_metrics
 dm_reviews → projects + kpi_plans + users
 metric_approval_requests → kpi_plans + users
 ```
+
+---
+
+## Preset Tables
+
+### engagement_model_presets
+Evidence-based mandatory metric list per engagement combo. Added via migration `s2t3u4v5w6x7`.
+
+| Column | Type | Description |
+|---|---|---|
+| id | UUID PK | Primary key |
+| project_type | VARCHAR(100) | Engagement model project type (exact match) |
+| delivery_model | VARCHAR(100) | Engagement model delivery model (exact match) |
+| metric_name | VARCHAR(200) | Exact metric name matching `qpm_catalog_metrics.name` |
+| source_reference | VARCHAR(200) | Client project this preset was derived from |
+| created_at | TIMESTAMPTZ | Seed timestamp |
+
+Index: `ix_engagement_preset_lookup` on `(project_type, delivery_model)`.
+
+**Usage:** `project_service.create_with_plan` queries this table first. If rows exist for the project's `(project_type, delivery_process_model)`, metrics are selected by exact name — bypassing the ILIKE fallback.
+
+### Relationship Summary (updated)
+```
+engagement_model_presets  — standalone lookup table, no FK to other tables
+                          — metric_name matches qpm_catalog_metrics.name (string, not FK)
+```

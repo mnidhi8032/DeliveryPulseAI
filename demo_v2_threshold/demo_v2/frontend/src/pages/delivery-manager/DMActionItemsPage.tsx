@@ -127,7 +127,7 @@ export function DMActionItemsPage() {
           <p style={{ fontSize:15, fontWeight:800, color: C.text, margin:0 }}>New Action Item</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { label:"Metric / area of concern", key:"metric_name",         placeholder:"E.g. Schedule Variance" },
+              { label:"Metric name — leave blank for a project-level action", key:"metric_name", placeholder:"Only fill if this relates to a specific metric" },
               { label:"Owner name",               key:"owner_name",          placeholder:"E.g. John Smith" },
               { label:"Target closure date",      key:"target_closure_date", type:"date" },
             ].map(({ label, key, placeholder, type }) => (
@@ -136,6 +136,12 @@ export function DMActionItemsPage() {
                 <input type={type ?? "text"} placeholder={placeholder}
                   value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                   style={inputStyle} />
+                {key === "metric_name" && !form.metric_name.trim() && (
+                  <span style={{ fontSize:10, color:"#6366f1", fontWeight:600 }}>📋 Will be saved as a Project-Level action</span>
+                )}
+                {key === "metric_name" && form.metric_name.trim() && (
+                  <span style={{ fontSize:10, color: C.muted, fontWeight:600 }}>📊 Will be saved as a Metric-Level action</span>
+                )}
               </div>
             ))}
           </div>
