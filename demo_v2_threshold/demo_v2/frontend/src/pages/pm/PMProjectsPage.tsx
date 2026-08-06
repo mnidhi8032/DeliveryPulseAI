@@ -5,13 +5,15 @@ import { getSetupAccounts } from "../../services/customerAdminSetupService";
 import { listBusinessUnits } from "../../services/businessUnitService";
 import { useToast } from "../../contexts/ToastContext";
 import type { Project } from "../../types/project";
-import { PROJECT_TYPES, DELIVERY_MODELS, PROJECT_CATEGORIES, WORK_SIZE_UNITS, METRIC_CATEGORIES, FREQUENCIES, COMPLIANCE_LABEL } from "../../types/qpm";
+import { FREQUENCIES } from "../../types/qpm";
+import { useEngagementModelOptions } from "../../hooks/useEngagementModelOptions";
 import type { KpiPlanMetric, QPMCatalogMetric } from "../../types/qpm";
 import { getKpiPlan, getCatalog, addPlanMetric, removePlanMetric } from "../../services/qpmService";
 import { submitMetricRequest, listMetricRequests } from "../../services/metricApprovalService";
 import type { MetricApprovalRequest } from "../../services/metricApprovalService";
 
 export function PMProjectsPage() {
+  const { projectTypes, deliveryModels, projectCategories, workSizeUnits, dimensions } = useEngagementModelOptions();
   const toast = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -87,11 +89,7 @@ export function PMProjectsPage() {
   }, [toast]);
 
   const handleRemoveMetric = async (metricId: string) => {
-  const metric = planMetrics.find(m => m.id === metricId);
-  if (metric?.priority === "M") {
-    toast.error("Mandatory metrics cannot be removed.");
-    return;
-  }
+  // Spec 18.1: mandatory metrics can now be removed by PM — compliance badge is informational only
   if (!window.confirm("Remove this metric from the plan?")) return;
   try {
     await removePlanMetric(metricId);
@@ -119,8 +117,7 @@ export function PMProjectsPage() {
           uom: selectedCatalog.uom || "",
           intent: selectedCatalog.intent || "",
           frequency: selectedCatalog.frequency || "Monthly",
-          priority: selectedCatalog.compliance || "O",
-          target: selectedCatalog.default_target ?? undefined,
+          priority: "O",          target: selectedCatalog.default_target ?? undefined,
           lsl: selectedCatalog.default_lsl ?? undefined,
           usl: selectedCatalog.default_usl ?? undefined,
         } as any);
@@ -225,7 +222,7 @@ export function PMProjectsPage() {
         work_size_unit: form.work_size_unit || undefined,
       });
       toast.success(
-        `Project created with ${result.mandatory_metrics_added} mandatory metrics auto-selected.`
+        `Project created with ${result.mandatory_metrics_added} preset metrics auto-selected.`
       );
       setModalOpen(false);
       setLoading(true);
@@ -454,7 +451,7 @@ export function PMProjectsPage() {
             <div style={{ padding: "22px 28px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
               <div>
                 <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", margin: 0, letterSpacing: "-0.01em" }}>Create New Project</h3>
-                <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Mandatory metrics will be auto-selected on creation.</p>
+                <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Preset metrics for this engagement will be auto-selected on creation.</p>
               </div>
               <button onClick={() => setModalOpen(false)} style={{ background: "rgba(107,114,128,0.10)", border: "none", borderRadius: 8, width: 30, height: 30, fontSize: 18, color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, lineHeight: 1 }}>×</button>
             </div>
@@ -536,14 +533,14 @@ export function PMProjectsPage() {
                 </div>
                 <p style={{ fontSize: 12, color: "var(--muted)", margin: "-6px 0 0", display: "flex", alignItems: "center", gap: 6 }}>
                   <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="var(--primary)" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  Mandatory metrics are auto-selected based on these values.
+                  Preset metrics for this engagement are auto-selected.
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   {[
-                    { label: "Project Type", key: "project_type" as const, opts: PROJECT_TYPES, required: true },
-                    { label: "Delivery Model", key: "delivery_process_model" as const, opts: DELIVERY_MODELS, required: true },
-                    { label: "Project Category", key: "project_category" as const, opts: PROJECT_CATEGORIES, required: false },
-                    { label: "Work Size Unit", key: "work_size_unit" as const, opts: WORK_SIZE_UNITS, required: false },
+                    { label: "Project Type", key: "project_type" as const, opts: projectTypes, required: true },
+                    { label: "Delivery Model", key: "delivery_process_model" as const, opts: deliveryModels, required: true },
+                    { label: "Project Category", key: "project_category" as const, opts: projectCategories, required: false },
+                    { label: "Work Size Unit", key: "work_size_unit" as const, opts: workSizeUnits, required: false },
                   ].map(f2 => (
                     <div key={f2.key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                       <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>
@@ -591,7 +588,7 @@ export function PMProjectsPage() {
             <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1.5px solid #e8e6ff",paddingBottom:16,marginBottom:20 }}>
               <div>
                 <h3 style={{ fontSize:17,fontWeight:800,color:"var(--text)",margin:0 }}>Manage Metrics — {metricsPanel.projectName}</h3>
-                <p style={{ fontSize:12,color:"var(--muted)",marginTop:4 }}>Mandatory metrics are locked and cannot be removed.</p>
+                <p style={{ fontSize:12,color:"var(--muted)",marginTop:4 }}>Manage metrics for this project's KPI plan.</p>
               </div>
               <button onClick={() => setMetricsPanel(null)} style={{ background:"none",border:"none",fontSize:22,color:"var(--muted)",cursor:"pointer",lineHeight:1 }}>&times;</button>
             </div>
@@ -603,7 +600,7 @@ export function PMProjectsPage() {
                   <table style={{ width:"100%",borderCollapse:"collapse",fontSize:13 }}>
                     <thead>
                       <tr style={{ background:"var(--bg)",borderBottom:"1.5px solid #e8e6ff" }}>
-                        {["Metric","Category","Frequency","Priority",""].map(h => (
+                        {["Metric","Category","Frequency","Type",""].map(h => (
                           <th key={h} style={{ padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,color:"#6c63ff",textTransform:"uppercase",letterSpacing:"0.08em" }}>{h}</th>
                         ))}
                       </tr>
@@ -624,15 +621,11 @@ export function PMProjectsPage() {
                               color:m.priority==="M"?"#dc2626":"var(--muted)",
                               background:m.priority==="M"?"rgba(239,68,68,0.10)":"var(--surface)",
                               borderColor:m.priority==="M"?"#fca5a5":"#e5e7eb" }}>
-                              {COMPLIANCE_LABEL[m.priority || ""] || m.priority || "—"}
+                              {m.priority === "M" ? "Mandatory" : m.priority === "O" || !m.priority ? "Optional" : m.priority}
                             </span>
                           </td>
                           <td style={{ padding:"10px 12px",textAlign:"right" }}>
-                            {m.priority === "M" ? (
-                              <span style={{ fontSize:11,color:"var(--muted)",fontWeight:600 }}>Locked</span>
-                            ) : (
-                              <button onClick={() => handleRemoveMetric(m.id)} style={{ fontSize:12,color:"#ef4444",fontWeight:700,background:"none",border:"none",cursor:"pointer" }}>Remove</button>
-                            )}
+                            <button onClick={() => handleRemoveMetric(m.id)} style={{ fontSize:12,color:"#ef4444",fontWeight:700,background:"none",border:"none",cursor:"pointer" }}>Remove</button>
                           </td>
                         </tr>
                       ))}
@@ -678,7 +671,7 @@ export function PMProjectsPage() {
                               <select value={addForm.metric_category} onChange={e => setAddForm(f => ({ ...f, metric_category: e.target.value }))}
                                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                                 <option value="">Select…</option>
-                                {METRIC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                {dimensions.map(c => <option key={c} value={c}>{c}</option>)}
                               </select>
                             </div>
                             <div style={{ display:"flex",flexDirection:"column",gap:4 }}>

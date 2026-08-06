@@ -152,10 +152,10 @@ class ProjectService:
 
         if preset_names:
             # Preset path — exact name match against evidence-based list.
-            # The compliance filter is intentionally omitted here: the preset IS
-            # the authority on which metrics are mandatory for this engagement,
-            # so metrics that happen to be marked 'O' in the catalog are still
-            # included when a client project explicitly requires them.
+            # All auto-added metrics start as Optional (O). The "mandatory" concept
+            # is now governed at the dimension level via min_mandatory_count (Spec 18.3),
+            # not at the individual metric level. PM can add/remove freely; finalization
+            # enforces the per-dimension minimum count.
             stmt = select(QPMCatalogMetric).where(
                 QPMCatalogMetric.is_active == True,
                 QPMCatalogMetric.name.in_(preset_names),
@@ -179,12 +179,19 @@ class ProjectService:
 
         mandatory = self._session.execute(stmt).scalars().all()
 
+        # All auto-added metrics are Optional (O). Mandatory enforcement is done at
+        # finalization via Dimension min_mandatory_count (Spec 18.3), not per-metric.
+        use_preset_priority = bool(preset_names)
+
         for m in mandatory:
             required = get_required_measures(m.name)
             self._session.add(KpiPlanMetric(
                 id=_uuid.uuid4(), kpi_plan_id=plan.id, catalog_metric_id=m.id,
                 metric_name=m.name, metric_category=m.category, formula=m.formula,
-                uom=m.uom, intent=m.intent, frequency=m.frequency, priority=m.compliance,
+                uom=m.uom, intent=m.intent, frequency=m.frequency,
+                # Preset path: metrics from the engagement preset are Mandatory (M).
+                # Fallback path: use the catalog compliance flag.
+                priority="M" if use_preset_priority else m.compliance,
                 target=float(m.default_target) if m.default_target is not None else None,
                 lsl=float(m.default_lsl) if m.default_lsl is not None else None,
                 usl=float(m.default_usl) if m.default_usl is not None else None,

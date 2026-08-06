@@ -7,9 +7,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { listProjects } from "../../services/projectService";
 import { getKpiPlan } from "../../services/qpmService";
+import { useEngagementModelOptions } from "../../hooks/useEngagementModelOptions";
 import type { Project } from "../../types/project";
 import type { KpiPlan } from "../../types/qpm";
-import { PROJECT_TYPES, PROJECT_CATEGORIES } from "../../types/qpm";
 
 interface ProjectWithPlan extends Project {
   kpiPlan?: KpiPlan;
@@ -385,6 +385,7 @@ function SectionHeader({ title, sub, action, onAction }: { title: string; sub?: 
 
 /* ── Main page ── */
 export function PortfolioDashboardPage() {
+  const { projectTypes, projectCategories } = useEngagementModelOptions();
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -444,8 +445,8 @@ export function PortfolioDashboardPage() {
     const src = buFilter === "All" ? projects : projects.filter(p => p.business_unit_name === buFilter);
     return ["All", ...Array.from(new Set(src.map(p => p.account_name).filter(Boolean))).sort()];
   }, [projects, buFilter]);
-  const typeOptions     = ["All", ...PROJECT_TYPES];
-  const categoryOptions = ["All", ...PROJECT_CATEGORIES];
+  const typeOptions     = ["All", ...projectTypes];
+  const categoryOptions = ["All", ...projectCategories];
 
   // Filtered project list for the table
   const filtered = useMemo(() => projects.filter(p => {

@@ -26,6 +26,8 @@ from app.models.qpm_catalog_metric import QPMCatalogMetric
 from app.models.kpi_plan import KpiPlan, KpiPlanMetric, KpiDocInfo, KpiDocVersionHistory
 from app.models.kpi_measurement import KpiMeasurement, KpiMeasureEntry
 from app.models.engagement_model_preset import EngagementModelPreset
+from app.models.engagement_model_item import EngagementModelItem
+from app.models.engagement_model_metric_mapping import EngagementModelMetricMapping
 
 __all__ = [
     "Base",

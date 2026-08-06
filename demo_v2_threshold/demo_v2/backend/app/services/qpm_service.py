@@ -623,11 +623,20 @@ class QPMService:
             project_type=body.project_type,
             delivery_model=body.delivery_model,
             project_category=body.project_category,
+            data_elements=body.data_elements,
+            data_source=body.data_source,
             frequency=body.frequency,
+            analytic_technique=body.analytic_technique,
             compliance=body.compliance,
+            dashboard=body.dashboard,
+            governance_level=body.governance_level,
+            directive_inputs=body.directive_inputs,
             default_target=body.default_target,
             default_lsl=body.default_lsl,
             default_usl=body.default_usl,
+            size_dependent=body.size_dependent,
+            computation_type=body.computation_type,
+            metrics_adaption_status=body.metrics_adaption_status,
             is_active=True,
         )
         self._s.add(metric)
@@ -694,6 +703,20 @@ class QPMService:
 
     def update_plan(self, user: User, plan_id: uuid.UUID, body: KpiPlanUpdateRequest) -> KpiPlanResponse:
         plan = self._get_plan_or_404(plan_id)
+
+        # Spec 18.3: when PM is finalizing, check min_mandatory_count per DIMENSION
+        if body.is_finalized is True and not plan.is_finalized:
+            from app.services.engagement_model_service import EngagementModelService
+            violations = EngagementModelService(self._s).validate_finalization(plan_id)
+            if violations:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "message": "Plan cannot be finalized: minimum metric counts not met.",
+                        "violations": violations,
+                    },
+                )
+
         for field, val in body.model_dump(exclude_unset=True).items():
             setattr(plan, field, val)
         plan.updated_at = datetime.now(timezone.utc)
@@ -859,8 +882,8 @@ class QPMService:
         pm = self._s.get(KpiPlanMetric, metric_id)
         if pm is None:
             raise HTTPException(status_code=404, detail="Plan metric not found")
-        if pm.priority == "M":
-            raise HTTPException(status_code=400, detail="Mandatory metrics cannot be removed from the plan.")
+        # Spec 18.1: mandatory metrics CAN be removed by PM — the plan finalize
+        # lock is the only remaining guard. Compliance = 'M' is informational only.
         plan = self._get_plan_or_404(pm.kpi_plan_id)
         if plan.is_finalized:
             raise HTTPException(status_code=400, detail="Plan is finalized.")
