@@ -3,8 +3,15 @@ export interface QPMCatalogMetric {
   objective_type: string | null; org_goal: string | null; higher_objective: string | null;
   formula: string | null; uom: string | null; metrics_type: string | null;
   intent: string | null; project_type: string | null; delivery_model: string | null;
-  project_category: string | null; frequency: string | null; compliance: string | null;
+  project_category: string | null;
+  // Full metadata from QPM Plan CSV
+  data_elements: string | null; data_source: string | null;
+  frequency: string | null; analytic_technique: string | null;
+  compliance: string | null; dashboard: string | null;
+  governance_level: string | null; directive_inputs: string | null;
   default_target: number | null; default_lsl: number | null; default_usl: number | null;
+  size_dependent: string | null; computation_type: string | null;
+  metrics_adaption_status: string | null;
   is_active: boolean;
 }
 

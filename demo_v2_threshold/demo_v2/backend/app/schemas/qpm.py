@@ -19,11 +19,21 @@ class QPMCatalogMetricResponse(BaseModel):
     project_type: str | None
     delivery_model: str | None
     project_category: str | None
+    # Full metadata from QPM Plan CSV
+    data_elements: str | None = None
+    data_source: str | None = None
     frequency: str | None
+    analytic_technique: str | None = None
     compliance: str | None
+    dashboard: str | None = None
+    governance_level: str | None = None
+    directive_inputs: str | None = None
     default_target: Decimal | None
     default_lsl: Decimal | None
     default_usl: Decimal | None
+    size_dependent: str | None = None
+    computation_type: str | None = None
+    metrics_adaption_status: str | None = None
     is_active: bool
     model_config = {"from_attributes": True}
 
@@ -369,11 +379,20 @@ class QPMCatalogMetricCreateRequest(BaseModel):
     project_type: str | None = None
     delivery_model: str | None = None
     project_category: str | None = None
+    data_elements: str | None = None
+    data_source: str | None = None
     frequency: str | None = None
+    analytic_technique: str | None = None
     compliance: str | None = None
+    dashboard: str | None = None
+    governance_level: str | None = None
+    directive_inputs: str | None = None
     default_target: Decimal | None = None
     default_lsl: Decimal | None = None
     default_usl: Decimal | None = None
+    size_dependent: str | None = None
+    computation_type: str | None = None
+    metrics_adaption_status: str | None = None
     # DE specifies the measure names required to compute this metric
     # e.g. ["Actual Effort", "Planned Effort"] for a 2-input metric
     measures: list[str] | None = None
@@ -388,11 +407,20 @@ class QPMCatalogMetricUpdateRequest(BaseModel):
     project_type: str | None = None
     delivery_model: str | None = None
     project_category: str | None = None
+    data_elements: str | None = None
+    data_source: str | None = None
     frequency: str | None = None
+    analytic_technique: str | None = None
     compliance: str | None = None
+    dashboard: str | None = None
+    governance_level: str | None = None
+    directive_inputs: str | None = None
     default_target: Decimal | None = None
     default_lsl: Decimal | None = None
     default_usl: Decimal | None = None
+    size_dependent: str | None = None
+    computation_type: str | None = None
+    metrics_adaption_status: str | None = None
     is_active: bool | None = None
     # DE updates the measure names for this catalog metric
     measures: list[str] | None = None

@@ -22,14 +22,14 @@ class QPMCatalogMetric(Base, TimestampMixin):
     # Formula & measurement
     formula: Mapped[str | None] = mapped_column(Text, nullable=True)
     uom: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    metrics_type: Mapped[str | None] = mapped_column(String(30), nullable=True)   # Result / Enabler / Insight
-    intent: Mapped[str | None] = mapped_column(String(50), nullable=True)          # Higher/Lower/Nominal/Within
+    metrics_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    intent: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Applicability
-    project_type: Mapped[str | None] = mapped_column(Text, nullable=True)          # comma-separated
+    project_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     delivery_model: Mapped[str | None] = mapped_column(Text, nullable=True)
     project_category: Mapped[str | None] = mapped_column(Text, nullable=True)
-    frequency: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    frequency: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     # Compliance: M=Mandatory, O=Optional, C=Conditional, R=Recommended
     compliance: Mapped[str | None] = mapped_column(String(10), nullable=True)

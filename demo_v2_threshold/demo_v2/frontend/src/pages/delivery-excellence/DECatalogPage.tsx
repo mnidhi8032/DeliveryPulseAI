@@ -9,7 +9,9 @@ import { getAllCatalog, createCatalogMetric, updateCatalogMetric } from "../../s
 import { listMetricRequests, decideMetricRequest, addRequestToCatalog } from "../../services/metricApprovalService";
 import type { MetricApprovalRequest } from "../../services/metricApprovalService";
 import type { QPMCatalogMetric } from "../../types/qpm";
-import { METRIC_CATEGORIES, FREQUENCIES, COMPLIANCE_LABEL } from "../../types/qpm";
+import { FREQUENCIES, COMPLIANCE_LABEL } from "../../types/qpm";
+import { useEngagementModelOptions } from "../../hooks/useEngagementModelOptions";
+import { EngagementModelManagerPanel } from "../../components/EngagementModelManagerPanel";
 
 // ─── Theme tokens (matches PM page) ─────────────────────────────────────────
 const T = {
@@ -53,8 +55,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 const INTENT_OPTIONS = ["Higher the better", "Lower the better", "Nominal the best", "Within Limits", "Not Applicable"];
 
 export function DECatalogPage() {
+  const { dimensions } = useEngagementModelOptions();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<"catalog" | "requests">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "requests" | "engagement">("catalog");
 
   // -- Catalog state
   const [metrics, setMetrics] = useState<QPMCatalogMetric[]>([]);
@@ -69,6 +72,10 @@ export function DECatalogPage() {
     intent: "Higher the better", project_type: "", delivery_model: "",
     project_category: "", frequency: "Monthly", compliance: "O",
     default_target: "", default_lsl: "", default_usl: "",
+    data_elements: "", data_source: "", analytic_technique: "",
+    governance_level: "", directive_inputs: "",
+    size_dependent: "", computation_type: "C", metrics_adaption_status: "Standard",
+    dashboard: "",
     measures_str: "", // comma-separated measure parameter names
   };
   const [form, setForm] = useState(emptyForm);
@@ -110,6 +117,12 @@ export function DECatalogPage() {
       default_target: m.default_target != null ? String(m.default_target) : "",
       default_lsl: m.default_lsl != null ? String(m.default_lsl) : "",
       default_usl: m.default_usl != null ? String(m.default_usl) : "",
+      data_elements: m.data_elements || "", data_source: m.data_source || "",
+      analytic_technique: m.analytic_technique || "",
+      governance_level: m.governance_level || "", directive_inputs: m.directive_inputs || "",
+      size_dependent: m.size_dependent || "", computation_type: m.computation_type || "C",
+      metrics_adaption_status: m.metrics_adaption_status || "Standard",
+      dashboard: m.dashboard || "",
       measures_str: "",
     });
     setShowModal(true);
@@ -252,7 +265,7 @@ export function DECatalogPage() {
         background: "#f0f2ff", border: `1px solid ${T.cardBorder}`,
         borderRadius: 12,
       }}>
-        {(["catalog", "requests"] as const).map(tab => (
+        {(["catalog", "requests", "engagement"] as const).map(tab => (
           <button
             key={tab}
             type="button"
@@ -270,7 +283,7 @@ export function DECatalogPage() {
               boxShadow: activeTab === tab ? T.cardShadow : "none",
             }}
           >
-            {tab === "catalog" ? "Metric Catalog" : "Pending Requests"}
+            {tab === "catalog" ? "Metric Catalog" : tab === "requests" ? "Pending Requests" : "Engagement Model"}
             {tab === "requests" && pendingCount > 0 && (
               <span style={{
                 position: "absolute", top: -4, right: -4,
@@ -434,7 +447,7 @@ export function DECatalogPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                 <thead>
                   <tr style={{ background: T.tableBg, borderBottom: `1px solid ${T.divider}` }}>
-                    {["Category","Name","Formula","UOM","Intent","Compliance","Target","LSL","USL","Freq","Status",""].map(h => (
+                    {["Category","Name","Formula","UOM","Intent","Compliance","Target","LSL","USL","Freq","Data Source","Gov. Level","Type","Status",""].map(h => (
                       <th key={h} style={{
                         padding: "10px 12px", textAlign: "left", whiteSpace: "nowrap",
                         fontSize: 9, fontWeight: 700, color: T.accentText,
@@ -507,6 +520,28 @@ export function DECatalogPage() {
                       <td style={{ padding: "9px 12px", fontFamily: "monospace", color: "#ef4444" }}>{m.default_usl ?? 0}</td>
                       <td style={{ padding: "9px 12px", color: T.textMuted, fontSize: 10, whiteSpace: "nowrap" }}>
                         {m.frequency ? m.frequency.substring(0, 20) : "--"}
+                      </td>
+                      <td style={{ padding: "9px 12px", color: T.textMuted, fontSize: 10, maxWidth: 140 }}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.data_source || ""}>
+                          {m.data_source || "--"}
+                        </div>
+                      </td>
+                      <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>
+                        {m.governance_level ? (
+                          <span style={{
+                            borderRadius: 6, fontSize: 9, fontWeight: 600, padding: "2px 7px",
+                            background: m.governance_level === "Delivery Manager" ? "rgba(99,102,241,0.10)" : T.badgeBg,
+                            border: `1px solid ${m.governance_level === "Delivery Manager" ? "rgba(99,102,241,0.25)" : T.cardBorder}`,
+                            color: m.governance_level === "Delivery Manager" ? "#6366F1" : T.accentText,
+                          }}>{m.governance_level === "Delivery Manager" ? "DM" : "PM"}</span>
+                        ) : "--"}
+                      </td>
+                      <td style={{ padding: "9px 12px", color: T.textMuted, fontSize: 10, whiteSpace: "nowrap" }}>
+                        {m.computation_type === "C" ? (
+                          <span style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "#b45309", borderRadius: 6, fontSize: 9, fontWeight: 700, padding: "2px 7px" }}>Computed</span>
+                        ) : m.computation_type === "D" ? (
+                          <span style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#15803d", borderRadius: 6, fontSize: 9, fontWeight: 700, padding: "2px 7px" }}>Direct</span>
+                        ) : "--"}
                       </td>
                       <td style={{ padding: "9px 12px" }}>
                         <span style={{
@@ -597,6 +632,11 @@ export function DECatalogPage() {
         </div>
       )}
 
+      {/* ── ENGAGEMENT MODEL TAB ── */}
+      {activeTab === "engagement" && (
+        <EngagementModelManagerPanel catalogMetrics={metrics} toast={toast} />
+      )}
+
       {/* ── Add/Edit metric modal ── */}
       {showModal && (
         <div style={{
@@ -629,7 +669,7 @@ export function DECatalogPage() {
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 {([
-                  { label: "Category *", key: "category", type: "select", options: METRIC_CATEGORIES },
+                  { label: "Category *", key: "category", type: "select", options: dimensions },
                   { label: "Metric Name *", key: "name", type: "text", placeholder: "E.g. Effort Variance" },
                   { label: "UOM", key: "uom", type: "text", placeholder: "E.g. %" },
                   { label: "Intent", key: "intent", type: "select", options: INTENT_OPTIONS },
@@ -693,6 +733,105 @@ export function DECatalogPage() {
                   value={form.delivery_model}
                   onChange={e => setForm(f => ({ ...f, delivery_model: e.target.value }))}
                   placeholder="E.g. Agile-Scrum,Waterfall,Iterative"
+                  style={inputStyle}
+                />
+              </div>
+              {/* Data definition fields from QPM Plan CSV */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Data Source</label>
+                <input
+                  type="text"
+                  value={form.data_source}
+                  onChange={e => setForm(f => ({ ...f, data_source: e.target.value }))}
+                  placeholder="E.g. Time Tracking System, Defect Tracking System"
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Data Elements &amp; Operational Definitions</label>
+                <textarea
+                  value={form.data_elements}
+                  onChange={e => setForm(f => ({ ...f, data_elements: e.target.value }))}
+                  rows={3}
+                  placeholder="E.g. Actual Effort in Person-hours; Planned Effort in Person-hours; UoM for Effort..."
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Analytic Technique</label>
+                  <input
+                    type="text"
+                    value={form.analytic_technique}
+                    onChange={e => setForm(f => ({ ...f, analytic_technique: e.target.value }))}
+                    placeholder="E.g. Run Chart, Bar Chart"
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Governance Level</label>
+                  <select
+                    value={form.governance_level}
+                    onChange={e => setForm(f => ({ ...f, governance_level: e.target.value }))}
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                  >
+                    <option value="">Select...</option>
+                    <option value="Project Manager">Project Manager</option>
+                    <option value="Delivery Manager">Delivery Manager</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Computation Type</label>
+                  <select
+                    value={form.computation_type}
+                    onChange={e => setForm(f => ({ ...f, computation_type: e.target.value }))}
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                  >
+                    <option value="C">C — Computed (multi-measure)</option>
+                    <option value="D">D — Direct (single value entry)</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Dashboard Metric?</label>
+                  <select
+                    value={form.dashboard}
+                    onChange={e => setForm(f => ({ ...f, dashboard: e.target.value }))}
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                  >
+                    <option value="">No</option>
+                    <option value="Yes">Yes</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Size Dependent</label>
+                  <select
+                    value={form.size_dependent}
+                    onChange={e => setForm(f => ({ ...f, size_dependent: e.target.value }))}
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                  >
+                    <option value="">—</option>
+                    <option value="Y">Y</option>
+                    <option value="N">N</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Adaption Status</label>
+                  <input
+                    type="text"
+                    value={form.metrics_adaption_status}
+                    onChange={e => setForm(f => ({ ...f, metrics_adaption_status: e.target.value }))}
+                    placeholder="E.g. Standard"
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Directive Inputs / Conditions</label>
+                <input
+                  type="text"
+                  value={form.directive_inputs}
+                  onChange={e => setForm(f => ({ ...f, directive_inputs: e.target.value }))}
+                  placeholder="E.g. Mandatory for FP Projects & T&M with cap projects"
                   style={inputStyle}
                 />
               </div>

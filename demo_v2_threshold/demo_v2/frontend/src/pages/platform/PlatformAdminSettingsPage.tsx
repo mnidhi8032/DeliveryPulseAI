@@ -26,6 +26,9 @@ import {
   updateAccount,
 } from "../../services/customerAdminSetupService";
 import { apiClient } from "../../services/apiClient";
+import { EngagementModelManagerPanel } from "../../components/EngagementModelManagerPanel";
+import { getAllCatalog } from "../../services/qpmService";
+import type { QPMCatalogMetric } from "../../types/qpm";
 import type { SetupBusinessUnit, SetupAccount } from "../../types/customerAdminSetup";
 import type { SystemSettings, MetricCatalogItem, SettingsAuditLog } from "../../types/platformSettings";
 import type { ManagedUser } from "../../types/platformUsers";
@@ -60,7 +63,7 @@ const BREACH_LABELS: Record<string, string> = {
   outside_nominal_below: "Below Nominal (Nominal RED/AMBER)",
 };
 
-type Tab = "general" | "health" | "notifications" | "metrics" | "users" | "audit" | "periods" | "setup" | "recommendations";
+type Tab = "general" | "health" | "notifications" | "metrics" | "users" | "audit" | "periods" | "setup" | "recommendations" | "engagement";
 
 export function PlatformAdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("setup");
@@ -116,18 +119,23 @@ export function PlatformAdminSettingsPage() {
   const [editRec, setEditRec] = useState<MetricRec | null>(null);
   const [recForm, setRecForm] = useState({ metric_name: "", breach_type: "over_usl", recommendation_text: "" });
 
+  // Spec 18.2 — QPM catalog for EngagementModelManagerPanel
+  const [qpmCatalog, setQpmCatalog] = useState<QPMCatalogMetric[]>([]);
+
   const toast = useToast();
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const [settingsData, metricsData] = await Promise.all([
+        const [settingsData, metricsData, catalogData] = await Promise.all([
           getSystemSettings(),
           getMetricCatalog(),
+          getAllCatalog(),
         ]);
         setSettings(settingsData);
         setMetrics(metricsData);
+        setQpmCatalog(catalogData);
       } catch (err) {
         toast.error("Failed to load settings data");
       } finally {
@@ -388,6 +396,7 @@ export function PlatformAdminSettingsPage() {
     { id: "periods",         label: "Gov. Periods" },
     { id: "users",           label: "User Directory" },
     { id: "recommendations", label: "Recommendations" },
+    { id: "engagement",      label: "Engagement Model" },
     { id: "audit",           label: "System Audits" },
   ];
 
@@ -599,7 +608,7 @@ export function PlatformAdminSettingsPage() {
           )}
 
           {/* Form Actions */}
-          {activeTab !== "metrics" && activeTab !== "audit" && activeTab !== "recommendations" && (
+          {activeTab !== "metrics" && activeTab !== "audit" && activeTab !== "recommendations" && activeTab !== "engagement" && (
             <div className="flex justify-end p-4 bg-slate-50 rounded-lg border border-slate-200">
               <button
                 type="submit"
@@ -1513,6 +1522,13 @@ export function PlatformAdminSettingsPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Engagement Model Tab — Spec 18.2 + 18.3 */}
+      {activeTab === "engagement" && (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <EngagementModelManagerPanel catalogMetrics={qpmCatalog} toast={toast} />
         </div>
       )}
 

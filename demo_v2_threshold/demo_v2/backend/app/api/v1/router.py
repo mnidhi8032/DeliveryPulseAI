@@ -10,6 +10,7 @@ from app.api.v1 import (
     compliance,
     customer_admin,
     dm_reviews,
+    engagement_model,
     excel,
     governance_periods,
     governance_reviews,
@@ -50,3 +51,4 @@ api_router.include_router(action_items.router)
 api_router.include_router(compliance.router)
 api_router.include_router(dm_reviews.router)
 api_router.include_router(period_measures.router)
+api_router.include_router(engagement_model.router)

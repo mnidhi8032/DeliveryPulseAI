@@ -15,10 +15,8 @@ import { submitMetricRequest, listMetricRequests } from "../../services/metricAp
 import type { MetricApprovalRequest } from "../../services/metricApprovalService";
 import type { Project } from "../../types/project";
 import type { KpiPlan, KpiPlanMetric, QPMCatalogMetric } from "../../types/qpm";
-import {
-  PROJECT_TYPES, DELIVERY_MODELS, PROJECT_CATEGORIES,
-  WORK_SIZE_UNITS, FREQUENCIES, METRIC_CATEGORIES,
-} from "../../types/qpm";
+import { FREQUENCIES } from "../../types/qpm";
+import { useEngagementModelOptions } from "../../hooks/useEngagementModelOptions";
 
 const COMPLIANCE_LABEL: Record<string, string> = {
   M: "Mandatory", O: "Optional", C: "Conditional", R: "Recommended",
@@ -33,6 +31,8 @@ const COMPLIANCE_COLOR: Record<string, string> = {
 export function QPMPlanPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const toast = useToast();
+
+  const { projectTypes, deliveryModels, projectCategories, workSizeUnits, dimensions } = useEngagementModelOptions();
 
   const [project, setProject] = useState<Project | null>(null);
   const [plan, setPlan] = useState<KpiPlan | null>(null);
@@ -165,7 +165,7 @@ export function QPMPlanPage() {
     let added = 0;
     for (const m of mandatory) {
       try {
-        const pm = await addPlanMetric(plan.id, { catalog_metric_id: m.id, metric_name: m.name, metric_category: m.category, formula: m.formula || "", uom: m.uom || "", intent: m.intent || "", frequency: m.frequency || "Monthly", priority: m.compliance || "M", target: m.default_target ?? undefined, lsl: m.default_lsl ?? undefined, usl: m.default_usl ?? undefined });
+        const pm = await addPlanMetric(plan.id, { catalog_metric_id: m.id, metric_name: m.name, metric_category: m.category, formula: m.formula || "", uom: m.uom || "", intent: m.intent || "", frequency: m.frequency || "Monthly", priority: "O", target: m.default_target ?? undefined, lsl: m.default_lsl ?? undefined, usl: m.default_usl ?? undefined });
         setPlan((prev) => prev ? { ...prev, metrics: [...prev.metrics, pm] } : prev);
         added++;
       } catch { /* skip duplicates */ }
@@ -298,10 +298,10 @@ export function QPMPlanPage() {
         <h2 className="text-sm font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2">Engagement Model</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Project Type", key: "project_type", options: PROJECT_TYPES },
-            { label: "Delivery Process Model", key: "delivery_process_model", options: DELIVERY_MODELS },
-            { label: "Project Category", key: "project_category", options: PROJECT_CATEGORIES },
-            { label: "Work Size Unit", key: "work_size_unit", options: WORK_SIZE_UNITS },
+            { label: "Project Type", key: "project_type", options: projectTypes },
+            { label: "Delivery Process Model", key: "delivery_process_model", options: deliveryModels },
+            { label: "Project Category", key: "project_category", options: projectCategories },
+            { label: "Work Size Unit", key: "work_size_unit", options: workSizeUnits },
           ].map(({ label, key, options }) => (
             <div key={key} className="flex flex-col gap-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{label}</label>
@@ -348,12 +348,12 @@ export function QPMPlanPage() {
             <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400">
               <option value="">All Categories</option>
-              {METRIC_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {dimensions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <span className="text-xs text-slate-400 self-center">{filteredCatalog.length} metrics</span>
             <button onClick={handleAutoSuggestMandatory} disabled={!!plan?.is_finalized}
-              className="ml-auto rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-40 cursor-pointer">
-              ★ Auto-add All Mandatory (M) Metrics
+              className="ml-auto rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-40 cursor-pointer">
+              ★ Auto-add Preset Metrics for this Engagement
             </button>
           </div>
 
@@ -527,7 +527,7 @@ export function QPMPlanPage() {
                     onChange={e => setRequestForm(p => ({ ...p, metric_category: e.target.value }))}
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
                     <option value="">Select…</option>
-                    {METRIC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {dimensions.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
