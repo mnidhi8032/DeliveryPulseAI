@@ -133,13 +133,25 @@ class ProjectService:
         self._session.add(plan)
         self._session.flush()
 
-        # ── Select mandatory metrics ─────────────────────────────────────────
-        # Strategy: check engagement_model_presets for an exact (project_type,
-        # delivery_process_model) match first.  If found, select catalog rows by
-        # exact name — this gives a precise, evidence-based metric list.
-        # If no preset exists for this combo, fall back to the original broad
-        # ILIKE tag-matching so projects with unlisted engagement models still
-        # get metrics auto-added.
+        # ── Select metrics for the new project ──────────────────────────────
+        # Three-path strategy (priority order):
+        #
+        # Path 1 — engagement_model_presets (exact seeded preset for this combo)
+        #   Used for: the 3 real-client presets (Testing/Agile-Scrum, etc.)
+        #   Result:   exact metric list, all marked priority='M'
+        #
+        # Path 2 — engagement_model_metric_mappings (admin-configured mappings)
+        #   Used for: any new type/model/category/unit created via the admin UI
+        #   Result:   UNION of metrics mapped to any of the 4 engagement fields,
+        #             is_mandatory on the mapping determines priority M/O
+        #
+        # Path 3 — ILIKE fallback on qpm_catalog_metrics (legacy)
+        #   Used for: combos not covered by paths 1 or 2
+        #   Result:   broad catalog tag-matching
+
+        from app.models.engagement_model_item import EngagementModelItem
+        from app.models.engagement_model_metric_mapping import EngagementModelMetricMapping
+
         preset_names: list[str] = []
         if body.project_type and body.delivery_process_model:
             preset_rows = self._session.execute(
@@ -151,47 +163,120 @@ class ProjectService:
             preset_names = list(preset_rows)
 
         if preset_names:
-            # Preset path — exact name match against evidence-based list.
-            # All auto-added metrics start as Optional (O). The "mandatory" concept
-            # is now governed at the dimension level via min_mandatory_count (Spec 18.3),
-            # not at the individual metric level. PM can add/remove freely; finalization
-            # enforces the per-dimension minimum count.
+            # ── PATH 1: seeded preset ──────────────────────────────────────
             stmt = select(QPMCatalogMetric).where(
                 QPMCatalogMetric.is_active == True,
                 QPMCatalogMetric.name.in_(preset_names),
             )
+            use_preset_priority = True
+            mapped_mandatory_ids: set[str] = set()  # not used in this path
         else:
-            # Fallback path — original broad ILIKE tag-matching (unchanged)
-            stmt = select(QPMCatalogMetric).where(
-                QPMCatalogMetric.is_active == True,
-                QPMCatalogMetric.compliance == "M",
-            )
-            if body.project_type:
-                stmt = stmt.where(
-                    QPMCatalogMetric.project_type.ilike(f"%{body.project_type}%")
+            # ── PATH 2: admin-configured mappings ──────────────────────────
+            # Original 14 standard project types — these are handled by Path 3 (ILIKE)
+            # because their metric applicability is encoded in qpm_catalog_metrics.project_type.
+            # Path 2 only applies to custom/admin-created types not in this list.
+            STANDARD_PROJECT_TYPES = {
+                "Fresh Development", "Maintenance & Support", "Testing",
+                "Infrastructure Management Services", "Re-Engineering", "Migration",
+                "Package Rollout", "Package implementation", "Production Support",
+                "Application Build", "Helpdesk Services", "Upgrade",
+                "Professional Services", "Custom Enhancements",
+            }
+            # Original 12 standard delivery models — same logic
+            STANDARD_DELIVERY_MODELS = {
+                "Waterfall", "Iterative", "Incremental", "Agile-Scrum", "Agile-Kanban",
+                "Sure Step", "Agile Sure Step", "ASAP", "Oracle AIM",
+                "ITIL based Service Delivery", "Traditional Maintenance & Support", "Staffing",
+            }
+
+            # Only use Path 2 if BOTH fields are custom (not in the standard lists).
+            # If either field is standard, fall through to Path 3 (ILIKE) which
+            # was designed for exactly these combos.
+            pt_is_custom = body.project_type not in STANDARD_PROJECT_TYPES if body.project_type else False
+            dm_is_custom = body.delivery_process_model not in STANDARD_DELIVERY_MODELS if body.delivery_process_model else False
+            use_mapping_path = pt_is_custom or dm_is_custom
+
+            # Only use Path 2 if at least one custom field is present
+            field_pairs = []
+            if use_mapping_path:
+                if pt_is_custom and body.project_type:
+                    field_pairs.append(("PROJECT_TYPE", body.project_type))
+                if dm_is_custom and body.delivery_process_model:
+                    field_pairs.append(("DELIVERY_MODEL", body.delivery_process_model))
+            item_ids: list[str] = []
+            if field_pairs:
+                for item_type, value in field_pairs:
+                    item = self._session.execute(
+                        select(EngagementModelItem.id).where(
+                            EngagementModelItem.item_type == item_type,
+                            EngagementModelItem.value == value,
+                            EngagementModelItem.is_active == True,
+                        )
+                    ).scalar_one_or_none()
+                    if item:
+                        item_ids.append(str(item))
+
+            mapping_rows: list[EngagementModelMetricMapping] = []
+            if item_ids:
+                mapping_rows = list(
+                    self._session.execute(
+                        select(EngagementModelMetricMapping).where(
+                            EngagementModelMetricMapping.engagement_item_id.in_(item_ids)
+                        )
+                    ).scalars().all()
                 )
-            if body.delivery_process_model:
-                stmt = stmt.where(
-                    QPMCatalogMetric.delivery_model.ilike(
-                        f"%{body.delivery_process_model}%"
+
+            if mapping_rows:
+                # Collect unique catalog metric ids and track which are mandatory
+                mapped_metric_ids = list({str(r.catalog_metric_id) for r in mapping_rows})
+                mapped_mandatory_ids: set[str] = {
+                    str(r.catalog_metric_id) for r in mapping_rows if r.is_mandatory
+                }
+                stmt = select(QPMCatalogMetric).where(
+                    QPMCatalogMetric.is_active == True,
+                    QPMCatalogMetric.id.in_([_uuid.UUID(mid) for mid in mapped_metric_ids]),
+                )
+                use_preset_priority = False  # priority determined per-metric below
+            else:
+                # ── PATH 3: ILIKE fallback ─────────────────────────────────
+                mapped_mandatory_ids = set()
+                use_preset_priority = False
+                stmt = select(QPMCatalogMetric).where(
+                    QPMCatalogMetric.is_active == True,
+                    QPMCatalogMetric.compliance == "M",
+                )
+                if body.project_type:
+                    stmt = stmt.where(
+                        QPMCatalogMetric.project_type.ilike(f"%{body.project_type}%")
                     )
-                )
+                if body.delivery_process_model:
+                    stmt = stmt.where(
+                        QPMCatalogMetric.delivery_model.ilike(
+                            f"%{body.delivery_process_model}%"
+                        )
+                    )
 
         mandatory = self._session.execute(stmt).scalars().all()
 
-        # All auto-added metrics are Optional (O). Mandatory enforcement is done at
-        # finalization via Dimension min_mandatory_count (Spec 18.3), not per-metric.
-        use_preset_priority = bool(preset_names)
-
         for m in mandatory:
             required = get_required_measures(m.name)
+            # Determine priority:
+            # Path 1 (preset): all preset metrics = Mandatory
+            # Path 2 (mappings): mandatory if is_mandatory=True on the mapping
+            # Path 3 (ILIKE): use catalog compliance flag
+            if use_preset_priority:
+                priority = "M"
+            elif mapped_mandatory_ids and str(m.id) in mapped_mandatory_ids:
+                priority = "M"
+            elif mapped_mandatory_ids:
+                priority = "O"  # mapped but not mandatory
+            else:
+                priority = m.compliance  # ILIKE fallback: use catalog flag
             self._session.add(KpiPlanMetric(
                 id=_uuid.uuid4(), kpi_plan_id=plan.id, catalog_metric_id=m.id,
                 metric_name=m.name, metric_category=m.category, formula=m.formula,
                 uom=m.uom, intent=m.intent, frequency=m.frequency,
-                # Preset path: metrics from the engagement preset are Mandatory (M).
-                # Fallback path: use the catalog compliance flag.
-                priority="M" if use_preset_priority else m.compliance,
+                priority=priority,
                 target=float(m.default_target) if m.default_target is not None else None,
                 lsl=float(m.default_lsl) if m.default_lsl is not None else None,
                 usl=float(m.default_usl) if m.default_usl is not None else None,
