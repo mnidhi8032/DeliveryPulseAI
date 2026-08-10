@@ -93,12 +93,15 @@ export function EngagementModelManagerPanel({ catalogMetrics, toast }: Props) {
   }, [activeType]);
 
   const loadMappings = async (item: EngagementModelItem) => {
+    const isSameItem = selectedItem?.id === item.id;
     setSelectedItem(item);
     setMappingsLoading(true);
     setCatalogSearch("");
     setCatalogCatFilter("");
     setMandatoryFilter("all");
-    setMappingSubTab("mapped");
+    // Only reset to "mapped" tab when switching to a different item
+    // If same item re-clicked, stay on whichever tab was open
+    if (!isSameItem) setMappingSubTab("mapped");
     try {
       setMappings(await listMetricMappings(item.id));
     } catch { toast.error("Failed to load metric mappings"); }
@@ -146,7 +149,8 @@ export function EngagementModelManagerPanel({ catalogMetrics, toast }: Props) {
     try {
       const m = await addMetricMapping(selectedItem.id, catalogMetric.id, false);
       setMappings(prev => [...prev, m]);
-      toast.success(`"${catalogMetric.name}" mapped`);
+      // Stay on catalog tab — metric simply disappears from the available list
+      // No toast to avoid UI jumping; the shrinking list is the confirmation
     } catch (e: any) {
       toast.error(e.response?.data?.detail || "Failed to add mapping");
     } finally { setAddingMetricId(null); }
@@ -341,8 +345,8 @@ export function EngagementModelManagerPanel({ catalogMetrics, toast }: Props) {
                     transition: "all 0.15s",
                   }}>
                   {t === "mapped"
-                    ? `Mapped Metrics (${mappings.length})`
-                    : `Add from Catalog (${availableCatalog.length})`}
+                    ? `Mapped (${mappings.length})`
+                    : `Add from Catalog (${availableCatalog.length} available)`}
                 </button>
               ))}
             </div>
@@ -467,11 +471,15 @@ export function EngagementModelManagerPanel({ catalogMetrics, toast }: Props) {
                         onClick={() => handleAddMapping(m)}
                         style={{
                           borderRadius: 8, padding: "5px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer",
-                          background: T.accent, color: "#fff", border: "none", flexShrink: 0,
-                          opacity: addingMetricId === m.id ? 0.5 : 1,
-                          boxShadow: `0 2px 6px rgba(108,99,255,0.25)`,
+                          background: addingMetricId === m.id ? "rgba(34,197,94,0.15)" : T.accent,
+                          color: addingMetricId === m.id ? "#16a34a" : "#fff",
+                          border: addingMetricId === m.id ? "1px solid rgba(34,197,94,0.4)" : "none",
+                          flexShrink: 0,
+                          opacity: 1,
+                          transition: "all 0.15s",
+                          boxShadow: addingMetricId === m.id ? "none" : `0 2px 6px rgba(108,99,255,0.25)`,
                         }}>
-                        {addingMetricId === m.id ? "…" : "+ Map"}
+                        {addingMetricId === m.id ? "Adding…" : "+ Map"}
                       </button>
                     </div>
                   ))}
