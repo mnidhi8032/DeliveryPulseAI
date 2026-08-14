@@ -13,22 +13,22 @@ import { FREQUENCIES, COMPLIANCE_LABEL } from "../../types/qpm";
 import { useEngagementModelOptions } from "../../hooks/useEngagementModelOptions";
 import { EngagementModelManagerPanel } from "../../components/EngagementModelManagerPanel";
 
-// ─── Theme tokens (matches PM page) ─────────────────────────────────────────
+// ─── Theme tokens — CSS variables for dark mode support ──────────────────────
 const T = {
-  bg: "#f0f2ff",
-  cardBg: "#ffffff",
-  cardBorder: "#e8e6ff",
-  cardShadow: "0 2px 16px rgba(108,99,255,0.10)",
+  bg: "var(--bg)",
+  cardBg: "var(--surface)",
+  cardBorder: "var(--border)",
+  cardShadow: "var(--shadow, 0 2px 16px rgba(108,99,255,0.10))",
   accent: "#6c63ff",
   accentDark: "#5a52e0",
-  accentText: "#6366F1",
-  text: "#1a1a2e",
-  textMuted: "#6b7280",
-  inputBorder: "#e8e6ff",
+  accentText: "#6c63ff",
+  text: "var(--text)",
+  textMuted: "var(--muted)",
+  inputBorder: "var(--border)",
   inputFocus: "#6c63ff",
-  rowHover: "rgba(108,99,255,0.04)",
-  divider: "#e8e6ff",
-  tableBg: "#f8f7ff",
+  rowHover: "rgba(108,99,255,0.06)",
+  divider: "var(--border)",
+  tableBg: "var(--bg)",
   badgeBg: "rgba(108,99,255,0.10)",
 };
 
@@ -36,8 +36,8 @@ const T = {
 function GlassCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: T.cardBg, border: `1px solid ${T.cardBorder}`,
-      borderRadius: 16, boxShadow: T.cardShadow, ...style,
+      background: "var(--surface)", border: "1.5px solid var(--border)",
+      borderRadius: 16, boxShadow: "0 2px 16px rgba(108,99,255,0.10)", ...style,
     }}>
       {children}
     </div>
@@ -46,7 +46,7 @@ function GlassCard({ children, style }: { children: React.ReactNode; style?: Rea
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: T.accentText, textTransform: "uppercase", marginBottom: 4 }}>
+    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "#6c63ff", textTransform: "uppercase", marginBottom: 4 }}>
       {children}
     </p>
   );
@@ -72,11 +72,7 @@ export function DECatalogPage() {
     intent: "Higher the better", project_type: "", delivery_model: "",
     project_category: "", frequency: "Monthly", compliance: "O",
     default_target: "", default_lsl: "", default_usl: "",
-    data_elements: "", data_source: "", analytic_technique: "",
-    governance_level: "", directive_inputs: "",
-    size_dependent: "", computation_type: "C", metrics_adaption_status: "Standard",
-    dashboard: "",
-    measures_str: "", // comma-separated measure parameter names
+    measures_str: "",
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -106,8 +102,6 @@ export function DECatalogPage() {
   const openCreate = () => { setEditMetric(null); setForm(emptyForm); setShowModal(true); };
   const openEdit = (m: QPMCatalogMetric) => {
     setEditMetric(m);
-    // Reconstruct measures_str from the in-memory map if possible — not stored on catalog row,
-    // so we just leave it blank on edit (DE can re-enter if they want to update measures).
     setForm({
       category: m.category || "", name: m.name || "", formula: m.formula || "",
       uom: m.uom || "", metrics_type: m.metrics_type || "Result",
@@ -117,12 +111,6 @@ export function DECatalogPage() {
       default_target: m.default_target != null ? String(m.default_target) : "",
       default_lsl: m.default_lsl != null ? String(m.default_lsl) : "",
       default_usl: m.default_usl != null ? String(m.default_usl) : "",
-      data_elements: m.data_elements || "", data_source: m.data_source || "",
-      analytic_technique: m.analytic_technique || "",
-      governance_level: m.governance_level || "", directive_inputs: m.directive_inputs || "",
-      size_dependent: m.size_dependent || "", computation_type: m.computation_type || "C",
-      metrics_adaption_status: m.metrics_adaption_status || "Standard",
-      dashboard: m.dashboard || "",
       measures_str: "",
     });
     setShowModal(true);
@@ -216,9 +204,9 @@ export function DECatalogPage() {
 
   // ── Shared input style ────────────────────────────────────────────────────
   const inputStyle: React.CSSProperties = {
-    borderRadius: 10, border: `1px solid ${T.inputBorder}`,
-    padding: "8px 12px", fontSize: 12, color: T.text,
-    background: T.cardBg, outline: "none", width: "100%",
+    borderRadius: 10, border: `1px solid var(--border)`,
+    padding: "8px 12px", fontSize: 12, color: "var(--text)",
+    background: "var(--surface)", outline: "none", width: "100%",
     fontFamily: "inherit",
   };
 
@@ -232,7 +220,7 @@ export function DECatalogPage() {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, color: T.text, fontFamily: "'Inter','Poppins',system-ui,sans-serif" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, color: "var(--text)", fontFamily: "'Inter','Poppins',system-ui,sans-serif" }}>
 
       {/* ── Header ─────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
@@ -262,7 +250,7 @@ export function DECatalogPage() {
       {/* ── Tabs ───────────────────────────────────────────── */}
       <div style={{
         display: "inline-flex", gap: 4, padding: 4,
-        background: "#f0f2ff", border: `1px solid ${T.cardBorder}`,
+        background: "var(--bg)", border: "1.5px solid var(--border)",
         borderRadius: 12,
       }}>
         {(["catalog", "requests", "engagement"] as const).map(tab => (
@@ -275,12 +263,12 @@ export function DECatalogPage() {
               fontSize: 11, fontWeight: 700, borderRadius: 9, border: "none",
               cursor: "pointer", transition: "all 0.2s",
               background: activeTab === tab
-                ? (tab === "requests" ? T.accent : T.cardBg)
+                ? (tab === "requests" ? T.accent : "var(--surface)")
                 : "transparent",
               color: activeTab === tab
-                ? (tab === "requests" ? "#fff" : T.text)
-                : T.textMuted,
-              boxShadow: activeTab === tab ? T.cardShadow : "none",
+                ? (tab === "requests" ? "#fff" : "var(--text)")
+                : "var(--muted)",
+              boxShadow: activeTab === tab ? "0 2px 8px rgba(108,99,255,0.15)" : "none",
             }}
           >
             {tab === "catalog" ? "Metric Catalog" : tab === "requests" ? "Pending Requests" : "Engagement Model"}
@@ -379,7 +367,7 @@ export function DECatalogPage() {
                         onClick={() => { setRejectModal({ id: r.id, name: r.metric_name }); setRejectComment(""); }}
                         disabled={decidingId === r.id}
                         style={{
-                          background: T.cardBg, color: "#dc2626",
+                          background: "var(--surface)", color: "#dc2626",
                           border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "8px 18px",
                           fontSize: 11, fontWeight: 700, cursor: "pointer",
                           opacity: decidingId === r.id ? 0.5 : 1,
@@ -733,105 +721,6 @@ export function DECatalogPage() {
                   value={form.delivery_model}
                   onChange={e => setForm(f => ({ ...f, delivery_model: e.target.value }))}
                   placeholder="E.g. Agile-Scrum,Waterfall,Iterative"
-                  style={inputStyle}
-                />
-              </div>
-              {/* Data definition fields from QPM Plan CSV */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Data Source</label>
-                <input
-                  type="text"
-                  value={form.data_source}
-                  onChange={e => setForm(f => ({ ...f, data_source: e.target.value }))}
-                  placeholder="E.g. Time Tracking System, Defect Tracking System"
-                  style={inputStyle}
-                />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Data Elements &amp; Operational Definitions</label>
-                <textarea
-                  value={form.data_elements}
-                  onChange={e => setForm(f => ({ ...f, data_elements: e.target.value }))}
-                  rows={3}
-                  placeholder="E.g. Actual Effort in Person-hours; Planned Effort in Person-hours; UoM for Effort..."
-                  style={{ ...inputStyle, resize: "vertical" }}
-                />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Analytic Technique</label>
-                  <input
-                    type="text"
-                    value={form.analytic_technique}
-                    onChange={e => setForm(f => ({ ...f, analytic_technique: e.target.value }))}
-                    placeholder="E.g. Run Chart, Bar Chart"
-                    style={inputStyle}
-                  />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Governance Level</label>
-                  <select
-                    value={form.governance_level}
-                    onChange={e => setForm(f => ({ ...f, governance_level: e.target.value }))}
-                    style={{ ...inputStyle, cursor: "pointer" }}
-                  >
-                    <option value="">Select...</option>
-                    <option value="Project Manager">Project Manager</option>
-                    <option value="Delivery Manager">Delivery Manager</option>
-                  </select>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Computation Type</label>
-                  <select
-                    value={form.computation_type}
-                    onChange={e => setForm(f => ({ ...f, computation_type: e.target.value }))}
-                    style={{ ...inputStyle, cursor: "pointer" }}
-                  >
-                    <option value="C">C — Computed (multi-measure)</option>
-                    <option value="D">D — Direct (single value entry)</option>
-                  </select>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Dashboard Metric?</label>
-                  <select
-                    value={form.dashboard}
-                    onChange={e => setForm(f => ({ ...f, dashboard: e.target.value }))}
-                    style={{ ...inputStyle, cursor: "pointer" }}
-                  >
-                    <option value="">No</option>
-                    <option value="Yes">Yes</option>
-                  </select>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Size Dependent</label>
-                  <select
-                    value={form.size_dependent}
-                    onChange={e => setForm(f => ({ ...f, size_dependent: e.target.value }))}
-                    style={{ ...inputStyle, cursor: "pointer" }}
-                  >
-                    <option value="">—</option>
-                    <option value="Y">Y</option>
-                    <option value="N">N</option>
-                  </select>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Adaption Status</label>
-                  <input
-                    type="text"
-                    value={form.metrics_adaption_status}
-                    onChange={e => setForm(f => ({ ...f, metrics_adaption_status: e.target.value }))}
-                    placeholder="E.g. Standard"
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Directive Inputs / Conditions</label>
-                <input
-                  type="text"
-                  value={form.directive_inputs}
-                  onChange={e => setForm(f => ({ ...f, directive_inputs: e.target.value }))}
-                  placeholder="E.g. Mandatory for FP Projects & T&M with cap projects"
                   style={inputStyle}
                 />
               </div>

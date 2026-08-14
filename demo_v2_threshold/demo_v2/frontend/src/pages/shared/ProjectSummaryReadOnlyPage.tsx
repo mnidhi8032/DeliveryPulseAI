@@ -91,6 +91,15 @@ export function ProjectSummaryReadOnlyPage() {
   const [summary, setSummary]   = useState<KpiSummary | null>(null);
   const [loading, setLoading]   = useState(true);
   const [catFilter, setCatFilter] = useState("All");
+  const [ragFilter, setRagFilter] = useState<string | null>(null); // null = all
+
+  // RAG sort order: RED first, then AMBER, GREEN, then no data
+  const RAG_ORDER: Record<string, number> = { RED: 0, AMBER: 1, GREEN: 2 };
+  const sortByRag = (a: KpiSummaryMetric, b: KpiSummaryMetric) => {
+    const ao = a.rag_status ? (RAG_ORDER[a.rag_status] ?? 3) : 3;
+    const bo = b.rag_status ? (RAG_ORDER[b.rag_status] ?? 3) : 3;
+    return ao - bo;
+  };
 
   useEffect(() => {
     if (!projectId) return;
@@ -114,7 +123,10 @@ export function ProjectSummaryReadOnlyPage() {
   );
 
   const categories = [...new Set((summary?.metrics || []).map(m => m.metric_category).filter(Boolean))];
-  const filtered   = (summary?.metrics || []).filter(m => catFilter === "All" || m.metric_category === catFilter);
+  const filtered   = (summary?.metrics || [])
+    .filter(m => catFilter === "All" || m.metric_category === catFilter)
+    .filter(m => ragFilter === null || (ragFilter === "NO_DATA" ? !m.rag_status : m.rag_status === ragFilter))
+    .sort(sortByRag);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -145,16 +157,32 @@ export function ProjectSummaryReadOnlyPage() {
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Green",   count: summary.green_count,   color: "#22c55e" },
-            { label: "Amber",   count: summary.amber_count,   color: "#f59e0b" },
-            { label: "Red",     count: summary.red_count,     color: "#ef4444" },
-            { label: "No data", count: summary.no_data_count, color: "#9ca3af" },
-          ].map(s => (
-            <div key={s.label} style={{ borderRadius: 20, padding: "16px 20px", background: s.color, boxShadow: `0 4px 16px ${s.color}44` }}>
-              <p style={{ fontSize: 30, fontWeight: 900, color: "#fff", margin: 0 }}>{s.count}</p>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.80)", margin: "4px 0 0", textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</p>
-            </div>
-          ))}
+            { label: "Green",   count: summary.green_count,   color: "#22c55e", key: "GREEN"   },
+            { label: "Amber",   count: summary.amber_count,   color: "#f59e0b", key: "AMBER"   },
+            { label: "Red",     count: summary.red_count,     color: "#ef4444", key: "RED"     },
+            { label: "No data", count: summary.no_data_count, color: "#9ca3af", key: "NO_DATA" },
+          ].map(s => {
+            const isActive = ragFilter === s.key;
+            return (
+              <div
+                key={s.label}
+                onClick={() => { setRagFilter(isActive ? null : s.key); setCatFilter("All"); }}
+                style={{
+                  borderRadius: 20, padding: "16px 20px", background: s.color,
+                  boxShadow: isActive ? `0 0 0 4px #fff, 0 0 0 7px ${s.color}` : `0 4px 16px ${s.color}44`,
+                  cursor: "pointer", transform: isActive ? "scale(0.97)" : "scale(1)",
+                  transition: "all 0.15s", userSelect: "none",
+                  outline: isActive ? `3px solid #fff` : "none",
+                }}
+              >
+                <p style={{ fontSize: 30, fontWeight: 900, color: "#fff", margin: 0 }}>{s.count}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.85)", margin: "4px 0 0", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {s.label}
+                  {isActive && " ✕"}
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -163,17 +191,38 @@ export function ProjectSummaryReadOnlyPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Filter:</span>
           {["All", ...categories].map(cat => (
-            <button key={cat} type="button" onClick={() => setCatFilter(cat as string)}
+            <button key={cat} type="button"
+              onClick={() => { setCatFilter(cat as string); setRagFilter(null); }}
               style={{
                 borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
-                border: `1.5px solid ${catFilter === cat ? "var(--primary)" : "var(--border)"}`,
-                background: catFilter === cat ? "var(--primary)" : "var(--surface)",
-                color: catFilter === cat ? "#fff" : "var(--muted)",
+                border: `1.5px solid ${catFilter === cat && !ragFilter ? "var(--primary)" : "var(--border)"}`,
+                background: catFilter === cat && !ragFilter ? "var(--primary)" : "var(--surface)",
+                color: catFilter === cat && !ragFilter ? "#fff" : "var(--muted)",
                 transition: "all 0.15s",
               }}>
               {cat}
             </button>
           ))}
+          {/* Active RAG filter indicator */}
+          {ragFilter && (
+            <span style={{
+              borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: 700,
+              background: ragFilter === "RED" ? "rgba(239,68,68,0.12)"
+                : ragFilter === "AMBER" ? "rgba(245,158,11,0.12)"
+                : ragFilter === "GREEN" ? "rgba(34,197,94,0.12)"
+                : "rgba(107,114,128,0.12)",
+              color: ragFilter === "RED" ? "#b91c1c"
+                : ragFilter === "AMBER" ? "#b45309"
+                : ragFilter === "GREEN" ? "#15803d"
+                : "var(--muted)",
+              border: `1.5px solid ${ragFilter === "RED" ? "rgba(239,68,68,0.30)"
+                : ragFilter === "AMBER" ? "rgba(245,158,11,0.30)"
+                : ragFilter === "GREEN" ? "rgba(34,197,94,0.30)"
+                : "rgba(107,114,128,0.25)"}`,
+            }}>
+              Showing: {ragFilter === "NO_DATA" ? "No data" : ragFilter.charAt(0) + ragFilter.slice(1).toLowerCase()} only
+            </span>
+          )}
         </div>
       )}
 
@@ -186,7 +235,12 @@ export function ProjectSummaryReadOnlyPage() {
         <div style={{ background: "var(--surface)", borderRadius: 20, boxShadow: "var(--shadow)", overflow: "hidden" }}>
           <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", background: "rgba(108,99,255,0.04)" }}>
             <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", margin: 0 }}>KPI Metrics</p>
-            <p style={{ fontSize: 12, color: "var(--muted)", margin: "2px 0 0" }}>{filtered.length} metric{filtered.length !== 1 ? "s" : ""} — read-only view</p>
+            <p style={{ fontSize: 12, color: "var(--muted)", margin: "2px 0 0" }}>
+              {filtered.length} metric{filtered.length !== 1 ? "s" : ""}
+              {ragFilter ? ` — ${ragFilter === "NO_DATA" ? "no data" : ragFilter.toLowerCase()} only` : ""}
+              {catFilter !== "All" ? ` — ${catFilter}` : ""}
+              {" "}— read-only view
+            </p>
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>

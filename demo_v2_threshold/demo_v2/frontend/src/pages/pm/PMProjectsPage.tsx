@@ -203,6 +203,18 @@ export function PMProjectsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.account_id) {
+      toast.error("Please select an account.");
+      return;
+    }
+    if (!form.project_code.trim()) {
+      toast.error("Project Code is required.");
+      return;
+    }
+    if (!form.project_name.trim()) {
+      toast.error("Project Name is required.");
+      return;
+    }
     if (!form.project_type || !form.delivery_process_model) {
       toast.error("Project Type and Delivery Model are required.");
       return;
@@ -230,7 +242,14 @@ export function PMProjectsPage() {
       // Navigate directly to Data Entry
       navigate(`/pm/projects/${result.project_id}/qpm/entry`);
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || "Failed to create project");
+      const detail = err.response?.data?.detail;
+      const message =
+        typeof detail === "string"
+          ? detail
+          : Array.isArray(detail)
+          ? detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ")
+          : "Failed to create project";
+      toast.error(message);
     } finally { setSaving(false); setLoading(false); }
   };
 
