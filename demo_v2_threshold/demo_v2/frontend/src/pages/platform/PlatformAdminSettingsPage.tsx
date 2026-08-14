@@ -389,15 +389,15 @@ export function PlatformAdminSettingsPage() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "setup",           label: "Org Setup" },
-    { id: "general",         label: "General" },
-    { id: "health",          label: "Health Thresholds" },
-    { id: "notifications",   label: "Notifications" },
-    { id: "metrics",         label: "Metric Catalog" },
-    { id: "periods",         label: "Gov. Periods" },
+    // { id: "general",         label: "General" },           // hidden — future use
+    // { id: "health",          label: "Health Thresholds" }, // hidden — future use
+    // { id: "notifications",   label: "Notifications" },     // hidden — future use
+    // { id: "metrics",         label: "Metric Catalog" },    // hidden — future use
+    // { id: "periods",         label: "Gov. Periods" },      // hidden — future use
     { id: "users",           label: "User Directory" },
     { id: "recommendations", label: "Recommendations" },
     { id: "engagement",      label: "Engagement Model" },
-    { id: "audit",           label: "System Audits" },
+    // { id: "audit",           label: "System Audits" },     // hidden — future use
   ];
 
   return (

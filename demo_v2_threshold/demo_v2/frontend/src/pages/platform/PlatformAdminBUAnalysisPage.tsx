@@ -20,7 +20,6 @@ function StatTile({ label, value, color, sub }: { label: string; value: string |
     </div>
   );
 }
-
 // ── RAG pill ──────────────────────────────────────────────────────────────────
 function RagPill({ rag }: { rag: string | null }) {
   if (!rag) return <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>No score</span>;
@@ -48,6 +47,7 @@ export function PlatformAdminBUAnalysisPage() {
   const [buProjects, setBuProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
+  const [ragFilter, setRagFilter] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -85,6 +85,15 @@ export function PlatformAdminBUAnalysisPage() {
   const total   = buProjects.length;
   const greenPct = total > 0 ? Math.round((green / total) * 100) : 0;
 
+  // Filtered projects for the table (by ragFilter)
+  const filteredProjects = ragFilter === null
+    ? buProjects
+    : ragFilter === "NO_DATA"
+      ? buProjects.filter(p => !p.current_rag)
+      : ragFilter === "RED"
+        ? buProjects.filter(p => p.current_rag === "RED" || p.current_rag === "CRITICAL")
+        : buProjects.filter(p => p.current_rag === ragFilter);
+
   // Strip "DH — " prefix from DH display names
   const dhNames = buMeta.delivery_head_names
     .map(n => n.replace(/^DH\s*[—–-]\s*/i, ""))
@@ -112,12 +121,38 @@ export function PlatformAdminBUAnalysisPage() {
         </div>
       </div>
 
-      {/* Stat tiles — from real project data */}
+      {/* Coloured RAG tiles — clickable to filter projects */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatTile label="Total Projects"  value={total}        color="var(--primary)" />
-        <StatTile label="Green Health"    value={`${greenPct}%`} color="#22c55e" sub={`${green} project${green !== 1 ? "s" : ""}`} />
-        <StatTile label="Needs Attention" value={amber + red}  color={amber + red > 0 ? "#ef4444" : "var(--muted)"} sub={`${amber} amber · ${red} red`} />
-        <StatTile label="No Score Yet"    value={noScore}      color="#3b82f6" sub="Awaiting KPI entry" />
+        {[
+          { label: "Green",    count: green,   color: "#22c55e", key: "GREEN"   },
+          { label: "Amber",    count: amber,   color: "#f59e0b", key: "AMBER"   },
+          { label: "Red",      count: red,     color: "#ef4444", key: "RED"     },
+          { label: "No Score", count: noScore, color: "#9ca3af", key: "NO_DATA" },
+        ].map(s => {
+          const isActive = ragFilter === s.key;
+          return (
+            <div
+              key={s.key}
+              onClick={() => setRagFilter(isActive ? null : s.key)}
+              style={{
+                borderRadius: 20, padding: "20px 22px",
+                background: s.color,
+                boxShadow: isActive
+                  ? `0 0 0 4px var(--surface), 0 0 0 7px ${s.color}`
+                  : `0 4px 16px ${s.color}55`,
+                cursor: "pointer",
+                transform: isActive ? "scale(0.97)" : "scale(1)",
+                transition: "all 0.15s",
+                userSelect: "none",
+              }}
+            >
+              <p style={{ fontSize: 32, fontWeight: 900, color: "#fff", margin: 0, lineHeight: 1 }}>{s.count}</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.85)", margin: "6px 0 0", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                {s.label}{isActive ? " ✕" : ""}
+              </p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Health breakdown bar */}
@@ -151,12 +186,15 @@ export function PlatformAdminBUAnalysisPage() {
       <div style={{ borderRadius: 20, background: "var(--surface)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
         <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border)", background: "rgba(108,99,255,0.04)" }}>
           <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", margin: 0 }}>Projects in this BU</p>
-          <p style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0" }}>{total} project{total !== 1 ? "s" : ""}</p>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0" }}>
+            {filteredProjects.length} project{filteredProjects.length !== 1 ? "s" : ""}
+            {ragFilter && ` — ${ragFilter === "NO_DATA" ? "no score" : ragFilter.charAt(0) + ragFilter.slice(1).toLowerCase()} only`}
+          </p>
         </div>
 
-        {buProjects.length === 0 ? (
+        {filteredProjects.length === 0 ? (
           <div style={{ padding: "48px 24px", textAlign: "center" }}>
-            <p style={{ color: "var(--muted)", fontSize: 14 }}>No projects found for this Business Unit.</p>
+            <p style={{ color: "var(--muted)", fontSize: 14 }}>No projects found{ragFilter ? " for this filter" : " for this Business Unit"}.</p>
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
@@ -169,12 +207,12 @@ export function PlatformAdminBUAnalysisPage() {
                 </tr>
               </thead>
               <tbody>
-                {buProjects.map((p, idx) => {
+                {filteredProjects.map((p, idx) => {
                   const ragColors: Record<string, string> = { GREEN: "#22c55e", AMBER: "#f59e0b", RED: "#ef4444", CRITICAL: "#ef4444" };
                   const leftColor = p.current_rag ? (ragColors[p.current_rag] ?? "var(--border)") : "var(--border)";
                   const statusLabel: Record<string, string> = { ACTIVE: "Active", ON_HOLD: "On Hold", COMPLETED: "Completed", CANCELLED: "Cancelled" };
                   return (
-                    <tr key={p.id} style={{ borderBottom: idx < buProjects.length - 1 ? "1px solid var(--border)" : "none", borderLeft: `3px solid ${leftColor}` }}
+                    <tr key={p.id} style={{ borderBottom: idx < filteredProjects.length - 1 ? "1px solid var(--border)" : "none", borderLeft: `3px solid ${leftColor}` }}
                       onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = "rgba(108,99,255,0.03)"; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}>
                       <td style={{ padding: "13px 20px" }}>
