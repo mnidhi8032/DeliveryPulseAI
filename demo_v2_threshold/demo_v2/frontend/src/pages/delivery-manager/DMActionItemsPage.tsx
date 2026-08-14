@@ -31,21 +31,42 @@ export function DMActionItemsPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ root_cause:"", corrective_action:"", owner_name:"", target_closure_date:"", metric_name:"" });
 
+  const loadAll = async (projectList: Project[]) => {
+    try {
+      const allItems = await Promise.all(
+        projectList.map(p => listActionItems(p.id, false).catch(() => [] as ActionItem[]))
+      );
+      setActionItems(allItems.flat().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+    } catch { setActionItems([]); }
+  };
+
   const load = async (projectId: string) => {
-    if (!projectId) { setActionItems([]); return; }
     try { setActionItems(await listActionItems(projectId)); } catch { setActionItems([]); }
   };
 
   useEffect(() => {
     listProjects().then(async projs => {
       setProjects(projs);
-      const pid = preselectedProjectId || (projs[0]?.id ?? "");
+      const pid = preselectedProjectId || "";
       setSelectedProject(pid);
-      await load(pid);
+      if (pid) {
+        await load(pid);
+      } else {
+        await loadAll(projs);
+      }
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  const handleProjectChange = async (pid: string) => { setSelectedProject(pid); setLoading(true); await load(pid); setLoading(false); };
+  const handleProjectChange = async (pid: string) => {
+    setSelectedProject(pid);
+    setLoading(true);
+    if (pid) {
+      await load(pid);
+    } else {
+      await loadAll(projects);
+    }
+    setLoading(false);
+  };
 
   const handleCreate = async () => {
     if (!selectedProject || !form.root_cause.trim() || !form.corrective_action.trim()) return;
@@ -100,12 +121,12 @@ export function DMActionItemsPage() {
         <label style={{ fontSize:13, fontWeight:700, color: C.muted, flexShrink:0 }}>Project:</label>
         <select value={selectedProject} onChange={e => handleProjectChange(e.target.value)}
           style={{ flex:1, borderRadius:12, border:`1.5px solid ${C.border}`, padding:"8px 12px", fontSize:14, color: C.text, background:"#faf9ff", outline:"none", fontFamily:"inherit" }}>
-          <option value="">Select a project…</option>
+          <option value="">All Projects — show all action items</option>
           {projects.map(p => <option key={p.id} value={p.id}>{p.project_code} — {p.project_name}</option>)}
         </select>
       </div>
 
-      {/* Stat tiles */}
+      {/* Stat tiles — show for specific project only */}
       {selectedProject && (
         <div className="grid grid-cols-3 gap-4">
           {[
@@ -121,7 +142,7 @@ export function DMActionItemsPage() {
         </div>
       )}
 
-      {/* Create form */}
+      {/* Create form — only available when a specific project is selected */}
       {showForm && selectedProject && (
         <div style={{ background: C.card, borderRadius:20, boxShadow: C.shadow, padding:24, display:"flex", flexDirection:"column", gap:18 }}>
           <p style={{ fontSize:15, fontWeight:800, color: C.text, margin:0 }}>New Action Item</p>
@@ -163,12 +184,11 @@ export function DMActionItemsPage() {
         </div>
       )}
 
-      {/* Action items list */}
-      {selectedProject && (
-        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      {/* Action items list — always visible */}
+      <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           {actionItems.length === 0 ? (
             <div style={{ background: C.card, borderRadius:20, border:`2px dashed ${C.border}`, padding:"48px 24px", textAlign:"center", boxShadow: C.shadow }}>
-              <p style={{ color: C.muted, fontSize:14 }}>No action items for this project yet.</p>
+              <p style={{ color: C.muted, fontSize:14 }}>{selectedProject ? "No action items for this project yet." : "No action items found across your projects."}</p>
             </div>
           ) : actionItems.map(item => {
             const sc = STATUS_CFG[item.action_status] ?? { dot:"#9ca3af", bg:"var(--surface)", text: C.muted, label: item.action_status };
@@ -179,6 +199,12 @@ export function DMActionItemsPage() {
                     {item.metric_name && (
                       <span style={{ display:"inline-block", background:"#f5f3ff", border:`1px solid ${C.border}`, color: C.primary, fontSize:11, fontWeight:700, borderRadius:20, padding:"2px 12px", marginBottom:8 }}>
                         {item.metric_name}
+                      </span>
+                    )}
+                    {/* Show project name when viewing "All Projects" */}
+                    {!selectedProject && (
+                      <span style={{ display:"inline-block", background:"rgba(108,99,255,0.08)", border:`1px solid rgba(108,99,255,0.2)`, color: C.primary, fontSize:10, fontWeight:700, borderRadius:20, padding:"2px 10px", marginBottom:8, marginLeft: item.metric_name ? 6 : 0 }}>
+                        {projects.find(p => p.id === item.project_id)?.project_name ?? item.project_id.slice(0,8)}
                       </span>
                     )}
                     <p style={{ fontSize:14, fontWeight:700, color: C.text, margin:0 }}>Root cause: {item.root_cause}</p>
@@ -197,7 +223,6 @@ export function DMActionItemsPage() {
             );
           })}
         </div>
-      )}
     </div>
   );
 }

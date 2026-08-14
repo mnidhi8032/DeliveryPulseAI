@@ -10,16 +10,6 @@ import { getPlatformBUAnalysis } from "../../services/platformService";
 import type { Project } from "../../types/project";
 import type { PlatformBUAnalysis } from "../../types/platform";
 
-// ── Stat tile ─────────────────────────────────────────────────────────────────
-function StatTile({ label, value, color, sub }: { label: string; value: string | number; color: string; sub?: string }) {
-  return (
-    <div style={{ borderRadius: 16, background: "var(--surface)", border: "1.5px solid var(--border)", padding: "18px 20px", boxShadow: "var(--shadow)" }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 8px" }}>{label}</p>
-      <p style={{ fontSize: 28, fontWeight: 900, color, margin: 0, lineHeight: 1 }}>{value}</p>
-      {sub && <p style={{ fontSize: 11, color: "var(--muted)", margin: "5px 0 0" }}>{sub}</p>}
-    </div>
-  );
-}
 // ── RAG pill ──────────────────────────────────────────────────────────────────
 function RagPill({ rag }: { rag: string | null }) {
   if (!rag) return <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>No score</span>;
@@ -84,6 +74,7 @@ export function PlatformAdminBUAnalysisPage() {
   const noScore = buProjects.filter(p => !p.current_rag).length;
   const total   = buProjects.length;
   const greenPct = total > 0 ? Math.round((green / total) * 100) : 0;
+  void greenPct; // computed for potential future use
 
   // Filtered projects for the table (by ragFilter)
   const filteredProjects = ragFilter === null
