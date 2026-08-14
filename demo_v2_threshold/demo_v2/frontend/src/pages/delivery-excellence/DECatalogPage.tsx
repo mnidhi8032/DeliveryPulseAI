@@ -694,6 +694,24 @@ export function DECatalogPage() {
                   </div>
                 ))}
               </div>
+              {/* Measure parameters — ask FIRST so DE knows what inputs the formula uses */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>
+                  Measure Parameters (comma-separated) *
+                </label>
+                <input
+                  type="text"
+                  value={form.measures_str}
+                  onChange={e => setForm(f => ({ ...f, measures_str: e.target.value }))}
+                  placeholder="E.g. Actual Effort, Planned Effort  (order matters for formula)"
+                  style={inputStyle}
+                />
+                <p style={{ fontSize: 10, color: T.textMuted, margin: 0 }}>
+                  List the input parameter names in the order they appear in the formula.
+                  For a single direct metric enter just one name. These become the input
+                  fields PM fills in on Sheet 2 and are used by the calculation engine.
+                </p>
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>Formula</label>
                 <textarea
@@ -723,24 +741,6 @@ export function DECatalogPage() {
                   placeholder="E.g. Agile-Scrum,Waterfall,Iterative"
                   style={inputStyle}
                 />
-              </div>
-              {/* Measure parameters — critical for computation engine */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: T.text }}>
-                  Measure Parameters (comma-separated) *
-                </label>
-                <input
-                  type="text"
-                  value={form.measures_str}
-                  onChange={e => setForm(f => ({ ...f, measures_str: e.target.value }))}
-                  placeholder="E.g. Actual Effort, Planned Effort  (order matters for formula)"
-                  style={inputStyle}
-                />
-                <p style={{ fontSize: 10, color: T.textMuted, margin: 0 }}>
-                  List the input parameter names in the order they appear in the formula.
-                  For a single direct metric enter just one name. These become the input
-                  fields PM fills in on Sheet 2 and are used by the calculation engine.
-                </p>
               </div>
               <div style={{ display: "flex", gap: 10, borderTop: `1px solid ${T.divider}`, paddingTop: 14 }}>
                 <button
